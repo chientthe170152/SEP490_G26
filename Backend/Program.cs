@@ -1,3 +1,8 @@
+using Backend.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace Backend
 {
@@ -8,8 +13,53 @@ namespace Backend
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
-
             builder.Services.AddControllers();
+
+            // Configure DbContext
+            builder.Services.AddDbContext<MtcaSep490G26Context>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn")));
+
+            // Register Repositories
+            builder.Services.AddScoped<Backend.Repositories.Interfaces.IAuthRepository, Backend.Repositories.Implements.AuthRepository>();
+
+            // Register Services
+            builder.Services.AddScoped<Backend.Services.Interfaces.IAuthService, Backend.Services.Implements.AuthService>();
+            builder.Services.AddScoped<Backend.Services.Interfaces.IEmailService, Backend.Services.Implements.EmailService>();
+
+            // Add Memory Cache for OTP storage
+            builder.Services.AddMemoryCache();
+
+            // Configure CORS
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
+
+            // Configure JWT Authentication
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                    ValidAudience = builder.Configuration["Jwt:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? ""))
+                };
+            });
+
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
@@ -25,8 +75,10 @@ namespace Backend
 
             app.UseHttpsRedirection();
 
-            app.UseAuthorization();
+            app.UseCors("AllowAll");
 
+            app.UseAuthentication();
+            app.UseAuthorization();
 
             app.MapControllers();
 

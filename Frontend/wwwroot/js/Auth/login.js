@@ -1,0 +1,72 @@
+$(document).ready(function () {
+    // 1. Handle traditional login form submission
+    $('#loginForm').on('submit', function (e) {
+        e.preventDefault(); // Prevent standard POST
+
+        $('.text-danger').text(''); // Clear previous errors
+
+        const username = $('#Username').val();
+        const password = $('#Password').val();
+
+        if (!username) {
+            $('#UsernameError').text("Vui lòng nhập Tên đăng nhập");
+            return;
+        }
+        if (!password) {
+            $('#PasswordError').text("Vui lòng nhập Mật khẩu");
+            return;
+        }
+
+        const requestData = {
+            Username: username,
+            Password: password
+        };
+
+        apiClient.post("/api/auth/login", requestData)
+            .then(function (response) {
+                if (response.token) {
+                    setToken(response.token);
+                    const returnUrl = $('#returnUrl').val();
+                    window.location.href = returnUrl ? returnUrl : '/';
+                }
+            })
+            .catch(function (err) {
+                $('#formError').text("Email hoặc mật khẩu không chính xác.");
+            });
+    });
+});
+
+// 2. Handle Google Login callback
+function handleCredentialResponse(response) {
+    const requestData = {
+        IdToken: response.credential
+    };
+
+    apiClient.post("/api/auth/google-login", requestData)
+        .then(function (data) {
+            if (data.needsRegistration) {
+                localStorage.setItem('tempGoogleToken', requestData.IdToken);
+                localStorage.setItem('tempGoogleEmail', data.email);
+                window.location.href = '/Auth/GoogleRegister';
+            } else if (data.token) {
+                setToken(data.token);
+                const returnUrl = $('#returnUrl').val();
+                window.location.href = returnUrl ? returnUrl : '/';
+            } else {
+                alert('Đăng nhập Google thất bại');
+            }
+        })
+        .catch(function (err) {
+            console.error('Error:', err);
+            alert('Có lỗi xảy ra khi xác thực với Google.');
+        });
+}
+
+function triggerGoogleLogin() {
+    var gSignInWrap = document.querySelector('.g_id_signin div[role=button]');
+    if (gSignInWrap) {
+        gSignInWrap.click();
+    } else {
+        console.error("Google Sign In button not rendered yet.");
+    }
+}
