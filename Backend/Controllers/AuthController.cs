@@ -1,6 +1,7 @@
 using Backend.DTOs;
 using Backend.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Backend.Constants;
 
 namespace Backend.Controllers
 {
@@ -29,7 +30,7 @@ namespace Backend.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while processing the login", details = ex.Message });
+                return StatusCode(500, new { message = ErrorMessages.LoginProcessingError, details = ex.Message });
             }
         }
 
@@ -47,7 +48,7 @@ namespace Backend.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while processing the Google login", details = ex.Message });
+                return StatusCode(500, new { message = ErrorMessages.GoogleLoginProcessingError, details = ex.Message });
             }
         }
 
@@ -69,7 +70,7 @@ namespace Backend.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while processing the Google registration", details = ex.Message });
+                return StatusCode(500, new { message = ErrorMessages.GoogleRegistrationProcessingError, details = ex.Message });
             }
         }
 
@@ -79,7 +80,7 @@ namespace Backend.Controllers
             try
             {
                 await _authService.SendOtpAsync(request);
-                return Ok(new { message = "Mã OTP đã được gửi đến email của bạn." });
+                return Ok(new { message = SuccessMessages.OtpSentSuccess });
             }
             catch (InvalidOperationException ex)
             {
@@ -87,7 +88,7 @@ namespace Backend.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Lỗi khi gửi OTP", details = ex.Message });
+                return StatusCode(500, new { message = ErrorMessages.SendOtpError, details = ex.Message });
             }
         }
 
@@ -109,7 +110,7 @@ namespace Backend.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Lỗi khi tạo tài khoản", details = ex.Message });
+                return StatusCode(500, new { message = ErrorMessages.AccountCreationError, details = ex.Message });
             }
         }
     }

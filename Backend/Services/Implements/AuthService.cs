@@ -8,6 +8,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Caching.Memory;
+using Backend.Constants;
 
 namespace Backend.Services.Implements
 {
@@ -32,7 +33,7 @@ namespace Backend.Services.Implements
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             {
-                throw new UnauthorizedAccessException("Invalid email or password");
+                throw new UnauthorizedAccessException(ErrorMessages.InvalidEmailOrPassword);
             }
 
             var token = GenerateJwtToken(user);
@@ -79,7 +80,7 @@ namespace Backend.Services.Implements
             var existingUser = await _authRepository.GetUserByUsernameAsync(userEmail);
             if (existingUser != null)
             {
-                throw new InvalidOperationException("User already exists");
+                throw new InvalidOperationException(ErrorMessages.UserAlreadyExists);
             }
 
             var user = new User
@@ -107,11 +108,11 @@ namespace Backend.Services.Implements
             // 1. Check if username or email already exists
             var existingUserByUsername = await _authRepository.GetUserByUsernameAsync(request.Username);
             if (existingUserByUsername != null && existingUserByUsername.Username == request.Username) 
-                throw new InvalidOperationException("Tên đăng nhập đã được sử dụng.");
+                throw new InvalidOperationException(ErrorMessages.UsernameAlreadyUsed);
             
             var existingUserByEmail = await _authRepository.GetUserByUsernameAsync(request.Email);
             if (existingUserByEmail != null && existingUserByEmail.Email == request.Email) 
-                throw new InvalidOperationException("Email này đã được đăng ký trong hệ thống. Vui lòng sử dụng Email khác.");
+                throw new InvalidOperationException(ErrorMessages.EmailAlreadyRegistered);
 
             // 2. Generate 6-digit OTP
             var otp = new Random().Next(100000, 999999).ToString();
@@ -140,12 +141,12 @@ namespace Backend.Services.Implements
             
             if (!_cache.TryGetValue(cacheKey, out dynamic? cacheData) || cacheData == null)
             {
-                throw new UnauthorizedAccessException("OTP đã hết hạn hoặc không tồn tại.");
+                throw new UnauthorizedAccessException(ErrorMessages.OtpExpiredOrNotExists);
             }
 
             if (cacheData.Otp != request.OtpCode)
             {
-                throw new UnauthorizedAccessException("Mã OTP không chính xác.");
+                throw new UnauthorizedAccessException(ErrorMessages.InvalidOtp);
             }
 
             // ONE-TIME USE: Remove OTP from cache IMMEDIATELY upon verification
@@ -157,7 +158,7 @@ namespace Backend.Services.Implements
             var existingUser = await _authRepository.GetUserByUsernameAsync(regRequest.Username);
             if (existingUser != null) {
                  _cache.Remove(cacheKey); // Cleanup
-                 throw new InvalidOperationException("User already exists");
+                 throw new InvalidOperationException(ErrorMessages.UserAlreadyExists);
             }
 
             var user = new User
@@ -193,13 +194,13 @@ namespace Backend.Services.Implements
             {
                 var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
                 if (payload == null)
-                    throw new UnauthorizedAccessException("Invalid Google token");
+                    throw new UnauthorizedAccessException(ErrorMessages.InvalidGoogleToken);
                 
                 return payload;
             }
             catch (InvalidJwtException)
             {
-                throw new UnauthorizedAccessException("Invalid Google token signature");
+                throw new UnauthorizedAccessException(ErrorMessages.InvalidGoogleTokenSignature);
             }
         }
 

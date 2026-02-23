@@ -1,19 +1,20 @@
 using System.ComponentModel.DataAnnotations;
+using Backend.Constants;
 
 namespace Backend.DTOs
 {
     public class RegisterRequest
     {
-        [Required(ErrorMessage = "Tên đăng nhập là bắt buộc.")]
+        [Required(ErrorMessage = ValidationMessages.UsernameRequired)]
         public string Username { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Email là bắt buộc.")]
-        [RegularExpression(@"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$", ErrorMessage = "Email không đúng định dạng chuẩn RFC 5322.")]
+        [Required(ErrorMessage = ValidationMessages.EmailRequired)]
+        [RegularExpression(@"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$", ErrorMessage = ValidationMessages.EmailFormatInvalid)]
         public string Email { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Mật khẩu là bắt buộc.")]
-        [StringLength(72, MinimumLength = 8, ErrorMessage = "Mật khẩu phải từ 8 đến 72 ký tự.")]
-        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,72}$", ErrorMessage = "Mật khẩu bắt buộc bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.")]
+        [Required(ErrorMessage = ValidationMessages.PasswordRequired)]
+        [StringLength(72, MinimumLength = 8, ErrorMessage = ValidationMessages.PasswordLengthInvalid)]
+        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,72}$", ErrorMessage = ValidationMessages.PasswordComplexityInvalid)]
         public string Password { get; set; } = string.Empty;
 
         public int RoleId { get; set; }
