@@ -14,7 +14,6 @@ $(document).ready(function () {
     $('#registerForm').submit(function (e) {
         e.preventDefault();
 
-        var username = $('#Username').val();
         var email = $('#Email').val();
         var password = $('#Password').val();
         var confirmPassword = $('#ConfirmPassword').val();
@@ -43,7 +42,6 @@ $(document).ready(function () {
         $('#formError').hide();
 
         var requestData = {
-            Username: username,
             Email: email,
             Password: password,
             RoleId: parseInt(roleId)
@@ -53,7 +51,6 @@ $(document).ready(function () {
             .then(function (response) {
                 // OTP sent successfully!
                 localStorage.setItem('pendingRegistrationEmail', email);
-                localStorage.setItem('pendingRegistrationUsername', username);
                 window.location.href = '/Auth/VerifyOTP';
             })
             .catch(function (err) {

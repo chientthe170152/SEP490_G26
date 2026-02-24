@@ -5,7 +5,6 @@ namespace Backend.Constants
         // Auth errors
         public const string InvalidEmailOrPassword = "Invalid email or password";
         public const string UserAlreadyExists = "User already exists";
-        public const string UsernameAlreadyUsed = "Tên đăng nhập đã được sử dụng.";
         public const string EmailAlreadyRegistered = "Email này đã được đăng ký trong hệ thống. Vui lòng sử dụng Email khác.";
         public const string OtpExpiredOrNotExists = "OTP đã hết hạn hoặc không tồn tại.";
         public const string InvalidOtp = "Mã OTP không chính xác.";
@@ -27,7 +26,6 @@ namespace Backend.Constants
 
     public static class ValidationMessages
     {
-        public const string UsernameRequired = "Tên đăng nhập là bắt buộc.";
         public const string EmailRequired = "Email là bắt buộc.";
         public const string EmailFormatInvalid = "Email không đúng định dạng chuẩn RFC 5322.";
         public const string PasswordRequired = "Mật khẩu là bắt buộc.";

@@ -14,7 +14,7 @@ namespace Frontend
             builder.Services.AddHttpClient("BackendAPI", client =>
             {
                 // In production, this base address will be from configuration
-                client.BaseAddress = new Uri(builder.Configuration["BackendApiUrl"] ?? "https://localhost:7167/"); 
+                client.BaseAddress = new Uri(builder.Configuration["BackendApiUrl"] ?? "https://localhost:7167/");
             });
 
             builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -26,7 +26,7 @@ namespace Frontend
                     options.Cookie.HttpOnly = true;
                     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
                 });
-            
+
             // Add session for temp data if needed
             builder.Services.AddSession();
 

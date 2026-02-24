@@ -1,4 +1,5 @@
 using Backend.DTOs;
+using Backend.DTOs.Auth;
 using Backend.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Backend.Constants;
@@ -111,6 +112,27 @@ namespace Backend.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { message = ErrorMessages.AccountCreationError, details = ex.Message });
+            }
+        }
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] TokenModel request)
+        {
+            try
+            {
+                var response = await _authService.RefreshTokenAsync(request);
+                return Ok(response);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (ArgumentNullException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while refreshing the token.", details = ex.Message });
             }
         }
     }

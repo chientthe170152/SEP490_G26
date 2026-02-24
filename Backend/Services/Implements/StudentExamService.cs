@@ -28,6 +28,7 @@ namespace Backend.Services.Implements
                 MaxAttempts = paper.Exam.MaxAttempts,
                 Duration = paper.Exam.Duration,
                 PaperId = paper.PaperId,
+                Code = paper.Code,
                 Questions = paper.PaperQuestions.Select(pq => new QuestionDto
                 {
                     QuestionId = pq.Question.QuestionId,
@@ -41,15 +42,31 @@ namespace Backend.Services.Implements
 
         public async Task<Submission> StartExamAsync(int studentId, StartSubmissionRequest request)
         {
+            // If PaperId is not provided, pick a random one for this exam
+            int assignedPaperId;
+            if (request.PaperId.HasValue && request.PaperId.Value > 0)
+            {
+                assignedPaperId = request.PaperId.Value;
+            }
+            else
+            {
+                var randomPaper = await _studentExamRepository.GetRandomPaperForExamAsync(request.ExamId);
+                if (randomPaper == null)
+                {
+                    throw new InvalidOperationException("No papers found for this exam.");
+                }
+                assignedPaperId = randomPaper.PaperId;
+            }
+
             // Check if already active
-            var active = await _studentExamRepository.GetActiveSubmissionAsync(studentId, request.PaperId);
+            var active = await _studentExamRepository.GetActiveSubmissionAsync(studentId, assignedPaperId);
             if (active != null)
             {
                 return active; // Return existing submission to continue
             }
 
             // Check if student has reached MaxAttempts for this exam
-            var paper = await _studentExamRepository.GetPaperWithExamAsync(request.PaperId);
+            var paper = await _studentExamRepository.GetPaperWithExamAsync(assignedPaperId);
             if (paper != null && paper.Exam != null)
             {
                 var attemptCount = await _studentExamRepository.GetExamSubmissionCountAsync(studentId, paper.ExamId);
@@ -62,7 +79,7 @@ namespace Backend.Services.Implements
             var submission = new Submission
             {
                 StudentId = studentId,
-                PaperId = request.PaperId,
+                PaperId = assignedPaperId,
                 Status = 1, 
                 CreatedAtUtc = DateTime.UtcNow
             };
@@ -80,6 +97,18 @@ namespace Backend.Services.Implements
             };
 
             await _studentExamRepository.AddOrUpdateStudentAnswerAsync(answer);
+        }
+
+        public async Task SaveBulkAnswersAsync(int studentId, int submissionId, IEnumerable<SubmitAnswerRequest> requests)
+        {
+            var answers = requests.Select(r => new StudentAnswer
+            {
+                SubmissionId = submissionId,
+                QuestionIndex = r.QuestionIndex,
+                ResponseText = r.ResponseText
+            });
+
+            await _studentExamRepository.AddOrUpdateBulkStudentAnswersAsync(answers);
         }
 
         public async Task SubmitExamAsync(int studentId, int submissionId)

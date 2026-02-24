@@ -5,11 +5,11 @@ $(document).ready(function () {
 
         $('.text-danger').text(''); // Clear previous errors
 
-        const username = $('#Username').val();
+        const email = $('#Email').val().trim();
         const password = $('#Password').val();
 
-        if (!username) {
-            $('#UsernameError').text("Vui lòng nhập Tên đăng nhập");
+        if (!email) {
+            $('#EmailError').text("Vui lòng nhập Email");
             return;
         }
         if (!password) {
@@ -18,7 +18,7 @@ $(document).ready(function () {
         }
 
         const requestData = {
-            Username: username,
+            Email: email,
             Password: password
         };
 

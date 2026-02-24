@@ -58,6 +58,32 @@ namespace Backend.Repositories.Implements
             await _context.SaveChangesAsync();
         }
 
+        public async Task AddOrUpdateBulkStudentAnswersAsync(IEnumerable<StudentAnswer> answers)
+        {
+            if (!answers.Any()) return;
+
+            var submissionId = answers.First().SubmissionId;
+            var indices = answers.Select(a => a.QuestionIndex).ToList();
+
+            var existingAnswers = await _context.StudentAnswers
+                .Where(sa => sa.SubmissionId == submissionId && indices.Contains(sa.QuestionIndex))
+                .ToDictionaryAsync(sa => sa.QuestionIndex);
+
+            foreach (var answer in answers)
+            {
+                if (existingAnswers.TryGetValue(answer.QuestionIndex, out var existing))
+                {
+                    existing.ResponseText = answer.ResponseText;
+                    _context.StudentAnswers.Update(existing);
+                }
+                else
+                {
+                    _context.StudentAnswers.Add(answer);
+                }
+            }
+            await _context.SaveChangesAsync();
+        }
+
         public async Task CompleteSubmissionAsync(int submissionId)
         {
             var submission = await _context.Submissions.FindAsync(submissionId);
@@ -80,6 +106,22 @@ namespace Backend.Repositories.Implements
             return await _context.Papers
                 .Include(p => p.Exam)
                 .FirstOrDefaultAsync(p => p.PaperId == paperId);
+        }
+
+        public async Task<Paper?> GetRandomPaperForExamAsync(int examId)
+        {
+            var paperIds = await _context.Papers
+                .Where(p => p.ExamId == examId)
+                .Select(p => p.PaperId)
+                .ToListAsync();
+
+            if (!paperIds.Any()) return null;
+
+            var random = new Random();
+            int randomIndex = random.Next(paperIds.Count);
+            int selectedPaperId = paperIds[randomIndex];
+
+            return await _context.Papers.FindAsync(selectedPaperId);
         }
     }
 }

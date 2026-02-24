@@ -25,6 +25,42 @@ function removeToken() {
     localStorage.removeItem('jwtToken');
 }
 
+// Helper to decode JWT payload safely
+function parseJwt(token) {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        return null; // Invalid token
+    }
+}
+
+// Get the user's role from the stored JWT token
+function getUserRole() {
+    const token = getToken();
+    if (!token) return null;
+
+    const decoded = parseJwt(token);
+    // JWT sometimes maps Role to a complex schema URL, but standard .NET puts it in role or ClaimTypes.Role
+    const roleClaim = decoded['role'] || decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
+    return roleClaim;
+}
+
+function isAuthenticated() {
+    return getToken() !== null;
+}
+
+// Handle global logout
+function logout() {
+    removeToken();
+    window.location.href = '/Auth/Login';
+}
+
 // Global API Client for the team
 const apiClient = {
     /**

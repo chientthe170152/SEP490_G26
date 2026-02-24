@@ -5,9 +5,6 @@ namespace Backend.DTOs
 {
     public class RegisterRequest
     {
-        [Required(ErrorMessage = ValidationMessages.UsernameRequired)]
-        public string Username { get; set; } = string.Empty;
-
         [Required(ErrorMessage = ValidationMessages.EmailRequired)]
         [RegularExpression(@"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$", ErrorMessage = ValidationMessages.EmailFormatInvalid)]
         public string Email { get; set; } = string.Empty;

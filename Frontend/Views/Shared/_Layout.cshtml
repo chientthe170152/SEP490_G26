@@ -19,12 +19,28 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
+                    <ul class="navbar-nav flex-grow-1" id="main-nav">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Trang chủ</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                        <li class="nav-item role-dependent role-student d-none">
+                            <a class="nav-link text-dark" href="#">Làm Bài Tập (Học Sinh)</a>
+                        </li>
+                        <li class="nav-item role-dependent role-teacher d-none">
+                            <a class="nav-link text-dark" href="#">Quản lý Lớp (Giáo Viên)</a>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav" id="auth-nav">
+                        <li class="nav-item auth-guest">
+                            <a class="nav-link text-dark" href="/Auth/Login">Đăng nhập</a>
+                        </li>
+                        <li class="nav-item auth-user d-none dropdown">
+                            <a class="nav-link text-dark dropdown-toggle" href="#" id="navbarUserDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Tài khoản
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarUserDropdown">
+                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="logout()">Đăng xuất</a></li>
+                            </ul>
                         </li>
                     </ul>
                 </div>
@@ -45,6 +61,24 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script>
+        $(document).ready(function() {
+            if (isAuthenticated()) {
+                $('.auth-guest').addClass('d-none');
+                $('.auth-user').removeClass('d-none');
+                
+                const role = getUserRole();
+                if (role === 'Student' || role === 'Học sinh') {
+                    $('.role-student').removeClass('d-none');
+                } else if (role === 'Teacher' || role === 'Giáo viên') {
+                    $('.role-teacher').removeClass('d-none');
+                }
+            } else {
+                $('.auth-guest').removeClass('d-none');
+                $('.auth-user').addClass('d-none');
+            }
+        });
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

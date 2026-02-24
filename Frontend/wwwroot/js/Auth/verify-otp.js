@@ -106,7 +106,6 @@ function verifyOtp() {
                 // Clean up registration data
                 localStorage.removeItem('pendingRegistrationEmail');
                 localStorage.removeItem('pendingRegistrationRole');
-                localStorage.removeItem('pendingRegistrationUsername');
 
                 $('#loadingText').text('Đăng ký thành công! Đang chuyển hướng...');
                 setTimeout(() => {
@@ -132,7 +131,6 @@ function resendOtp() {
     $('#loadingOverlay').css('display', 'flex');
 
     // Retrieve previous data to construct the Request model again
-    var username = localStorage.getItem('pendingRegistrationUsername');
     var roleId = localStorage.getItem('pendingRegistrationRole');
     var password = "DummyPassword123!"; // Note: Because we need the password again, but we didn't save it (for security). 
     // Wait, we need the original full RegisterRequest to re-send!
@@ -141,7 +139,7 @@ function resendOtp() {
     // For now we will just show a success message but warn them they might need to go back to register form.
 
     // In a real scenario, the backend SendOtp should accept just an Email if it wants to resend.
-    // However, our backend SendOtp requires full registration info (Username, password).
+    // However, our backend SendOtp requires full registration info (password).
     // Let's redirect them back to the register form to fill it again safely instead of storing plain text password in localStorage.
 
     $('#loadingOverlay').hide();

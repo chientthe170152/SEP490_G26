@@ -1,4 +1,5 @@
 using Backend.DTOs;
+using Backend.DTOs.Auth;
 
 namespace Backend.Services.Interfaces
 {
@@ -9,5 +10,6 @@ namespace Backend.Services.Interfaces
         Task<LoginResponse> GoogleRegisterAsync(GoogleRegisterRequest request);
         Task SendOtpAsync(RegisterRequest request);
         Task<LoginResponse> VerifyOtpAndRegisterAsync(VerifyOtpRequest request);
+        Task<TokenModel> RefreshTokenAsync(TokenModel request);
     }
 }
