@@ -9,7 +9,7 @@ namespace Backend.Controllers
 {
     [Route("api/exam-blueprints")]
     [ApiController]
-    [Authorize(Roles = "Teacher,Giáo viên,Admin,Quản trị viên,Administrator")]
+    [Authorize(Roles = "Teacher")]
     public class ExamBlueprintController : ControllerBase
     {
         private readonly IExamBlueprintService _examBlueprintService;
