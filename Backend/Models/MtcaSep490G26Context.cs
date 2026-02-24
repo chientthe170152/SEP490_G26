@@ -143,11 +143,18 @@ public partial class MtcaSep490G26Context : DbContext
                 .IsConcurrencyToken();
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.Name).HasMaxLength(200);
+            entity.Property(e => e.Status).HasDefaultValue(0);
+            entity.Property(e => e.UpdatedAtUtc).HasDefaultValueSql("(getutcdate())");
 
             entity.HasOne(d => d.Subject).WithMany(p => p.ExamBlueprints)
                 .HasForeignKey(d => d.SubjectId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Blueprints_Subjects");
+
+            entity.HasOne(d => d.Teacher).WithMany(p => p.ExamBlueprints)
+                .HasForeignKey(d => d.TeacherId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Blueprints_Users");
         });
 
         modelBuilder.Entity<ExamBlueprintChapter>(entity =>

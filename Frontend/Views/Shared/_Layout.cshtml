@@ -29,6 +29,9 @@
                         <li class="nav-item role-dependent role-teacher d-none">
                             <a class="nav-link text-dark" href="#">Quản lý Lớp (Giáo Viên)</a>
                         </li>
+                        <li class="nav-item role-dependent role-teacher role-admin d-none">
+                            <a class="nav-link text-dark" href="/ExamBlueprint">Ma trận đề</a>
+                        </li>
                     </ul>
                     <ul class="navbar-nav" id="auth-nav">
                         <li class="nav-item auth-guest">
@@ -72,6 +75,8 @@
                     $('.role-student').removeClass('d-none');
                 } else if (role === 'Teacher' || role === 'Giáo viên') {
                     $('.role-teacher').removeClass('d-none');
+                } else if (role === 'Admin' || role === 'Quản trị viên' || role === 'Administrator') {
+                    $('.role-admin').removeClass('d-none');
                 }
             } else {
                 $('.auth-guest').removeClass('d-none');
