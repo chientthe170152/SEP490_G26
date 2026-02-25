@@ -11,6 +11,8 @@ public partial class Class
 
     public string Name { get; set; } = null!;
 
+    public string Semester { get; set; } = null!;
+
     public string InvitationCode { get; set; } = null!;
 
     public int InvitationCodeStatus { get; set; }
