@@ -414,6 +414,7 @@
   const examTitleInput = document.getElementById('examTitleInput');
   const examDescriptionInput = document.getElementById('examDescriptionInput');
   const examMaxAttemptsInput = document.getElementById('examMaxAttemptsInput');
+  const examPaperCountInput = document.getElementById('examPaperCountInput');
   const examVisibleFromInput = document.getElementById('examVisibleFromInput');
   const examOpenAtInput = document.getElementById('examOpenAtInput');
   const examCloseAtInput = document.getElementById('examCloseAtInput');
@@ -567,6 +568,7 @@
       examTitleInput,
       examDurationInput,
       examMaxAttemptsInput,
+      examPaperCountInput,
       examVisibleFromInput,
       examOpenAtInput,
       examCloseAtInput,
@@ -587,6 +589,7 @@
     const title = examTitleInput ? examTitleInput.value.trim() : '';
     const duration = examDurationInput ? Number(examDurationInput.value || 0) : 0;
     const maxAttempts = examMaxAttemptsInput ? Number(examMaxAttemptsInput.value || 0) : 0;
+    const paperCount = examPaperCountInput ? Number(examPaperCountInput.value || 0) : 1;
     const isPublic = Boolean(publicToggle && publicToggle.checked);
     const checkedClassId = getCheckedClassId();
     const resolvedClassId = !isPublic
@@ -626,6 +629,13 @@
     if (!Number.isInteger(maxAttempts) || maxAttempts <= 0) {
       errors.push('Số lần làm phải là số nguyên lớn hơn 0.');
       markFieldInvalid(examMaxAttemptsInput, true);
+    }
+    if (!Number.isInteger(paperCount) || paperCount <= 0) {
+      errors.push('Số mã đề phải là số nguyên lớn hơn 0.');
+      markFieldInvalid(examPaperCountInput, true);
+    } else if (paperCount > 50) {
+      errors.push('Số mã đề tối đa là 50.');
+      markFieldInvalid(examPaperCountInput, true);
     }
     if ((examVisibleFromInput && examVisibleFromInput.value && !visibleFromDate)) {
       errors.push('Thời điểm học sinh thấy đề không hợp lệ.');
@@ -687,6 +697,7 @@
       examBlueprintId: generationMode === 'blueprint' ? selectedBlueprintId : null,
       subjectId: generationMode === 'manual' ? getCurrentSubjectId() : null,
       questionIds: generationMode === 'manual' ? Array.from(manualSelectedQuestionIds).map((x) => Number(x)) : [],
+      paperCount,
       paperCode: 1
     };
 
@@ -698,7 +709,14 @@
     try {
       setSavingState(true);
       const result = await apiPostJson('', payload);
-      window.alert(`Lưu giao đề thành công. ExamId: ${result.examId}, PaperId: ${result.paperId}, Tổng câu: ${result.totalQuestions}.`);
+      const createdPapers = Array.isArray(result?.papers) ? result.papers : [];
+      const paperCodes = createdPapers
+        .map((item) => Number(item?.code))
+        .filter((x) => Number.isInteger(x));
+      const paperSummary = paperCodes.length > 0
+        ? `Mã đề: ${paperCodes.join(', ')}.`
+        : `PaperId đầu tiên: ${result.paperId}.`;
+      window.alert(`Lưu giao đề thành công. ExamId: ${result.examId}, Tổng câu: ${result.totalQuestions}. ${paperSummary}`);
     } catch (error) {
       window.alert(`Lưu giao đề thất bại: ${error.message || 'Lỗi không xác định.'}`);
     } finally {

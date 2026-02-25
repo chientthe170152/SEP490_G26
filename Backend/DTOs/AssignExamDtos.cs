@@ -73,11 +73,18 @@ public class CreateAssignExamRequest
     public int? ExamBlueprintId { get; set; }
     public int? SubjectId { get; set; }
     public List<int> QuestionIds { get; set; } = [];
+    public int PaperCount { get; set; } = 1;
     public int PaperCode { get; set; } = 1;
 }
+
+public record CreatedPaperDto(
+    int PaperId,
+    int Code
+);
 
 public record CreateAssignExamResponse(
     int ExamId,
     int PaperId,
-    int TotalQuestions
+    int TotalQuestions,
+    IReadOnlyList<CreatedPaperDto> Papers
 );

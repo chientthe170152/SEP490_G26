@@ -273,6 +273,11 @@ public class AssignExamService : IAssignExamService
             throw new ArgumentException("MaxAttempts must be greater than 0.");
         }
 
+        if (request.PaperCount <= 0)
+        {
+            throw new ArgumentException("PaperCount must be greater than 0.");
+        }
+
         var teacherExists = await _db.Users.AnyAsync(
             x => x.UserId == request.TeacherId && x.RoleId == TeacherRoleId && x.Status == 1,
             cancellationToken);
@@ -288,8 +293,8 @@ public class AssignExamService : IAssignExamService
         }
 
         var (subjectId, blueprintId, questionIds) = mode == "blueprint"
-            ? await BuildFromBlueprintAsync(request.ExamBlueprintId, request.ShuffleQuestion, cancellationToken)
-            : await BuildFromManualAsync(request.SubjectId, request.QuestionIds, request.ShuffleQuestion, cancellationToken);
+            ? await BuildFromBlueprintAsync(request.ExamBlueprintId, false, cancellationToken)
+            : await BuildFromManualAsync(request.SubjectId, request.QuestionIds, false, cancellationToken);
 
         if (!request.IsPublic && !request.ClassId.HasValue)
         {
@@ -352,26 +357,42 @@ public class AssignExamService : IAssignExamService
             _db.Exams.Add(exam);
             await _db.SaveChangesAsync(cancellationToken);
 
-            var paper = new Paper
-            {
-                ExamId = exam.ExamId,
-                Code = request.PaperCode
-            };
-            _db.Papers.Add(paper);
-            await _db.SaveChangesAsync(cancellationToken);
+            var createdPapers = new List<CreatedPaperDto>();
+            var startCode = request.PaperCode > 0 ? request.PaperCode : 1;
 
-            var paperQuestions = questionIds
-                .Select((qid, idx) => new PaperQuestion
+            for (var i = 0; i < request.PaperCount; i++)
+            {
+                var paper = new Paper
                 {
-                    PaperId = paper.PaperId,
-                    QuestionId = qid,
-                    Index = idx + 1
-                });
-            _db.PaperQuestions.AddRange(paperQuestions);
-            await _db.SaveChangesAsync(cancellationToken);
+                    ExamId = exam.ExamId,
+                    Code = startCode + i
+                };
+                _db.Papers.Add(paper);
+                await _db.SaveChangesAsync(cancellationToken);
+
+                var orderedQuestionIds = request.ShuffleQuestion
+                    ? ShuffleQuestionIds(questionIds)
+                    : questionIds.ToList();
+
+                var paperQuestions = orderedQuestionIds
+                    .Select((qid, idx) => new PaperQuestion
+                    {
+                        PaperId = paper.PaperId,
+                        QuestionId = qid,
+                        Index = idx + 1
+                    });
+                _db.PaperQuestions.AddRange(paperQuestions);
+                await _db.SaveChangesAsync(cancellationToken);
+
+                createdPapers.Add(new CreatedPaperDto(paper.PaperId, paper.Code));
+            }
 
             await tx.CommitAsync(cancellationToken);
-            return new CreateAssignExamResponse(exam.ExamId, paper.PaperId, questionIds.Count);
+            return new CreateAssignExamResponse(
+                exam.ExamId,
+                createdPapers.First().PaperId,
+                questionIds.Count,
+                createdPapers);
         }
         catch
         {
@@ -475,6 +496,13 @@ public class AssignExamService : IAssignExamService
         }
 
         return (resolvedSubjectId, null, pickedIds);
+    }
+
+    private static List<int> ShuffleQuestionIds(IReadOnlyList<int> source)
+    {
+        return source
+            .OrderBy(_ => Guid.NewGuid())
+            .ToList();
     }
 
     private static void ValidateTimeWindow(DateTime? visibleFrom, DateTime? openAt, DateTime? closeAt)
