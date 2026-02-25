@@ -24,11 +24,11 @@ namespace Frontend.Controllers
         [HttpGet]
         public IActionResult ExamPreview(int examId)
         {
-            if (examId <= 0)
-                return RedirectToAction("Index", "Home");
+            if (examId <= 0) return RedirectToAction("Index", "Home");
 
-            ViewBag.ExamId = examId;
+            ViewBag.ExamId = examId; 
             return View();
         }
+
     }
 }

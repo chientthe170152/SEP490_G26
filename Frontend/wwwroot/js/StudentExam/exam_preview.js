@@ -15,7 +15,8 @@ $(function () {
    Lấy JWT token — điều chỉnh nếu project lưu token theo cách khác
    ------------------------------------------------------------------ */
 function getAuthToken() {
-    // Ưu tiên sessionStorage, fallback localStorage (theo pattern site.js) return sessionStorage.getItem('token') || localStorage.getItem('token') || '';
+    // Sửa 'token' thành 'jwtToken' để khớp với localStorage của bạn
+    return sessionStorage.getItem('jwtToken') || localStorage.getItem('jwtToken') || '';
 }
 
 /* ------------------------------------------------------------------
@@ -23,14 +24,12 @@ function getAuthToken() {
    ------------------------------------------------------------------ */
 function loadExamPreview() {
     const token = getAuthToken();
-    if (!token)
+    if (!token) {
+        showError('Bạn chưa đăng nhập. Vui lòng đăng nhập để xem đề thi.');
+        return;
+    }
 
-{
-    showError('Bạn chưa đăng nhập. Vui lòng đăng nhập để xem đề thi.');
-    return;
-}
-
-$.ajax({
+    $.ajax({
         url: `${API_BASE}/api/student/exams/${EXAM_ID}/preview`,
         method: 'GET',
         headers: {
@@ -74,29 +73,27 @@ function renderPreview(data) {
     const openAt = data.openAt ? new Date(data.openAt) : null;
     const closeAt = data.closeAt ? new Date(data.closeAt) : null;
     const canTake = (!openAt || now >= openAt) && (!closeAt || now <= closeAt);
-    if (canTake)
+    if (canTake) {
+        $('#btn-take-exam').prop('disabled', false).on('click', function () { goToExam(); });
+    }
 
-{
-    $('#btn-take-exam') .prop('disabled', false) .on('click', function () { goToExam(); });
-}
-
-else {
-    const tooltip = openAt && now < openAt ? `Đề thi chưa mở. Mở lúc $
+    else {
+        const tooltip = openAt && now < openAt ? `Đề thi chưa mở. Mở lúc $
 
 {
     formatDateTime(data.openAt)
 }
 
 `
-: `Đề thi đã kết thúc.`;
-$('#btn-take-exam')
-.prop('disabled', true)
-.attr('title', tooltip);
-}
+            : `Đề thi đã kết thúc.`;
+        $('#btn-take-exam')
+            .prop('disabled', true)
+            .attr('title', tooltip);
+    }
 
-// Hiển thị nội dung, ẩn loading
-$('#loading-state').addClass('d-none');
-$('#content-state').removeClass('d-none');
+    // Hiển thị nội dung, ẩn loading
+    $('#loading-state').addClass('d-none');
+    $('#content-state').removeClass('d-none');
 }
 
 /* ------------------------------------------------------------------
@@ -105,62 +102,60 @@ $('#content-state').removeClass('d-none');
 function renderStatusBadge(status) {
     const map =
 
-{
-    'public':
+    {
+        'public':
 
-{
-    label: 'public', cls: 'badge-public'
-}
+        {
+            label: 'public', cls: 'badge-public'
+        }
 
-,
-'private': {
-    label: 'private', cls: 'badge-private'
-}
+        ,
+        'private': {
+            label: 'private', cls: 'badge-private'
+        }
 
-,
-'closed': {
-    label: 'closed', cls: 'badge-closed'
-}
+        ,
+        'closed': {
+            label: 'closed', cls: 'badge-closed'
+        }
 
-,
-}
+        ,
+    }
 
-;
-const info = map[status] || {
-    label: status || '', cls: 'badge-unknown'
-}
+        ;
+    const info = map[status] || {
+        label: status || '', cls: 'badge-unknown'
+    }
 
-;
-$('#status-badge')
-.text(info.label)
-.attr('class', `meta-badge ${info.cls}`);
+        ;
+    $('#status-badge')
+        .text(info.label)
+        .attr('class', `meta-badge ${info.cls}`);
 }
 
 /* ------------------------------------------------------------------
    Render ma trận đề thi
    ------------------------------------------------------------------ */
 function renderMatrix(matrix) {
-    if (!matrix || matrix.length === 0)
+    if (!matrix || matrix.length === 0) {
+        $('#matrix-wrapper').addClass('d-none');
+        $('#no-matrix').removeClass('d-none');
+        return;
+    }
 
-{
-    $('#matrix-wrapper').addClass('d-none');
-    $('#no-matrix').removeClass('d-none');
-    return;
-}
-
-// Tính tổng hàng cuối
-const totals = matrix.reduce((acc, row) => {
-        acc.recognize     += row.recognize     || 0;
-        acc.understand    += row.understand    || 0;
-        acc.apply         += row.apply         || 0;
+    // Tính tổng hàng cuối
+    const totals = matrix.reduce((acc, row) => {
+        acc.recognize += row.recognize || 0;
+        acc.understand += row.understand || 0;
+        acc.apply += row.apply || 0;
         acc.advancedApply += row.advancedApply || 0;
-        acc.total         += row.total         || 0;
+        acc.total += row.total || 0;
         return acc;
     }, { recognize: 0, understand: 0, apply: 0, advancedApply: 0, total: 0 });
 
-const rows = matrix.map(row => ` <tr class="interactive-row"> <th>${escapeHtml(row.chapterName)}</th> <td>${row.recognize}</td> <td>${row.understand}</td> <td>${row.apply}</td> <td>${row.advancedApply}</td> <td>${row.total}</td> </tr> `).join('');
+    const rows = matrix.map(row => ` <tr class="interactive-row"> <th>${escapeHtml(row.chapterName)}</th> <td>${row.recognize}</td> <td>${row.understand}</td> <td>${row.apply}</td> <td>${row.advancedApply}</td> <td>${row.total}</td> </tr> `).join('');
 
-const totalRow = `
+    const totalRow = `
 <tr >
 <th > Tổng</th >
 <td > $ {
@@ -191,7 +186,7 @@ const totalRow = `
 </tr >
 `;
 
-$('#matrix-body').html(rows + totalRow);
+    $('#matrix-body').html(rows + totalRow);
 }
 
 /* ------------------------------------------------------------------
@@ -202,10 +197,10 @@ function goToExam() {
         method: 'POST',
         action: '/StudentExam/TakeExam'
     });
-    form .append($('<input>', { type: 'hidden', name: 'examId', value: EXAM_ID }));
+    form.append($('<input>', { type: 'hidden', name: 'examId', value: EXAM_ID }));
     // paperId sẽ được chọn/assign ở bước sau — tạm thời truyền 0 // Backend StartSubmission sẽ tự assign paper cho student form.append($('<input>', { type: 'hidden', name: 'paperId', value: 0 }));
     $('body').append(form);
-    form .submit();
+    form.submit();
 }
 
 /* ------------------------------------------------------------------
@@ -222,13 +217,11 @@ function showError(message) {
    ------------------------------------------------------------------ */
 function formatDateTime(isoString) {
     if (!isoString) return '—';
-    try
-
-{
-    const d = new Date(isoString);
-    if (isNaN(d.getTime())) return '—';
-    const pad = n => String(n).padStart(2, '0');
-    return `$
+    try {
+        const d = new Date(isoString);
+        if (isNaN(d.getTime())) return '—';
+        const pad = n => String(n).padStart(2, '0');
+        return `$
 
 {
     pad(d.getDate())
@@ -251,11 +244,11 @@ $ {
 }
 
 `;
-}
+    }
 
-catch {
-    return '—';
-}
+    catch {
+        return '—';
+    }
 
 }
 
