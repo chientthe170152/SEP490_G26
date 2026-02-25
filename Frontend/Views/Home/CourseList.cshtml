@@ -9,6 +9,8 @@
     if (isTeacher) isStudent = false; // prefer teacher view when user has both roles
 
     var courses = Model ?? Enumerable.Empty<Backend.DTOs.CourseDTO>();
+    // gather distinct semesters from data (non-empty)
+    var semesters = courses.Select(c => c.Semester).Where(s => !string.IsNullOrEmpty(s)).Distinct();
 }
 <!doctype html>
 <html lang="vi">
@@ -93,14 +95,16 @@
             <section class="panel-card mb-3">
                 <div class="row g-2">
                     <div class="col-12 col-lg-4">
-                        <input type="text" class="form-control" id="courseSearchInput" placeholder="Tìm theo mã lớp, tên giảng viên hoặc từ khóa">
+                        <input type="text" class="form-control" id="courseSearchInput" placeholder="Tìm theo mã lớp, tên giảng viện hoặc từ khóa">
                     </div>
                     <div class="col-6 col-lg-3">
                         <select class="form-select" id="courseSemesterFilter">
                             <option value="">Tất cả học kỳ</option>
-                            <option value="SP26">SP26</option>
-                            <option value="SU26">SU26</option>
-                            <option value="FA25">FA25</option>
+                            @* dynamic semesters from database *@
+                            @foreach (var sem in semesters)
+                            {
+                                <option value="@sem">@sem</option>
+                            }
                         </select>
                     </div>
 
@@ -129,14 +133,15 @@
                 {
                     // Build a simple keyword string for client filters
                     var keyword = $"{c.ClassName} {c.TeacherName} {c.SubjectName}".Trim();
-                    // No semester/status in CourseDTO, default status=open
+                    // semester and status come from CourseDTO/DB
                     <article class="class-card" data-course-card
                              data-subject="@(c.SubjectName ?? "")"
-                             data-semester=""
+                             data-semester="@(c.Semester ?? "")"
                              data-status="open"
                              data-keyword="@keyword.ToLowerInvariant()">
                         <h2 class="card-title">@c.ClassName</h2>
                         <p class="card-subtitle">@c.TeacherName</p>
+                        <div class="mt-1"><small class="text-muted">Học kỳ: @c.Semester</small></div>
                         <div class="card-meta">
                             <span>
                                 @if (isTeacher)
@@ -148,13 +153,14 @@
                                     @:Exams: @c.ExamCount &nbsp;•&nbsp; Sĩ số: @c.StudentCount
                                 }
                             </span>
+                            
                         </div>
                         <div class="tag-list mt-2">
                             <span class="tag-pill status-open">Open</span>
                         </div>
                         <div class="card-actions">
                             <a class="btn btn-sm @(isTeacher ? "btn-primary" : "btn-outline-primary")"
-                               href="@Url.Action("Details", "Class", new { id = c.ClassId })">Vào khóa học</a>
+                               href="@Url.Action("ExamList", "Course", new { id = c.ClassId })">Vào khóa học</a>
 
                             @if (!isTeacher)
                             {

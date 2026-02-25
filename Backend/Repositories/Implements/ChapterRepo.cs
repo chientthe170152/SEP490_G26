@@ -1,0 +1,59 @@
+﻿using Backend.DTOs;
+using Backend.Models;
+using Backend.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Backend.Repositories.Implements
+{
+    /// <summary>
+    /// Concrete repository implementation for chapters.
+    /// </summary>
+    public class ChapterRepo : IChapterRepo
+    {
+        private readonly MtcaSep490G26Context _context;
+
+        public ChapterRepo(MtcaSep490G26Context context)
+        {
+            _context = context;
+        }
+
+        /// <summary>
+        /// Return all chapters mapped to DTOs.
+        /// </summary>
+        public async Task<List<ChapterDTO>> GetAllAsync()
+        {
+            return await _context.Chapters
+                .AsNoTracking()
+                .Select(c => new ChapterDTO
+                {
+                    ChapterId = c.ChapterId,
+                    SubjectId = c.SubjectId,
+                    Name = c.Name
+                })
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// Return a single chapter by id, or null if not found.
+        /// </summary>
+        public async Task<ChapterDTO?> GetByIdAsync(int chapterId)
+        {
+            var c = await _context.Chapters
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.ChapterId == chapterId);
+
+            if (c == null) return null;
+
+            return new ChapterDTO
+            {
+                ChapterId = c.ChapterId,
+                SubjectId = c.SubjectId,
+                Name = c.Name
+            };
+        }
+    }
+}

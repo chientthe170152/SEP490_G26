@@ -3,6 +3,8 @@ using Backend.Models;
 using Backend.Repositories.Interfaces;
 using Backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Backend.Services.Implements
 {
@@ -30,6 +32,12 @@ namespace Backend.Services.Implements
         public Task<Class?> GetByIdAsync(int classId)
         {
             return _repo.GetByIdAsync(classId);
+        }
+
+        // New: delegate to repo
+        public Task<List<ExamInCourseDTO>> GetExamsByClassAsync(int classId)
+        {
+            return _repo.GetExamsByClassAsync(classId);
         }
     }
 }

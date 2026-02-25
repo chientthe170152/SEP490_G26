@@ -14,6 +14,8 @@ namespace Backend.DTOs
 
         public string InvitationCode { get; set; } = null!;
 
+        public string Semester { get; set; } = null!;
+
         public int StudentCount { get; set; }
 
         public int ExamCount { get; set; }

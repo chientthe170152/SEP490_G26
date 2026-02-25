@@ -10,5 +10,6 @@ namespace Backend.Repositories.Interfaces
         Task<List<CourseDTO>> GetCoursesForUserAsync(int userId);
         Task<List<CourseDTO>> GetAllAsync();
         Task<Class?> GetByIdAsync(int classId);
+        Task<List<ExamInCourseDTO>> GetExamsByClassAsync(int classId);
     }
 }

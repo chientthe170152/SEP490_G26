@@ -22,6 +22,10 @@ namespace Backend
             builder.Services.AddScoped<ICourseRepo, CourseRepo>();
             builder.Services.AddScoped<ICourseService, CourseService>();
 
+            // Chapter repo/service registration
+            builder.Services.AddScoped<IChapterRepo, ChapterRepo>();
+            builder.Services.AddScoped<IChapterService, ChapterService>();
+
             // Authentication - example JWT (configure Authority/Audience as needed)
             builder.Services.AddAuthentication(options =>
             {

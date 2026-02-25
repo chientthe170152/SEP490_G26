@@ -30,4 +30,5 @@ public partial class Class
     public virtual ICollection<Exam> Exams { get; set; } = new List<Exam>();
 
     public virtual User Teacher { get; set; } = null!;
+    public virtual Subject Subject { get; set; } = null!;
 }
