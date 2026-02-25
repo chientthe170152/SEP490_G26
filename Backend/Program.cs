@@ -28,6 +28,9 @@ namespace Backend
             builder.Services.AddScoped<Backend.Services.Interfaces.IEmailService, Backend.Services.Implements.EmailService>();
             builder.Services.AddScoped<Backend.Services.Interfaces.IStudentExamService, Backend.Services.Implements.StudentExamService>();
 
+            // Add SignalR
+            builder.Services.AddSignalR();
+
             // Add Memory Cache for OTP storage
             builder.Services.AddMemoryCache();
 
