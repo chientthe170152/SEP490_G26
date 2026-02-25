@@ -8,7 +8,10 @@
 
   <ItemGroup>
     <Folder Include="Views\Auth\" />
-    <Folder Include="wwwroot\js\pages\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.16.0" />
   </ItemGroup>
 
   <ItemGroup>

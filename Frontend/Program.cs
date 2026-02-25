@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
+
 namespace Frontend
 {
     public class Program
@@ -9,8 +11,24 @@ namespace Frontend
             // Add services to the container.
             builder.Services.AddControllersWithViews();
 
-            // Register IHttpClientFactory
-            builder.Services.AddHttpClient();
+            builder.Services.AddHttpClient("BackendAPI", client =>
+            {
+                // In production, this base address will be from configuration
+                client.BaseAddress = new Uri(builder.Configuration["BackendApiUrl"] ?? "https://localhost:7167/");
+            });
+
+            builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+                .AddCookie(options =>
+                {
+                    options.LoginPath = "/Auth/Login";
+                    options.LogoutPath = "/Auth/Logout";
+                    options.AccessDeniedPath = "/Auth/AccessDenied";
+                    options.Cookie.HttpOnly = true;
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                });
+
+            // Add session for temp data if needed
+            builder.Services.AddSession();
 
             var app = builder.Build();
 
@@ -25,8 +43,10 @@ namespace Frontend
             app.UseHttpsRedirection();
             app.UseStaticFiles();
 
+            app.UseSession();
             app.UseRouting();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapControllerRoute(

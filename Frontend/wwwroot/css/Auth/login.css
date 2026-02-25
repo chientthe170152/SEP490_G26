@@ -1,0 +1,150 @@
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f8f9fa;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+}
+
+.login-container {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 40px;
+    width: 100%;
+    max-width: 450px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.login-title {
+    font-weight: 700;
+    color: #1a202c;
+    text-align: center;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.login-subtitle {
+    color: #718096;
+    text-align: center;
+    font-size: 0.875rem;
+    margin-bottom: 30px;
+    padding: 0 10px;
+    line-height: 1.4;
+}
+
+.btn-google {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #4a5568;
+    font-weight: 500;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+
+.btn-google:hover {
+    background-color: #f7fafc;
+}
+
+.divider-container {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 25px 0;
+    color: #a0aec0;
+    font-size: 0.875rem;
+}
+
+.divider-container::before,
+.divider-container::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.divider-container:not(:empty)::before {
+    margin-right: .5em;
+}
+
+.divider-container:not(:empty)::after {
+    margin-left: .5em;
+}
+
+.form-label {
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: #4a5568;
+    margin-bottom: 0.5rem;
+}
+
+.form-control {
+    border-color: #e2e8f0;
+    padding: 10px 15px;
+    font-size: 0.95rem;
+    border-radius: 6px;
+}
+
+.form-control:focus {
+    border-color: #3182ce;
+    box-shadow: 0 0 0 1px #3182ce;
+}
+
+.btn-login {
+    background-color: #1a73e8;
+    color: #ffffff;
+    font-weight: 500;
+    padding: 10px;
+    width: 100%;
+    border-radius: 6px;
+    border: none;
+    margin-top: 20px;
+    transition: background-color 0.2s;
+}
+
+.btn-login:hover {
+    background-color: #1557b0;
+    color: #ffffff;
+}
+
+.forgot-password {
+    font-size: 0.875rem;
+    color: #3182ce;
+    text-decoration: none;
+}
+
+.forgot-password:hover {
+    text-decoration: underline;
+}
+
+.register-link {
+    text-align: center;
+    font-size: 0.875rem;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+    color: #718096;
+}
+
+.register-link a {
+    color: #3182ce;
+    text-decoration: none;
+}
+
+.register-link a:hover {
+    text-decoration: underline;
+}
+
+.form-check-label {
+    font-size: 0.875rem;
+    color: #4a5568;
+    cursor: pointer;
+}

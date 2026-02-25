@@ -121,6 +121,7 @@ public partial class MtcaSep490G26Context : DbContext
                 .IsConcurrencyToken();
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.MaxAttempts).HasDefaultValue(1);
+            entity.Property(e => e.Semester).HasMaxLength(50);
             entity.Property(e => e.ShowScore).HasDefaultValue(true);
             entity.Property(e => e.Status).HasDefaultValue(1);
             entity.Property(e => e.Title).HasMaxLength(500);

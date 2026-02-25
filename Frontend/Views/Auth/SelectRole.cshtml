@@ -1,0 +1,45 @@
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chọn Vai Trò - Math Test Creator</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/Auth/select-role.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="role-container">
+        <h2 class="role-title">Bạn là ai?</h2>
+        <p class="role-subtitle">Vui lòng chọn vai trò của bạn để chúng tôi tối ưu hóa trải nghiệm trên hệ thống Math Test Creator.</p>
+
+        <div id="roleError" class="error-message">Vui lòng chọn một vai trò để tiếp tục.</div>
+
+        <div class="role-cards">
+            <!-- RoleId 2 for Student in the original logic -->
+            <div class="role-card" data-role="2" onclick="selectRole(this)">
+                <div class="role-icon">👨‍🎓</div>
+                <div class="role-name">Học sinh</div>
+                <div class="role-desc">Tham gia làm bài kiểm tra và theo dõi kết quả học tập.</div>
+            </div>
+            <!-- RoleId 1 for Teacher in the original logic -->
+            <div class="role-card" data-role="1" onclick="selectRole(this)">
+                <div class="role-icon">👩‍🏫</div>
+                <div class="role-name">Giáo viên</div>
+                <div class="role-desc">Tạo bộ đề thi, quản lý lớp học và chấm điểm học sinh.</div>
+            </div>
+        </div>
+
+        <button id="btnContinue" class="btn btn-continue" onclick="continueToRegister()" disabled>Tiếp tục</button>
+        <br />
+        <a href="/Auth/Login" class="back-link">Quay lại Đăng nhập</a>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/js/Auth/select-role.js"></script>
+</body>
+</html>

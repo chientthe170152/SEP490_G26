@@ -43,6 +43,8 @@ public partial class Exam
 
     public byte[] ConcurrencyStamp { get; set; } = null!;
 
+    public string? Semester { get; set; }
+
     public virtual Class? Class { get; set; }
 
     public virtual ExamBlueprint? ExamBlueprint { get; set; }
