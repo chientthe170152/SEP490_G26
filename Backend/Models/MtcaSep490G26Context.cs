@@ -82,6 +82,11 @@ public partial class MtcaSep490G26Context : DbContext
                 .IsUnicode(false);
             entity.Property(e => e.Status).HasDefaultValue(1);
 
+            entity.HasOne(d => d.Subject).WithMany(p => p.Classes)
+                .HasForeignKey(d => d.SubjectId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Classes_Subjects");
+
             entity.HasOne(d => d.Teacher).WithMany(p => p.Classes)
                 .HasForeignKey(d => d.TeacherId)
                 .OnDelete(DeleteBehavior.ClientSetNull)

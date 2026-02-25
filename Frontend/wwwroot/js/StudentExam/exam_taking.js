@@ -384,44 +384,57 @@ function renderExamUI(paper, remainingSeconds, savedAnswers) {
                             isAnswered = true;
                         }
                     });
-                } else if (inputs.length === 1 && inputs[0].tagName.toLowerCase() === 'math-field') {
+                } else if (inputs.length > 0 && inputs[0].tagName.toLowerCase() === 'math-field') {
                     // Check if it is Inline Fill-in-the-blank
                     if ($(inputs[0]).data('is-fill') === true) {
                         try {
-                            let stepAnswers = JSON.parse(ans.responseText);
-                            let mf = inputs[0];
-                            let valuesArray = mf.getPrompts(); // Lấy mảng ID các placeholder
-
-                            // Map step1 -> value cho placeholder thứ nhất, v.v.
-                            let count = 1;
-                            valuesArray.forEach(promptId => {
-                                if (stepAnswers[`step${count}`]) {
-                                    mf.setPromptValue(promptId, stepAnswers[`step${count}`], { focus: false });
-                                }
-                                count++;
-                            });
-                            isAnswered = true;
+                            let savedAnsArray = JSON.parse(ans.responseText);
+                            if (Array.isArray(savedAnsArray)) {
+                                let ansIndex = 0;
+                                inputs.each(function () {
+                                    let mf = this;
+                                    let promptIds = mf.getPrompts ? mf.getPrompts() : [];
+                                    if (promptIds && promptIds.length > 0) {
+                                        promptIds.forEach(id => {
+                                            if (ansIndex < savedAnsArray.length && savedAnsArray[ansIndex] !== "") {
+                                                mf.setPromptValue(id, savedAnsArray[ansIndex], { focus: false });
+                                                isAnswered = true;
+                                            }
+                                            ansIndex++;
+                                        });
+                                    } else {
+                                        // Backup case for no prompt IDs
+                                        if (ansIndex < savedAnsArray.length && savedAnsArray[ansIndex] !== "") {
+                                            mf.value = savedAnsArray[ansIndex];
+                                            isAnswered = true;
+                                        }
+                                        ansIndex++;
+                                    }
+                                });
+                            }
                         } catch (e) {
                             console.error("Error parsing saved Inline Fill-in-the-blank:", e);
                         }
-                    } else {
+                    } else if ($(inputs[0]).data('step') !== undefined) {
+                        // For StepByStep
+                        try {
+                            let stepAnswers = JSON.parse(ans.responseText);
+                            inputs.each(function () {
+                                let sIdx = $(this).data('step');
+                                if (sIdx && stepAnswers[`step${sIdx}`]) {
+                                    this.value = stepAnswers[`step${sIdx}`];
+                                    isAnswered = true;
+                                }
+                            });
+                        } catch (e) {
+                            console.error("Error parsing saved StepByStep answers:", e);
+                        }
+                    } else if (inputs.length === 1) {
                         // Single short-answer
                         inputs[0].value = ans.responseText;
-                        isAnswered = true;
-                    }
-                } else if (inputs.length > 1 && inputs[0].tagName.toLowerCase() === 'math-field') {
-                    // For StepByStep
-                    try {
-                        let stepAnswers = JSON.parse(ans.responseText);
-                        inputs.each(function () {
-                            let sIdx = $(this).data('step');
-                            if (sIdx && stepAnswers[`step${sIdx}`]) {
-                                this.value = stepAnswers[`step${sIdx}`];
-                                isAnswered = true;
-                            }
-                        });
-                    } catch (e) {
-                        console.error("Error parsing saved StepByStep answers:", e);
+                        if (ans.responseText && ans.responseText.trim() !== '') {
+                            isAnswered = true;
+                        }
                     }
                 }
 
