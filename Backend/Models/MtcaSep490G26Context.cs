@@ -151,6 +151,8 @@ public partial class MtcaSep490G26Context : DbContext
                 .IsConcurrencyToken();
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.Name).HasMaxLength(200);
+            entity.Property(e => e.Status).HasDefaultValue(0);
+            entity.Property(e => e.UpdatedAtUtc).HasDefaultValueSql("(getutcdate())");
 
             entity.HasOne(d => d.Subject).WithMany(p => p.ExamBlueprints)
                 .HasForeignKey(d => d.SubjectId)
