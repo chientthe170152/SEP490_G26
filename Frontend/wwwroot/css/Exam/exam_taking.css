@@ -1,0 +1,36 @@
+/* Tổng thể các ô nhập liệu */
+math-field {
+    background-color: #ffffff !important;
+    border: 1px solid #ced4da !important;
+    border-radius: 0.375rem;
+    padding: 5px;
+    --contains-highlight-background: #ffffff;
+}
+
+math-field::part(placeholder), 
+math-field::part(placeholder-field) {
+    background-color: #ffffff !important;
+    border: 1px solid #dee2e6 !important;
+    opacity: 1 !important;
+}
+
+.math-input {
+    min-height: 45px;
+    display: flex;
+    align-items: center;
+}
+
+/* Custom Styles from the mockup */
+.page-shell { background-color: #f8f9fa; min-height: calc(100vh - 56px); }
+.page-title { font-size: 1.75rem; font-weight: bold; }
+.page-subtitle { color: #6c757d; margin-bottom: 0; }
+.soft-card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075); text-align: center; }
+.summary-label { font-size: 0.875rem; color: #6c757d; }
+.countdown { font-size: 1.5rem; font-weight: bold; color: #dc3545; }
+.question-block { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075); margin-bottom: 20px; }
+.question-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 10px; }
+.form-note { color: #495057; font-weight: 500; }
+.panel-card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075); }
+.panel-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; }
+.question-nav button { margin: 2px; width: 35px; }
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
