@@ -230,5 +230,54 @@ namespace Backend.Services.Implements
         {
             await _studentExamRepository.ForceSubmitOverdueExamsAsync(examId);
         }
+
+        public async Task<ExamPreviewDto?> GetExamPreviewAsync(int studentId, int examId)
+        {
+            var canTake = await _studentExamRepository.CanStudentTakeExamAsync(studentId, examId);
+            if (!canTake)
+            {
+                throw new UnauthorizedAccessException("Bạn không thuộc lớp được chỉ định để xem bài thi này.");
+            }
+
+            var data = await _studentExamRepository.GetExamPreviewAsync(examId);
+            if (data == null) return null;
+
+            var statusLabel = data.Status switch
+            {
+                1 => "public",
+                2 => "private",
+                3 => "closed",
+                _ => "unknown"
+            };
+
+            var matrixRows = data.BlueprintChapters
+                .GroupBy(x => x.ChapterName)
+                .Select(g => new BlueprintRowDto
+                {
+                    ChapterName = g.Key,
+                    Recognize = g.FirstOrDefault(x => x.Difficulty == 1)?.TotalOfQuestions ?? 0,
+                    Understand = g.FirstOrDefault(x => x.Difficulty == 2)?.TotalOfQuestions ?? 0,
+                    Apply = g.FirstOrDefault(x => x.Difficulty == 3)?.TotalOfQuestions ?? 0,
+                    AdvancedApply = g.FirstOrDefault(x => x.Difficulty == 4)?.TotalOfQuestions ?? 0,
+                    Total = g.Sum(x => x.TotalOfQuestions)
+                })
+                .ToList();
+
+            return new ExamPreviewDto
+            {
+                ExamId = data.ExamId,
+                SubjectCode = data.SubjectCode,
+                Title = data.Title,
+                TotalQuestions = data.TotalQuestions,
+                Duration = data.Duration,
+                OpenAt = data.OpenAt,
+                CloseAt = data.CloseAt,
+                Status = statusLabel,
+                TeacherName = data.TeacherName,
+                UpdatedAtUtc = data.UpdatedAtUtc,
+                Description = data.Description,
+                BlueprintMatrix = matrixRows
+            };
+        }
     }
 }

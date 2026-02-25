@@ -104,5 +104,25 @@ namespace Backend.Controllers
             await _studentExamService.SubmitExamAsync(studentId, submissionId);
             return Ok(new { message = "Exam submitted successfully." });
         }
+
+        [HttpGet("{examId}/preview")]
+        public async Task<IActionResult> GetExamPreview(int examId)
+        {
+            var studentId = GetStudentId();
+            if (studentId == 0) return Unauthorized("Invalid token.");
+
+            try
+            {
+                var preview = await _studentExamService.GetExamPreviewAsync(studentId, examId);
+                if (preview == null)
+                    return NotFound("Exam not found.");
+
+                return Ok(preview);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+        }
     }
 }

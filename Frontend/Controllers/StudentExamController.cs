@@ -19,5 +19,16 @@ namespace Frontend.Controllers
             ViewBag.PaperId = paperId;
             return View();
         }
+
+        // GET: /StudentExam/ExamPreview?examId=1
+        [HttpGet]
+        public IActionResult ExamPreview(int examId)
+        {
+            if (examId <= 0)
+                return RedirectToAction("Index", "Home");
+
+            ViewBag.ExamId = examId;
+            return View();
+        }
     }
 }
