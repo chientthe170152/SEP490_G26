@@ -1,0 +1,35 @@
+﻿using Backend.DTOs;
+using Backend.Models;
+using Backend.Repositories.Interfaces;
+using Backend.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
+
+namespace Backend.Services.Implements
+{
+    public class CourseService : ICourseService
+    {
+        private readonly ICourseRepo _repo;
+
+        public CourseService(ICourseRepo repo)
+        {
+            _repo = repo;
+        }
+
+        public Task<List<CourseDTO>> GetCoursesForUserAsync(int userId)
+        {
+            // Keep business logic minimal for now: delegate to repo.
+            // Additional business rules (filtering, sorting, masking invitation codes, etc.) can be added here.
+            return _repo.GetCoursesForUserAsync(userId);
+        }
+
+        public Task<List<CourseDTO>> GetAllAsync()
+        {
+            return _repo.GetAllAsync();
+        }
+
+        public Task<Class?> GetByIdAsync(int classId)
+        {
+            return _repo.GetByIdAsync(classId);
+        }
+    }
+}

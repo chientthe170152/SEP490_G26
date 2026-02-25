@@ -1,3 +1,10 @@
+using Backend.Models;
+using Backend.Repositories.Implements;
+using Backend.Repositories.Interfaces;
+using Backend.Services.Implements;
+using Backend.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace Backend
 {
@@ -7,10 +14,29 @@ namespace Backend
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            // DbContext
+            builder.Services.AddDbContext<MtcaSep490G26Context>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn")));
+
+            // Repos / services
+            builder.Services.AddScoped<ICourseRepo, CourseRepo>();
+            builder.Services.AddScoped<ICourseService, CourseService>();
+
+            // Authentication - example JWT (configure Authority/Audience as needed)
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                // configure according to your identity provider
+                options.Authority = builder.Configuration["Auth:Authority"]; // optional
+                options.Audience = builder.Configuration["Auth:Audience"];
+                options.RequireHttpsMetadata = true;
+            });
 
             builder.Services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
@@ -25,8 +51,8 @@ namespace Backend
 
             app.UseHttpsRedirection();
 
+            app.UseAuthentication();
             app.UseAuthorization();
-
 
             app.MapControllers();
 

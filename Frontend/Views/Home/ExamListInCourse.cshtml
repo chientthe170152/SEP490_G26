@@ -1,0 +1,58 @@
+﻿<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Danh sách đề trong lớp</title>
+    <link rel="stylesheet" href="../vendor/bootstrap-5.3.8/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../css/exam_preview.css">
+</head>
+<body>
+    <main class="page-shell py-4">
+        <div class="container-fluid px-3 px-md-4">
+            <section class="page-header d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <h1 class="page-title">Danh sách đề trong lớp</h1>
+                    <p class="page-subtitle">Theo dõi đề thi theo lớp cho sinh viên và giảng viên.</p>
+                </div>
+                <div class="role-toggle"><span class="on">Sinh viên</span><span class="off">Giảng viên</span></div>
+            </section>
+
+            <section class="panel-card mb-3">
+                <div class="row g-2">
+                    <div class="col-12 col-lg-4"><select class="form-select"><option>Calculus I</option><option>Probability and Statistics</option></select></div>
+                    <div class="col-6 col-lg-2"><select class="form-select"><option>Open</option><option>Upcoming</option><option>Closed</option></select></div>
+                    <div class="col-6 col-lg-4"><input class="form-control" placeholder="Search by exam name or code"></div>
+                    <div class="col-12 col-lg-2 d-grid"><button class="btn btn-outline-secondary">Lọc</button></div>
+                </div>
+            </section>
+
+            <section class="panel-card">
+                <div class="table-responsive">
+                    <table class="table table-soft mb-0">
+                        <thead><tr><th>Tên đề</th><th>Khoảng thời gian</th><th>Thời lượng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+                        <tbody>
+                            <tr class="interactive-row">
+                                <td>Derivative Quiz 1</td>
+                                <td>21/02/2026 07:30 - 09:30</td>
+                                <td>40 minutes</td>
+                                <td><span class="badge status-open">Open</span></td>
+                                <td><div class="toolbar"><button class="btn btn-sm btn-outline-secondary">Hướng dẫn</button><button class="btn btn-sm btn-primary">Vào làm</button><button class="btn btn-sm btn-outline-secondary">Chi tiết</button><button class="btn btn-sm btn-outline-secondary">Báo cáo</button><button class="btn btn-sm btn-outline-secondary">Gán đề</button></div></td>
+                            </tr>
+                            <tr class="interactive-row">
+                                <td>Midterm Practice Test</td>
+                                <td>25/02/2026 08:00 - 10:00</td>
+                                <td>60 minutes</td>
+                                <td><span class="badge status-upcoming">Upcoming</span></td>
+                                <td><div class="toolbar"><button class="btn btn-sm btn-outline-secondary">Hướng dẫn</button><button class="btn btn-sm btn-outline-secondary">Chi tiết</button><button class="btn btn-sm btn-outline-secondary">Báo cáo</button></div></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+    <script src="../vendor/bootstrap-5.3.8/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/exam_preview.js"></script>
+</body>
+</html>
