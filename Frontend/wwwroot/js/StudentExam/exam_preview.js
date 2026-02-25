@@ -1,27 +1,12 @@
-﻿/**
- * exam_preview.js
- * Gọi API GET /api/student/exams/{examId}/preview
- * và render toàn bộ nội dung trang Xem trước đề thi.
- *
- * Yêu cầu: EXAM_ID và API_BASE phải được khai báo trước (trong .cshtml).
- * Yêu cầu: hàm getToken() hoặc lấy token từ localStorage/sessionStorage
- *          theo cách project đang dùng trong site.js.
- */
-
+﻿
 $(function () {
     loadExamPreview();
 });
-/* ------------------------------------------------------------------
-   Lấy JWT token — điều chỉnh nếu project lưu token theo cách khác
-   ------------------------------------------------------------------ */
+
 function getAuthToken() {
-    // Sửa 'token' thành 'jwtToken' để khớp với localStorage của bạn
     return sessionStorage.getItem('jwtToken') || localStorage.getItem('jwtToken') || '';
 }
 
-/* ------------------------------------------------------------------
-   Fetch dữ liệu từ API
-   ------------------------------------------------------------------ */
 function loadExamPreview() {
     const token = getAuthToken();
     if (!token) {
@@ -53,42 +38,35 @@ function loadExamPreview() {
     });
 }
 
-/* ------------------------------------------------------------------
-   Render dữ liệu lên trang
-   ------------------------------------------------------------------ */
 function renderPreview(data) {
-    // --- Header --- $('#title-text').text(data.title || 'Đề thi');
+    $('#title-text').text(data.title || 'Đề thi');
     renderStatusBadge(data.status);
-    // --- Thông tin tổng quan --- $('#subject-code').text(data.subjectCode || '—');
+
+    $('#subject-code').text(data.subjectCode || '—');
     $('#exam-title-card').text(data.title || '—');
-    $('#total-questions').text(data.totalQuestions ? `${data.totalQuestions} questions` : '—');
-    $('#duration').text(data.duration ? `${data.duration} minutes` : '—');
+    $('#total-questions').text(data.totalQuestions ? `${data.totalQuestions} câu hỏi` : '—');
+    $('#duration').text(data.duration ? `${data.duration} phút` : '—');
     $('#open-at').text(formatDateTime(data.openAt));
     $('#close-at').text(formatDateTime(data.closeAt));
-    // --- Ma trận đề thi --- renderMatrix(data.blueprintMatrix);
-    // --- Thông tin bổ sung --- $('#teacher-name').text(data.teacherName || '—');
+
+    renderMatrix(data.blueprintMatrix);
+
+    $('#teacher-name').text(data.teacherName || '—');
     $('#updated-at').text(formatDateTime(data.updatedAtUtc));
     $('#description').text(data.description || '—');
-    // --- Nút Làm bài: chỉ enable khi đề đang trong thời gian thi --- const now = new Date();
+
+    const now = new Date();
     const openAt = data.openAt ? new Date(data.openAt) : null;
     const closeAt = data.closeAt ? new Date(data.closeAt) : null;
     const canTake = (!openAt || now >= openAt) && (!closeAt || now <= closeAt);
+
     if (canTake) {
         $('#btn-take-exam').prop('disabled', false).on('click', function () { goToExam(); });
-    }
-
-    else {
-        const tooltip = openAt && now < openAt ? `Đề thi chưa mở. Mở lúc $
-
-{
-    formatDateTime(data.openAt)
-}
-
-`
+    } else {
+        const tooltip = openAt && now < openAt
+            ? `Đề thi chưa mở. Mở lúc ${formatDateTime(data.openAt)}`
             : `Đề thi đã kết thúc.`;
-        $('#btn-take-exam')
-            .prop('disabled', true)
-            .attr('title', tooltip);
+        $('#btn-take-exam').prop('disabled', true).attr('title', tooltip);
     }
 
     // Hiển thị nội dung, ẩn loading
@@ -96,46 +74,16 @@ function renderPreview(data) {
     $('#content-state').removeClass('d-none');
 }
 
-/* ------------------------------------------------------------------
-   Render badge trạng thái
-   ------------------------------------------------------------------ */
 function renderStatusBadge(status) {
-    const map =
-
-    {
-        'public':
-
-        {
-            label: 'public', cls: 'badge-public'
-        }
-
-        ,
-        'private': {
-            label: 'private', cls: 'badge-private'
-        }
-
-        ,
-        'closed': {
-            label: 'closed', cls: 'badge-closed'
-        }
-
-        ,
-    }
-
-        ;
-    const info = map[status] || {
-        label: status || '', cls: 'badge-unknown'
-    }
-
-        ;
-    $('#status-badge')
-        .text(info.label)
-        .attr('class', `meta-badge ${info.cls}`);
+    const map = {
+        'public': { label: 'Công khai', cls: 'badge-public' },
+        'private': { label: 'Riêng tư', cls: 'badge-private' },
+        'closed': { label: 'Đã đóng', cls: 'badge-closed' },
+    };
+    const info = map[status] || { label: status || '', cls: 'badge-unknown' };
+    $('#status-badge').text(info.label).attr('class', `meta-badge ${info.cls}`);
 }
 
-/* ------------------------------------------------------------------
-   Render ma trận đề thi
-   ------------------------------------------------------------------ */
 function renderMatrix(matrix) {
     if (!matrix || matrix.length === 0) {
         $('#matrix-wrapper').addClass('d-none');
@@ -143,7 +91,6 @@ function renderMatrix(matrix) {
         return;
     }
 
-    // Tính tổng hàng cuối
     const totals = matrix.reduce((acc, row) => {
         acc.recognize += row.recognize || 0;
         acc.understand += row.understand || 0;
@@ -153,103 +100,49 @@ function renderMatrix(matrix) {
         return acc;
     }, { recognize: 0, understand: 0, apply: 0, advancedApply: 0, total: 0 });
 
-    const rows = matrix.map(row => ` <tr class="interactive-row"> <th>${escapeHtml(row.chapterName)}</th> <td>${row.recognize}</td> <td>${row.understand}</td> <td>${row.apply}</td> <td>${row.advancedApply}</td> <td>${row.total}</td> </tr> `).join('');
+    const rows = matrix.map(row => `
+        <tr class="interactive-row">
+            <th>${escapeHtml(row.chapterName)}</th>
+            <td>${row.recognize}</td>
+            <td>${row.understand}</td>
+            <td>${row.apply}</td>
+            <td>${row.advancedApply}</td>
+            <td>${row.total}</td>
+        </tr>`).join('');
 
     const totalRow = `
-<tr >
-<th > Tổng</th >
-<td > $ {
-    totals .recognize
-}
-
-</td >
-<td > $ {
-    totals .understand
-}
-
-</td >
-<td > $ {
-    totals .apply
-}
-
-</td >
-<td > $ {
-    totals .advancedApply
-}
-
-</td >
-<td > $ {
-    totals .total
-}
-
-</td >
-</tr >
-`;
+        <tr class="fw-bold">
+            <th>Tổng</th>
+            <td>${totals.recognize}</td>
+            <td>${totals.understand}</td>
+            <td>${totals.apply}</td>
+            <td>${totals.advancedApply}</td>
+            <td>${totals.total}</td>
+        </tr>`;
 
     $('#matrix-body').html(rows + totalRow);
 }
 
-/* ------------------------------------------------------------------
-   Chuyển sang trang làm bài (dùng form POST để ẩn params trên URL)
-   ------------------------------------------------------------------ */
 function goToExam() {
-    const form = $('<form>', {
-        method: 'POST',
-        action: '/StudentExam/TakeExam'
-    });
+    const form = $('<form>', { method: 'POST', action: '/StudentExam/TakeExam' });
     form.append($('<input>', { type: 'hidden', name: 'examId', value: EXAM_ID }));
-    // paperId sẽ được chọn/assign ở bước sau — tạm thời truyền 0 // Backend StartSubmission sẽ tự assign paper cho student form.append($('<input>', { type: 'hidden', name: 'paperId', value: 0 }));
+    form.append($('<input>', { type: 'hidden', name: 'paperId', value: 0 }));
     $('body').append(form);
     form.submit();
 }
 
-/* ------------------------------------------------------------------
-   Hiển thị lỗi
-   ------------------------------------------------------------------ */
 function showError(message) {
     $('#loading-state').addClass('d-none');
     $('#error-message').text(message);
     $('#error-state').removeClass('d-none');
 }
 
-/* ------------------------------------------------------------------
-   Helpers
-   ------------------------------------------------------------------ */
 function formatDateTime(isoString) {
     if (!isoString) return '—';
-    try {
-        const d = new Date(isoString);
-        if (isNaN(d.getTime())) return '—';
-        const pad = n => String(n).padStart(2, '0');
-        return `$
-
-{
-    pad(d.getDate())
-}
-
-/$ {
-    pad(d.getMonth() + 1)
-}
-
-/$ {
-    d .getFullYear()
-}
-
-$ {
-    pad(d.getHours())
-}
-
-:$ {
-    pad(d.getMinutes())
-}
-
-`;
-    }
-
-    catch {
-        return '—';
-    }
-
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '—';
+    const pad = n => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function escapeHtml(str) {

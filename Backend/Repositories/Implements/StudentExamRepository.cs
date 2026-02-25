@@ -172,6 +172,7 @@ namespace Backend.Repositories.Implements
                 CloseAt = exam.CloseAt,
                 UpdatedAtUtc = exam.UpdatedAtUtc,
                 SubjectCode = exam.Subject?.Code ?? string.Empty,
+                SubjectName = exam.Subject?.Name ?? string.Empty,
                 TeacherName = exam.Teacher?.FullName ?? string.Empty,
             };
 

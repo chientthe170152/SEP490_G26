@@ -14,6 +14,7 @@
         public string TeacherName { get; set; } = string.Empty;
         public DateTime UpdatedAtUtc { get; set; }
         public string? Description { get; set; }
+        public string SubjectName { get; set; } = string.Empty;
 
         public List<BlueprintRowDto> BlueprintMatrix { get; set; } = new();
     }

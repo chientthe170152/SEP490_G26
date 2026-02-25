@@ -35,6 +35,7 @@ namespace Backend.Repositories.Interfaces
         public DateTime? CloseAt { get; set; }
         public DateTime UpdatedAtUtc { get; set; }
         public string SubjectCode { get; set; } = string.Empty;
+        public string SubjectName { get; set; } = string.Empty;
         public string TeacherName { get; set; } = string.Empty;
         public int TotalQuestions { get; set; }
         public List<BlueprintChapterRaw> BlueprintChapters { get; set; } = new();

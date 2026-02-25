@@ -255,10 +255,10 @@ namespace Backend.Services.Implements
                 .Select(g => new BlueprintRowDto
                 {
                     ChapterName = g.Key,
-                    Recognize = g.FirstOrDefault(x => x.Difficulty == 1)?.TotalOfQuestions ?? 0,
-                    Understand = g.FirstOrDefault(x => x.Difficulty == 2)?.TotalOfQuestions ?? 0,
-                    Apply = g.FirstOrDefault(x => x.Difficulty == 3)?.TotalOfQuestions ?? 0,
-                    AdvancedApply = g.FirstOrDefault(x => x.Difficulty == 4)?.TotalOfQuestions ?? 0,
+                    Recognize = g.Where(x => x.Difficulty == 1).Sum(x => x.TotalOfQuestions),
+                    Understand = g.Where(x => x.Difficulty == 2).Sum(x => x.TotalOfQuestions),
+                    Apply = g.Where(x => x.Difficulty == 3).Sum(x => x.TotalOfQuestions),
+                    AdvancedApply = g.Where(x => x.Difficulty == 4).Sum(x => x.TotalOfQuestions),
                     Total = g.Sum(x => x.TotalOfQuestions)
                 })
                 .ToList();
