@@ -30,7 +30,8 @@ namespace Backend
             builder.Services.AddScoped<Backend.Services.Interfaces.IAuthService, Backend.Services.Implements.AuthService>();
             builder.Services.AddScoped<Backend.Services.Interfaces.IEmailService, Backend.Services.Implements.EmailService>();
             builder.Services.AddScoped<Backend.Services.Interfaces.IExamBlueprintService, Backend.Services.Implements.ExamBlueprintService>();
-            builder.Services.AddScoped<Backend.Services.Interfaces.IStudentExamService, Backend.Services.Implements.StudentExamService>();
+            builder.Services.AddScoped<Backend.Services.Interfaces.IStudentExamService, Backend.Services.Implements.StudentExamService>(); 
+            builder.Services.AddScoped<Backend.Services.Interfaces.IAssignExamService, Backend.Services.Implements.AssignExamService>();
 
             // Add SignalR
             builder.Services.AddSignalR();
