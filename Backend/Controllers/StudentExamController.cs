@@ -50,7 +50,29 @@ namespace Backend.Controllers
             if (studentId == 0) return Unauthorized("Invalid token.");
 
             var submission = await _studentExamService.StartExamAsync(studentId, request);
-            return Ok(new { submissionId = submission.SubmissionId, paperId = submission.PaperId, status = "Started" });
+
+            int remainingSeconds = 40 * 60; // default fallback
+            if (submission.Paper != null && submission.Paper.Exam != null)
+            {
+                var durationSeconds = submission.Paper.Exam.Duration * 60;
+                var elapsedSeconds = (DateTime.UtcNow - submission.CreatedAtUtc).TotalSeconds;
+                remainingSeconds = (int)Math.Max(0, durationSeconds - elapsedSeconds);
+            }
+
+            var savedAnswers = submission.StudentAnswers?.Select(a => new 
+            {
+                questionIndex = a.QuestionIndex,
+                responseText = a.ResponseText ?? string.Empty
+            }).Cast<object>().ToList() ?? new List<object>();
+
+            return Ok(new 
+            { 
+                submissionId = submission.SubmissionId, 
+                paperId = submission.PaperId, 
+                status = "Started",
+                remainingSeconds = remainingSeconds,
+                savedAnswers = savedAnswers
+            });
         }
 
         [HttpPost("submission/{submissionId}/answer")]

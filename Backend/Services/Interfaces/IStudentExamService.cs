@@ -10,5 +10,6 @@ namespace Backend.Services.Interfaces
         Task SaveAnswerAsync(int studentId, int submissionId, SubmitAnswerRequest request);
         Task SaveBulkAnswersAsync(int studentId, int submissionId, IEnumerable<SubmitAnswerRequest> requests);
         Task SubmitExamAsync(int studentId, int submissionId);
+        Task ForceSubmitOverdueSubmissionsAsync(int examId);
     }
 }
