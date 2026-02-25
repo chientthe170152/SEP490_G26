@@ -30,6 +30,9 @@ namespace Backend
             builder.Services.AddScoped<Backend.Services.Interfaces.IExamBlueprintService, Backend.Services.Implements.ExamBlueprintService>();
             builder.Services.AddScoped<Backend.Services.Interfaces.IStudentExamService, Backend.Services.Implements.StudentExamService>();
 
+            // Add SignalR
+            builder.Services.AddSignalR();
+
             // Add Memory Cache for OTP storage
             builder.Services.AddMemoryCache();
 
@@ -113,6 +116,7 @@ namespace Backend
             app.UseAuthorization();
 
             app.MapControllers();
+            app.MapHub<Backend.Hubs.ExamHub>("/examHub");
 
             app.Run();
         }

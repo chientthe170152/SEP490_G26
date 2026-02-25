@@ -33,6 +33,9 @@ namespace Backend.Repositories.Implements
         {
             // Status 1 = Active / In Progress
             return await _context.Submissions
+                .Include(s => s.StudentAnswers)
+                .Include(s => s.Paper)
+                    .ThenInclude(p => p.Exam)
                 .FirstOrDefaultAsync(s => s.StudentId == studentId && s.PaperId == paperId && s.Status == 1);
         }
 
@@ -40,22 +43,6 @@ namespace Backend.Repositories.Implements
         {
             return await _context.StudentAnswers
                 .FirstOrDefaultAsync(sa => sa.SubmissionId == submissionId && sa.QuestionIndex == questionIndex);
-        }
-
-        public async Task AddOrUpdateStudentAnswerAsync(StudentAnswer answer)
-        {
-            var existing = await GetStudentAnswerAsync(answer.SubmissionId, answer.QuestionIndex);
-            if (existing != null)
-            {
-                // Update the actual response instead of updating the whole object
-                existing.ResponseText = answer.ResponseText;
-                _context.StudentAnswers.Update(existing);
-            }
-            else
-            {
-                _context.StudentAnswers.Add(answer);
-            }
-            await _context.SaveChangesAsync();
         }
 
         public async Task AddOrUpdateBulkStudentAnswersAsync(IEnumerable<StudentAnswer> answers)
@@ -122,6 +109,47 @@ namespace Backend.Repositories.Implements
             int selectedPaperId = paperIds[randomIndex];
 
             return await _context.Papers.FindAsync(selectedPaperId);
+        }
+
+        public async Task<bool> CanStudentTakeExamAsync(int studentId, int examId)
+        {
+            var exam = await _context.Exams.FindAsync(examId);
+            if (exam == null || exam.ClassId == null) return false;
+
+            return await _context.ClassMembers
+                .AnyAsync(cm => cm.ClassId == exam.ClassId && cm.StudentId == studentId);
+        }
+
+        public async Task<Submission?> GetSubmissionByIdAsync(int submissionId)
+        {
+            return await _context.Submissions
+                .Include(s => s.Paper)
+                .ThenInclude(p => p.Exam)
+                .FirstOrDefaultAsync(s => s.SubmissionId == submissionId);
+        }
+
+        public async Task ForceSubmitOverdueExamsAsync(int examId)
+        {
+            var activeSubmissions = await _context.Submissions
+                .Include(s => s.Paper)
+                .ThenInclude(p => p.Exam)
+                .Where(s => s.Paper.ExamId == examId && s.Status == 1)
+                .ToListAsync();
+
+            var now = DateTime.UtcNow;
+            foreach (var sub in activeSubmissions)
+            {
+                if (sub.Paper?.Exam != null)
+                {
+                    var durationSeconds = sub.Paper.Exam.Duration * 60;
+                    var elapsedSeconds = (now - sub.CreatedAtUtc).TotalSeconds;
+                    if (elapsedSeconds > durationSeconds)
+                    {
+                        sub.Status = 2; // Submitted
+                    }
+                }
+            }
+            await _context.SaveChangesAsync();
         }
     }
 }

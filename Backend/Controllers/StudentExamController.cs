@@ -50,7 +50,42 @@ namespace Backend.Controllers
             if (studentId == 0) return Unauthorized("Invalid token.");
 
             var submission = await _studentExamService.StartExamAsync(studentId, request);
-            return Ok(new { submissionId = submission.SubmissionId, paperId = submission.PaperId, status = "Started" });
+
+            int remainingSeconds = 40 * 60; // default fallback
+            if (submission.Paper != null && submission.Paper.Exam != null)
+            {
+                var durationSeconds = submission.Paper.Exam.Duration * 60;
+                var elapsedSeconds = (DateTime.UtcNow - submission.CreatedAtUtc).TotalSeconds;
+                
+                // Thời gian làm bài còn lại dựa vào duration
+                var timeBasedOnDuration = durationSeconds - elapsedSeconds;
+
+                // Thời gian làm bài còn lại dựa vào thời điểm đóng kỳ thi (CloseAt)
+                double timeBasedOnCloseAt = double.MaxValue;
+                if (submission.Paper.Exam.CloseAt.HasValue)
+                {
+                    timeBasedOnCloseAt = (submission.Paper.Exam.CloseAt.Value - DateTime.UtcNow).TotalSeconds;
+                }
+
+                // Lấy thời gian nhỏ hơn giữa 2 điều kiện
+                var actualRemaining = Math.Min(timeBasedOnDuration, timeBasedOnCloseAt);
+                remainingSeconds = (int)Math.Max(0, actualRemaining);
+            }
+
+            var savedAnswers = submission.StudentAnswers?.Select(a => new 
+            {
+                questionIndex = a.QuestionIndex,
+                responseText = a.ResponseText ?? string.Empty
+            }).Cast<object>().ToList() ?? new List<object>();
+
+            return Ok(new 
+            { 
+                submissionId = submission.SubmissionId, 
+                paperId = submission.PaperId, 
+                status = "Started",
+                remainingSeconds = remainingSeconds,
+                savedAnswers = savedAnswers
+            });
         }
 
         [HttpPost("submission/{submissionId}/answer")]
