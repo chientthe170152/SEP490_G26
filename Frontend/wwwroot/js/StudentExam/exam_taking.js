@@ -523,6 +523,7 @@ function flushPendingSaves() {
 }
 
 function forceSubmitExam() {
+    clearInterval(countdownTimerInterval); // Dừng đồng hồ đếm ngược
     const submissionId = $('#SubmissionId').val();
     flushPendingSaves().then(() => {
         apiClient.post(`/api/student/exams/submission/${submissionId}/submit`)

@@ -114,6 +114,7 @@ namespace Backend
             app.UseAuthorization();
 
             app.MapControllers();
+            app.MapHub<Backend.Hubs.ExamHub>("/examHub");
 
             app.Run();
         }
