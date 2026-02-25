@@ -409,6 +409,36 @@ math-field.math-display[readonly] {
   background: transparent;
 }
 
+.manual-question-content {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  white-space: normal;
+}
+
+.manual-question-text {
+  font: inherit;
+}
+
+math-field.manual-question-math {
+  display: inline-block;
+  min-height: 0;
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  font-size: 1rem;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  --hue: 220;
+}
+
+math-field.manual-question-math::part(container) {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
 math-field.math-blank-template {
   font-size: 1.1rem;
   padding: 0.45rem 0.65rem;
