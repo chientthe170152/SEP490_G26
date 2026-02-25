@@ -19,11 +19,7 @@ public partial class ExamBlueprint
 
     public int TotalQuestions { get; set; }
 
-    public int TeacherId { get; set; }
-
     public DateTime UpdatedAtUtc { get; set; }
-
-    public int Status { get; set; }
 
     public byte[] ConcurrencyStamp { get; set; } = null!;
 
