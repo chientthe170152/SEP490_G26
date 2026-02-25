@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <Folder Include="Views\Auth\" />
+    <Folder Include="Views\Exam\" />
     <Folder Include="wwwroot\js\pages\" />
   </ItemGroup>
 
