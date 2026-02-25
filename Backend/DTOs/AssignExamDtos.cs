@@ -65,6 +65,7 @@ public class CreateAssignExamRequest
     public DateTime? CloseAt { get; set; }
     public bool ShuffleQuestion { get; set; }
     public bool AllowLateSubmission { get; set; }
+    public bool IsPublic { get; set; }
     public int? ClassId { get; set; }
 
     // "blueprint" or "manual"

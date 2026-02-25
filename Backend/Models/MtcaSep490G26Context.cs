@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -121,7 +121,9 @@ public partial class MtcaSep490G26Context : DbContext
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.MaxAttempts).HasDefaultValue(1);
             entity.Property(e => e.ShowScore).HasDefaultValue(true);
-            entity.Property(e => e.Status).HasDefaultValue(1);
+            entity.Property(e => e.Status)
+                .HasDefaultValue(1)
+                .ValueGeneratedNever();
             entity.Property(e => e.Title).HasMaxLength(500);
             entity.Property(e => e.UpdatedAtUtc).HasDefaultValueSql("(getutcdate())");
 

@@ -436,6 +436,7 @@
   let manualQuestionCurrentPage = 1;
   let manualQuestionTotalPages = 1;
   let selectedClassId = null;
+  const classSubjectById = new Map();
   const manualSelectedQuestionIds = new Set();
 
   const normalizeText = (value = '') => value.toLowerCase().trim();
@@ -587,11 +588,29 @@
     const duration = examDurationInput ? Number(examDurationInput.value || 0) : 0;
     const maxAttempts = examMaxAttemptsInput ? Number(examMaxAttemptsInput.value || 0) : 0;
     const isPublic = Boolean(publicToggle && publicToggle.checked);
+    const checkedClassId = getCheckedClassId();
+    const resolvedClassId = !isPublic
+      ? (checkedClassId || (Number.isInteger(selectedClassId) && selectedClassId > 0 ? selectedClassId : null))
+      : null;
+    if (!isPublic && resolvedClassId) {
+      selectedClassId = resolvedClassId;
+    }
     const generationMode = Boolean(examGenerationManual && examGenerationManual.checked) ? 'manual' : 'blueprint';
     const visibleFromDate = toDateOrNull(examVisibleFromInput ? examVisibleFromInput.value : '');
     const openAtDate = toDateOrNull(examOpenAtInput ? examOpenAtInput.value : '');
     const closeAtDate = toDateOrNull(examCloseAtInput ? examCloseAtInput.value : '');
     const errors = [];
+
+    if (generationMode === 'manual') {
+      try {
+        const removedCount = await syncManualSelectionWithCurrentFilters();
+        if (removedCount > 0) {
+          await renderManualTable();
+        }
+      } catch (error) {
+        errors.push('Không thể đồng bộ danh sách câu hỏi thủ công trước khi lưu.');
+      }
+    }
 
     if (!title) {
       errors.push('Vui lòng nhập tiêu đề đề thi.');
@@ -634,7 +653,7 @@
       errors.push('Vui lòng chọn môn học cho đề public.');
       markFieldInvalid(publicSubjectFilter, true);
     }
-    if (!isPublic && !selectedClassId) {
+    if (!isPublic && !resolvedClassId) {
       errors.push('Vui lòng chọn lớp học trước khi lưu.');
     }
     if (generationMode === 'blueprint' && !selectedBlueprintId) {
@@ -662,7 +681,8 @@
       closeAt: toApiDateTime(examCloseAtInput ? examCloseAtInput.value : ''),
       shuffleQuestion: Boolean(shuffleQuestionToggle && shuffleQuestionToggle.checked),
       allowLateSubmission: Boolean(allowLateSubmissionToggle && allowLateSubmissionToggle.checked),
-      classId: isPublic ? null : selectedClassId,
+      isPublic,
+      classId: resolvedClassId,
       generationMode,
       examBlueprintId: generationMode === 'blueprint' ? selectedBlueprintId : null,
       subjectId: generationMode === 'manual' ? getCurrentSubjectId() : null,
@@ -810,6 +830,14 @@
 
   const classRows = () => Array.from(classTable.querySelectorAll('tbody tr'));
   const classSelectors = () => Array.from(classTable.querySelectorAll('.class-item'));
+  const getCheckedClassId = () => {
+    const selectedInput = classSelectors().find((item) => item.checked);
+    if (!selectedInput) {
+      return null;
+    }
+    const value = Number(selectedInput.value);
+    return Number.isInteger(value) && value > 0 ? value : null;
+  };
   const blueprintRows = () => blueprintListTable ? Array.from(blueprintListTable.querySelectorAll('tbody tr')) : [];
   const blueprintSelectors = () => blueprintListTable ? Array.from(blueprintListTable.querySelectorAll('.blueprint-item')) : [];
 
@@ -848,11 +876,59 @@
     selectedCount.textContent = selectedCode ? `Đã chọn: ${selectedCode}` : 'Chưa chọn lớp học';
   };
 
+  const getSelectedClassSubjectCode = () => {
+    if (selectedClassId && classSubjectById.has(Number(selectedClassId))) {
+      return classSubjectById.get(Number(selectedClassId)) || '';
+    }
+
+    const selectedInput = classSelectors().find((item) => item.checked);
+    const selectedRow = selectedInput ? selectedInput.closest('tr') : null;
+    return selectedRow ? (selectedRow.getAttribute('data-subject') || '') : '';
+  };
+
+  const syncSubjectFiltersBySelectedClass = async () => {
+    const isPublic = Boolean(publicToggle && publicToggle.checked);
+    if (isPublic) {
+      return;
+    }
+
+    const subjectCode = getSelectedClassSubjectCode();
+    if (!subjectCode) {
+      if (blueprintSubjectFilter) blueprintSubjectFilter.disabled = false;
+      if (manualQuestionSubjectFilter) manualQuestionSubjectFilter.disabled = false;
+      return;
+    }
+
+    if (blueprintSubjectFilter) {
+      ensureSelectHasOption(blueprintSubjectFilter, subjectCode, subjectCode);
+      blueprintSubjectFilter.value = subjectCode;
+      blueprintSubjectFilter.disabled = true;
+    }
+    if (manualQuestionSubjectFilter) {
+      ensureSelectHasOption(manualQuestionSubjectFilter, subjectCode, subjectCode);
+      manualQuestionSubjectFilter.value = subjectCode;
+      manualQuestionSubjectFilter.disabled = true;
+    }
+    if (manualQuestionChapterFilter) {
+      manualQuestionChapterFilter.value = '';
+    }
+
+    await renderBlueprintTable(true);
+    await syncManualChapterOptions();
+    await renderManualTable(true);
+  };
+
   const bindClassSelection = () => {
     classSelectors().forEach((item) => {
-      item.addEventListener('change', () => {
+      item.addEventListener('change', async () => {
         selectedClassId = Number(item.value);
+        const row = item.closest('tr');
+        const subject = row ? (row.getAttribute('data-subject') || '') : '';
+        if (selectedClassId && subject) {
+          classSubjectById.set(selectedClassId, subject);
+        }
         updateSelectedClass();
+        await syncSubjectFiltersBySelectedClass();
       });
     });
   };
@@ -870,14 +946,18 @@
     }
 
     // In public mode, centralize subject choice at publicSubjectFilter.
-    if (blueprintSubjectFilter) {
-      blueprintSubjectFilter.disabled = hideClass;
-    }
-    if (manualQuestionSubjectFilter) {
-      manualQuestionSubjectFilter.disabled = hideClass;
+    if (hideClass) {
+      if (blueprintSubjectFilter) {
+        blueprintSubjectFilter.disabled = true;
+      }
+      if (manualQuestionSubjectFilter) {
+        manualQuestionSubjectFilter.disabled = true;
+      }
+      syncPublicSubjectFilters();
+      return;
     }
 
-    syncPublicSubjectFilters();
+    syncSubjectFiltersBySelectedClass();
   };
 
   const syncPublicSubjectFilters = async () => {
@@ -963,6 +1043,15 @@
         selectedClassId = Number(items[0].classId);
       }
 
+      classSubjectById.clear();
+      items.forEach((item) => {
+        const classId = Number(item.classId);
+        const subjectCode = item.subjectCode || '';
+        if (classId > 0 && subjectCode) {
+          classSubjectById.set(classId, subjectCode);
+        }
+      });
+
       classTableBody.innerHTML = items.map((item) => `
         <tr data-class-code="${item.classCode}" data-subject="${item.subjectCode}" data-semester="${item.semester}">
           <td><input class="form-check-input class-item" type="radio" name="selectedClass" value="${item.classId}" ${Number(item.classId) === selectedClassId ? 'checked' : ''}></td>
@@ -983,6 +1072,7 @@
       bindClassSelection();
       updateSelectedClass();
       updateClassPagination();
+      await syncSubjectFiltersBySelectedClass();
     } catch (error) {
       console.error('Failed to load classes:', error);
       classTableBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Không tải được danh sách lớp.</td></tr>';
@@ -1155,6 +1245,28 @@
   const updateManualSummary = () => {
     if (!manualQuestionSummary) return;
     manualQuestionSummary.textContent = `Đã chọn ${manualSelectedQuestionIds.size} câu hỏi thủ công.`;
+  };
+
+  const pruneManualSelection = (allowedIds) => {
+    const allowed = new Set((allowedIds || []).map((id) => String(id)));
+    let removedCount = 0;
+    Array.from(manualSelectedQuestionIds).forEach((id) => {
+      if (!allowed.has(String(id))) {
+        manualSelectedQuestionIds.delete(id);
+        removedCount += 1;
+      }
+    });
+    return removedCount;
+  };
+
+  const syncManualSelectionWithCurrentFilters = async () => {
+    const rows = await loadManualQuestionsFromApi();
+    const allowedIds = rows.map((item) => String(item.questionId));
+    const removedCount = pruneManualSelection(allowedIds);
+    if (removedCount > 0) {
+      updateManualSummary();
+    }
+    return removedCount;
   };
 
   const updateManualPagination = (totalItems, visibleItemsCount) => {
@@ -1344,13 +1456,14 @@
     try {
       const rows = await loadManualQuestionsFromApi();
       manualQuestionData = rows.map((item) => ({
-        id: item.questionId,
+        id: String(item.questionId),
         subject: item.subjectCode || '',
         chapterId: item.chapterId,
         chapter: item.chapterName || '',
         level: difficultyLabelByValue[item.difficulty] || `Mức ${item.difficulty}`,
         content: item.contentLatex || ''
       }));
+      pruneManualSelection(manualQuestionData.map((item) => item.id));
     } catch (error) {
       console.error('Failed to load manual questions:', error);
       manualQuestionData = [];

@@ -291,6 +291,16 @@ public class AssignExamService : IAssignExamService
             ? await BuildFromBlueprintAsync(request.ExamBlueprintId, request.ShuffleQuestion, cancellationToken)
             : await BuildFromManualAsync(request.SubjectId, request.QuestionIds, request.ShuffleQuestion, cancellationToken);
 
+        if (!request.IsPublic && !request.ClassId.HasValue)
+        {
+            throw new ArgumentException("ClassId is required when creating non-public exam.");
+        }
+
+        if (request.IsPublic && request.ClassId.HasValue)
+        {
+            throw new ArgumentException("Public exam must not include ClassId.");
+        }
+
         if (request.ClassId.HasValue)
         {
             var classEntity = await _db.Classes
@@ -336,7 +346,7 @@ public class AssignExamService : IAssignExamService
                 CloseAt = request.CloseAt,
                 ShuffleQuestion = request.ShuffleQuestion,
                 AllowLateSubmission = request.AllowLateSubmission,
-                Status = 1,
+                Status = request.IsPublic ? 1 : 0,
                 UpdatedAtUtc = DateTime.UtcNow
             };
             _db.Exams.Add(exam);
