@@ -1,6 +1,10 @@
 using Backend.Models;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Backend.Repositories.Implements;
+using Backend.Repositories.Interfaces;
+using Backend.Services.Implements;
+using Backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Backend.Services.Implements;
@@ -14,12 +18,14 @@ namespace Backend
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
-            builder.Services.AddControllers();
-
-            // Configure DbContext
+            // =========================
+            // DATABASE
+            // =========================
             builder.Services.AddDbContext<MtcaSep490G26Context>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn")));
+                options.UseSqlServer(
+                    builder.Configuration.GetConnectionString("MyCnn")
+                )
+            );
 
             // Register Repositories
             builder.Services.AddScoped<Backend.Repositories.Interfaces.IAuthRepository, Backend.Repositories.Implements.AuthRepository>();
@@ -32,25 +38,26 @@ namespace Backend
             builder.Services.AddScoped<Backend.Services.Interfaces.IExamBlueprintService, Backend.Services.Implements.ExamBlueprintService>();
             builder.Services.AddScoped<Backend.Services.Interfaces.IStudentExamService, Backend.Services.Implements.StudentExamService>(); 
             builder.Services.AddScoped<Backend.Services.Interfaces.IAssignExamService, Backend.Services.Implements.AssignExamService>();
+            // =========================
+            // REPOSITORIES
+            // =========================
+            builder.Services.AddScoped<ICourseRepo, CourseRepo>();
+            builder.Services.AddScoped<IChapterRepo, ChapterRepo>();
+            builder.Services.AddScoped<IAuthRepository, AuthRepository>();
+            builder.Services.AddScoped<IStudentExamRepository, StudentExamRepository>();
 
-            // Add SignalR
-            builder.Services.AddSignalR();
+            // =========================
+            // SERVICES
+            // =========================
+            builder.Services.AddScoped<ICourseService, CourseService>();
+            builder.Services.AddScoped<IChapterService, ChapterService>();
+            builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<IEmailService, EmailService>();
+            builder.Services.AddScoped<IStudentExamService, StudentExamService>();
 
-            // Add Memory Cache for OTP storage
-            builder.Services.AddMemoryCache();
-
-            // Configure CORS
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("AllowAll", policy =>
-                {
-                    policy.AllowAnyOrigin()
-                          .AllowAnyMethod()
-                          .AllowAnyHeader();
-                });
-            });
-
-            // Configure JWT Authentication
+            // =========================
+            // JWT AUTHENTICATION
+            // =========================
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -64,47 +71,74 @@ namespace Backend
                     ValidateAudience = true,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
+
                     ValidIssuer = builder.Configuration["Jwt:Issuer"],
                     ValidAudience = builder.Configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? ""))
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "")
+                    )
                 };
             });
 
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+            // =========================
+            // OTHER SERVICES
+            // =========================
+            builder.Services.AddControllers();
+            builder.Services.AddSignalR();
+            builder.Services.AddMemoryCache();
+
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
+
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "MTCA API", Version = "v1" });
-
-                // Configure Swagger to use JWT Bearer
-                c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-                {
-                    Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
-                    Name = "Authorization",
-                    In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-                    Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
-                    Scheme = "Bearer"
-                });
-
-                c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement()
-                {
+                c.SwaggerDoc("v1",
+                    new Microsoft.OpenApi.Models.OpenApiInfo
                     {
-                        new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                        Title = "MTCA API",
+                        Version = "v1"
+                    });
+
+                c.AddSecurityDefinition("Bearer",
+                    new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                    {
+                        Description = "Authorization: Bearer {token}",
+                        Name = "Authorization",
+                        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+                        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+                        Scheme = "Bearer"
+                    });
+
+                c.AddSecurityRequirement(
+                    new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+                    {
                         {
-                            Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
                             {
-                                Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                                Id = "Bearer"
+                                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                                {
+                                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                                    Id = "Bearer"
+                                }
                             },
-                        },
-                        new List<string>()
-                    }
-                });
+                            new List<string>()
+                        }
+                    });
             });
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
+            // =========================
+            // PIPELINE
+            // =========================
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();

@@ -32,4 +32,5 @@ public partial class Class
     public virtual Subject Subject { get; set; } = null!;
 
     public virtual User Teacher { get; set; } = null!;
+    public virtual Subject Subject { get; set; } = null!;
 }
