@@ -1,4 +1,4 @@
-﻿const API_BASE = "http://localhost:5217"; // chỉnh đúng port backend của m
+﻿const API_BASE = "https://localhost:7167"; // chỉnh đúng port backend của m
 
 
 function getAuthToken() {

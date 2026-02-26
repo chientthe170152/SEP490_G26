@@ -450,7 +450,7 @@
   if (!Number.isInteger(teacherIdNumber) || teacherIdNumber <= 0) {
     const token = typeof getToken === 'function' ? getToken() : null;
     if (token) {
-      const authBases = ['https://localhost:7167', window.location.origin, 'http://localhost:5217'].filter(Boolean);
+      const authBases = ['https://localhost:7167', window.location.origin].filter(Boolean);
       for (const base of authBases) {
         try {
           const res = await fetch(`${base.replace(/\/+$/, '')}/api/auth/me`, {
@@ -476,7 +476,7 @@
       'https://localhost:7167/api/assign-exam',
       '/api/assign-exam',
       `${window.location.origin}/api/assign-exam`,
-      ...(isHttpsPage ? [] : ['http://localhost:5217/api/assign-exam'])
+      ...(isHttpsPage ? [] : ['https://localhost:7167/api/assign-exam'])
     ].filter(Boolean);
 
     return Array.from(new Set(candidates));

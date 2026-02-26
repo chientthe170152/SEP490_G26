@@ -23,13 +23,10 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Trang chủ</a>
                         </li>
-                        <li class="nav-item role-dependent role-student d-none">
-                            <a class="nav-link text-dark" href="#">Làm Bài Tập (Học Sinh)</a>
+                        <li class="nav-item role-teacher role-student d-none">
+                            <a class="nav-link text-dark" href="/Course/CourseList">Khóa học</a>
                         </li>
-                        <li class="nav-item role-dependent role-teacher d-none">
-                            <a class="nav-link text-dark" href="#">Quản lý Lớp (Giáo Viên)</a>
-                        </li>
-                        <li class="nav-item role-dependent role-teacher role-admin d-none">
+                        <li class="nav-item role-teacher d-none">
                             <a class="nav-link text-dark" href="/ExamBlueprint">Ma trận đề</a>
                         </li>
                     </ul>
@@ -45,7 +42,7 @@
                                 <li><a class="dropdown-item" href="javascript:void(0)" onclick="logout()">Đăng xuất</a></li>
                             </ul>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item role-teacher auth-user">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Exam" asp-action="AssignExam">Assign Exam</a>
                         </li>
                     </ul>
@@ -78,8 +75,6 @@
                     $('.role-student').removeClass('d-none');
                 } else if (role === 'Teacher' || role === 'Giáo viên') {
                     $('.role-teacher').removeClass('d-none');
-                } else if (role === 'Admin' || role === 'Quản trị viên' || role === 'Administrator') {
-                    $('.role-admin').removeClass('d-none');
                 }
             } else {
                 $('.auth-guest').removeClass('d-none');
