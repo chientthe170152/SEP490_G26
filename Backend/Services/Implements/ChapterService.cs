@@ -21,5 +21,9 @@ namespace Backend.Services.Implements
         public Task<List<ChapterDTO>> GetAllAsync() => _repo.GetAllAsync();
 
         public Task<ChapterDTO?> GetByIdAsync(int chapterId) => _repo.GetByIdAsync(chapterId);
+        public async Task<List<ChapterDTO>> GetBySubjectIdAsync(int subjectId)
+        {
+            return await _repo.GetBySubjectIdAsync(subjectId);
+        }
     }
 }

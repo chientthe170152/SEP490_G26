@@ -29,7 +29,7 @@ namespace Backend.Services.Implements
             return _repo.GetAllAsync();
         }
 
-        public Task<Class?> GetByIdAsync(int classId)
+        public Task<CourseDTO?> GetByIdAsync(int classId)
         {
             return _repo.GetByIdAsync(classId);
         }

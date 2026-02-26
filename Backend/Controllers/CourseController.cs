@@ -24,16 +24,14 @@ namespace Backend.Controllers
         }
 
         // TEMPORARY for debugging only
-        [HttpGet]
-        [AllowAnonymous]
-        public async Task<IActionResult> GetAll()
-        {
-            return Ok(await _service.GetAllAsync());
-        }
+        //[HttpGet]
+        //public async Task<IActionResult> GetAll()
+        //{
+        //    return Ok(await _service.GetAllAsync());
+        //}
 
-        // TEMPORARY for debugging only
         [HttpGet("my")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Teacher,Student")]
         public async Task<IActionResult> GetMyClasses()
         {
             // Keep same behaviour as before; now it will run without auth
@@ -50,9 +48,10 @@ namespace Backend.Controllers
 
         // New: return exams for a class that are visible now
         [HttpGet("{id}/exams")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Teacher,Student")]
         public async Task<IActionResult> GetExamsForClass(int id)
         {
+            var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.Identity?.Name;
             var exams = await _service.GetExamsByClassAsync(id);
             return Ok(exams);
         }
@@ -60,28 +59,23 @@ namespace Backend.Controllers
         // New: return chapters belonging to the class's subject
         // Route: GET api/course/{id}/chapters
         [HttpGet("{id}/chapters")]
-        [AllowAnonymous]
+        [Authorize]
         public async Task<IActionResult> GetChaptersForClass(int id)
         {
-            try
-            {
-                // Get the Class to read SubjectId
-                var classEntity = await _service.GetByIdAsync(id);
-                if (classEntity == null) return NotFound();
+            var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.Identity?.Name;
+            var course = await _service.GetByIdAsync(id);
 
-                var subjectId = classEntity.SubjectId;
+            if (course == null)
+                return NotFound();
 
-                // Fetch all chapters and filter by subjectId (ChapterService returns DTOs)
-                var chapters = await _chapterService.GetAllAsync();
-                var filtered = chapters.Where(c => c.SubjectId == subjectId).ToList();
-
-                return Ok(filtered);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to load chapters for class {ClassId}.", id);
-                return StatusCode(500, "Failed to load chapters for class.");
-            }
+            return Ok(course.Chapters);
+        }
+        [HttpPost("{id}/leave")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> LeaveCourse(int id)
+        {
+            var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.Identity?.Name;
+            return Ok();
         }
     }
 }

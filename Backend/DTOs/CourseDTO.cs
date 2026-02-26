@@ -7,6 +7,7 @@ namespace Backend.DTOs
         public int ClassId { get; set; }
 
         public string ClassName { get; set; } = null!;
+        public int SubjectId { get; set; }
 
         public string SubjectName { get; set; } = null!;
 
@@ -21,5 +22,7 @@ namespace Backend.DTOs
         public int ExamCount { get; set; }
 
         public string Role { get; set; } = null!;
+        public List<ChapterDTO> Chapters { get; set; } = new();
+
     }
 }

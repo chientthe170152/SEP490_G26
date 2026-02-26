@@ -57,15 +57,28 @@ namespace Backend.Repositories.Implements
                 .ToListAsync();
         }
 
-        public async Task<Class?> GetByIdAsync(int classId)
+        public async Task<CourseDTO?> GetByIdAsync(int classId)
         {
-            // Include Subject and Teacher so SubjectId/Subject are available.
             return await _context.Classes
-                .Include(c => c.ClassMembers)
-                .Include(c => c.Exams)
-                .Include(c => c.Subject)
-                .Include(c => c.Teacher)
-                .FirstOrDefaultAsync(c => c.ClassId == classId);
+                .Where(c => c.ClassId == classId)
+                .Select(c => new CourseDTO
+                {
+                    ClassId = c.ClassId,
+                    ClassName = c.Name,
+                    SubjectId = c.SubjectId,
+                    SubjectName = c.Subject != null ? c.Subject.Name : string.Empty,
+                    TeacherName = c.Teacher != null ? c.Teacher.FullName : string.Empty,
+                    Chapters = c.Subject.Chapters
+                        .Select(ch => new ChapterDTO
+                        {
+                            ChapterId = ch.ChapterId,
+                            SubjectId = ch.SubjectId,
+                            Name = ch.Name
+                        })
+                        .OrderBy(ch => ch.Name)
+                        .ToList()
+                })
+                .FirstOrDefaultAsync();
         }
 
         // Return exams that belong to the class and are visible now.
@@ -97,15 +110,16 @@ namespace Backend.Repositories.Implements
                                     .Where(ebc => e.ExamBlueprintId != null && ebc.ExamBlueprintId == e.ExamBlueprintId)
                                     .Select(ebc => (int?)ebc.ChapterId)
                                     .FirstOrDefault(),
+
                     VisibleFrom = e.VisibleFrom,
                     OpenAt = e.OpenAt,
                     CloseAt = e.CloseAt,
                     DurationMinutes = e.Duration,
                     // Compute status using OpenAt/CloseAt where available, otherwise fall back to stored Status.
                     Status = e.OpenAt != null
-                        ? ( (e.OpenAt <= now && (e.CloseAt == null || e.CloseAt >= now)) ? 1
+                        ? ((e.OpenAt <= now && (e.CloseAt == null || e.CloseAt >= now)) ? 1
                             : (e.OpenAt > now && e.OpenAt <= upcomingThreshold) ? 2
-                            : 0 )
+                            : 0)
                         : e.Status,
                     ShowScore = e.ShowScore,
                     ShowAnswer = e.ShowAnswer,

@@ -1,0 +1,310 @@
+﻿@{
+    var classId = ViewBag.ClassId ?? 0;
+}
+
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Danh sách đề trong lớp</title>
+    <link rel="stylesheet" href="~/vendor/bootstrap-5.3.8/css/bootstrap.min.css" />
+</head>
+
+<body>
+
+    <main class="container py-4">
+
+        <section class="mb-4">
+            <h2>Danh sách đề trong lớp</h2>
+            <p class="text-muted mb-0">
+                Theo dõi đề thi theo lớp cho sinh viên và giảng viên
+            </p>
+        </section>
+
+        <!-- Filters -->
+        <section class="card p-3 mb-4">
+            <div class="row g-2">
+
+                <!-- Chapter -->
+                <div class="col-md-3">
+                    <select id="chapterFilter" class="form-select">
+                        <option value="">Tất cả chương</option>
+                    </select>
+                </div>
+
+                <!-- Status -->
+                <div class="col-md-3">
+                    <select id="statusFilter" class="form-select">
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="open">Mở</option>
+                        <option value="upcoming">Sắp diễn ra</option>
+                        <option value="closed">Đóng</option>
+                    </select>
+                </div>
+
+                <!-- Search -->
+                <div class="col-md-4">
+                    <input id="searchFilter"
+                           class="form-control"
+                           placeholder="Tìm theo tên đề..." />
+                </div>
+
+                <div class="col-md-2 d-grid">
+                    <button onclick="applyFilter()"
+                            class="btn btn-outline-secondary">
+                        Lọc
+                    </button>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Table -->
+        <section class="card p-3">
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Tên đề</th>
+                            <th>Khoảng thời gian</th>
+                            <th>Thời lượng</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="examTableBody">
+                        <tr>
+                            <td colspan="5" class="text-center">Đang tải...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        const classId = @classId;
+        const API_BASE = "http://localhost:5217";
+        let allExams = [];
+
+        function getToken() {
+            return localStorage.getItem("token");
+        }
+
+        function getUserRole() {
+            const token = getToken();
+            if (!token) return null;
+
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                return payload.role ||
+                       payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
+            } catch {
+                return null;
+            }
+        }
+
+                async function loadExams() {
+
+            const token = getToken();
+
+            if (!token) {
+                alert("Bạn chưa đăng nhập");
+                window.location.href = "/Auth/Login";
+                return;
+            }
+
+            await loadChapters();   // load chapter trước
+
+            const response = await fetch(`${API_BASE}/api/Course/${classId}/exams`, {
+                headers: { "Authorization": "Bearer " + token }
+            });
+
+            if (response.status === 401) {
+                alert("Phiên đăng nhập hết hạn");
+                localStorage.removeItem("token");
+                window.location.href = "/Auth/Login";
+                return;
+            }
+
+            allExams = await response.json();
+            renderExams(allExams);
+        }
+                async function loadChapters() {
+
+            const token = getToken();
+            if (!token) return;
+
+            const response = await fetch(`${API_BASE}/api/Course/${classId}/chapters`, {
+                headers: { "Authorization": "Bearer " + token }
+            });
+
+            if (!response.ok) {
+                console.error("Không load được chapters");
+                return;
+            }
+
+            const chapters = await response.json();
+
+            const chapterSelect = document.getElementById("chapterFilter");
+            chapterSelect.innerHTML = '<option value="">Tất cả chương</option>';
+
+            if (!chapters || chapters.length === 0) return;
+
+            chapters.forEach(ch => {
+                chapterSelect.innerHTML += `
+                    <option value="${ch.chapterId}">
+                        ${ch.name ?? ch.title}
+                    </option>
+                `;
+            });
+        }
+        function buildChapterFilter(exams) {
+
+            const chapterSelect = document.getElementById("chapterFilter");
+            chapterSelect.innerHTML = '<option value="">Tất cả chương</option>';
+
+            const uniqueChapters = [...new Map(
+                exams
+                    .filter(e => e.chapterId != null)
+                    .map(e => [e.chapterId, e.chapterName])
+            )];
+
+            uniqueChapters.forEach(([id, name]) => {
+                chapterSelect.innerHTML += `
+                    <option value="${id}">${name}</option>
+                `;
+            });
+        }
+
+        function getExamStatus(openAt, closeAt) {
+
+            if (!openAt || !closeAt) return "unknown";
+
+            const now = new Date();
+            const openTime = new Date(openAt);
+            const closeTime = new Date(closeAt);
+
+            const diffMinutes = (openTime - now) / 1000 / 60;
+
+            if (now > closeTime) return "closed";
+            if (now >= openTime && now <= closeTime) return "open";
+            if (diffMinutes > 0 && diffMinutes <= 30) return "upcoming";
+
+            return "upcoming";
+        }
+
+        function applyFilter() {
+
+            const chapter = document.getElementById("chapterFilter").value;
+            const statusFilter = document.getElementById("statusFilter").value;
+            const keyword = document.getElementById("searchFilter").value.toLowerCase();
+
+            let filtered = allExams;
+
+            if (chapter !== "") {
+                filtered = filtered.filter(e => e.chapterId == chapter);
+            }
+
+            if (statusFilter !== "") {
+                filtered = filtered.filter(e =>
+                    getExamStatus(e.openAt, e.closeAt) === statusFilter
+                );
+            }
+
+            if (keyword) {
+                filtered = filtered.filter(e =>
+                    e.title.toLowerCase().includes(keyword)
+                );
+            }
+
+            renderExams(filtered);
+        }
+
+        function formatDateTime(dateString) {
+            if (!dateString) return "-";
+            return new Date(dateString).toLocaleString("vi-VN");
+        }
+
+        function renderStatusBadge(status) {
+
+            if (status === "open")
+                return '<span class="badge bg-primary">Mở</span>';
+
+            if (status === "closed")
+                return '<span class="badge bg-danger">Đóng</span>';
+
+            if (status === "upcoming")
+                return '<span class="badge bg-warning text-dark">Sắp diễn ra</span>';
+
+            return '<span class="badge bg-secondary">Không xác định</span>';
+        }
+
+        function renderExams(exams) {
+
+            const tbody = document.getElementById("examTableBody");
+            tbody.innerHTML = "";
+
+            if (!exams || exams.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center">
+                            Không có bài kiểm tra
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const role = getUserRole();
+            const isStudent = role === "Student";
+            const isTeacher = role === "Teacher";
+
+            exams.forEach(exam => {
+
+                const status = getExamStatus(exam.openAt, exam.closeAt);
+
+                let actions = `
+                    <a class="btn btn-sm btn-outline-secondary"
+                       href="/Exam/Details/${exam.examId}">
+                        Chi tiết
+                    </a>
+                `;
+
+                if (isStudent && status === "open") {
+                    actions += `
+                        <a class="btn btn-sm btn-primary"
+                           href="/Exam/Take/${exam.examId}">
+                            Vào làm
+                        </a>
+                    `;
+                }
+
+                if (isTeacher) {
+                    actions += `
+                        <a class="btn btn-sm btn-primary"
+                           href="/Exam/Edit/${exam.examId}">
+                            Sửa
+                        </a>
+                    `;
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${exam.title}</td>
+                        <td>${formatDateTime(exam.openAt)} - ${formatDateTime(exam.closeAt)}</td>
+                        <td>${exam.durationMinutes ?? '-'} phút</td>
+                        <td>${renderStatusBadge(status)}</td>
+                        <td>${actions}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", loadExams);
+    </script>
+
+</body>
+</html>

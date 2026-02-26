@@ -55,5 +55,19 @@ namespace Backend.Repositories.Implements
                 Name = c.Name
             };
         }
+        public async Task<List<ChapterDTO>> GetBySubjectIdAsync(int subjectId)
+        {
+            return await _context.Chapters
+            .AsNoTracking()
+            .Where(c => c.SubjectId == subjectId)
+            .Select(c => new ChapterDTO
+            {
+                ChapterId = c.ChapterId,
+                SubjectId = c.SubjectId,
+                Name = c.Name
+            })
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+        }
     }
 }
