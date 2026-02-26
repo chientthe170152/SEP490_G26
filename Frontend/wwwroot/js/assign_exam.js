@@ -357,7 +357,7 @@
   bindImportForms();
 })();
 
-(() => {
+(async () => {
   const publicToggle = document.getElementById('publicExamToggle');
   const classSelectionBlock = document.getElementById('classSelectionBlock');
   const classSection = document.getElementById('classSelectionSection');
@@ -443,7 +443,29 @@
   const normalizeText = (value = '') => value.toLowerCase().trim();
   const teacherIdFromQuery = new URLSearchParams(window.location.search).get('teacherId');
   const teacherIdRaw = teacherIdFromQuery || window.ASSIGN_EXAM_TEACHER_ID || '';
-  const teacherIdNumber = Number(teacherIdRaw);
+  let teacherIdNumber = Number(teacherIdRaw);
+  if (!Number.isInteger(teacherIdNumber) || teacherIdNumber <= 0) {
+    teacherIdNumber = (typeof getUserIdFromToken === 'function' ? getUserIdFromToken() : null) ?? null;
+  }
+  if (!Number.isInteger(teacherIdNumber) || teacherIdNumber <= 0) {
+    const token = typeof getToken === 'function' ? getToken() : null;
+    if (token) {
+      const authBases = ['https://localhost:7167', window.location.origin, 'http://localhost:5217'].filter(Boolean);
+      for (const base of authBases) {
+        try {
+          const res = await fetch(`${base.replace(/\/+$/, '')}/api/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const id = data?.userId != null ? Number(data.userId) : null;
+            if (Number.isInteger(id) && id > 0) teacherIdNumber = id;
+            break;
+          }
+        } catch (_) { /* try next base */ }
+      }
+    }
+  }
   const teacherId = Number.isInteger(teacherIdNumber) && teacherIdNumber > 0 ? teacherIdNumber : null;
   const isHttpsPage = window.location.protocol === 'https:';
 
