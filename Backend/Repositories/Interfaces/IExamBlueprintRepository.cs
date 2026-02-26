@@ -8,8 +8,8 @@ namespace Backend.Repositories.Interfaces
         Task<List<SubjectOptionDto>> GetSubjectsAsync();
         Task<bool> SubjectExistsAsync(int subjectId);
         Task<List<ChapterOptionDto>> GetChaptersBySubjectAsync(int subjectId);
-        Task<(List<BlueprintListItemDto> Items, int TotalCount)> GetBlueprintsAsync(BlueprintListQueryDto query, int currentUserId, bool isAdmin);
-        Task<BlueprintDetailDto?> GetBlueprintDetailAsync(int id, int currentUserId, bool isAdmin);
+        Task<(List<BlueprintListItemDto> Items, int TotalCount)> GetBlueprintsAsync(BlueprintListQueryDto query, int currentUserId);
+        Task<BlueprintDetailDto?> GetBlueprintDetailAsync(int id, int currentUserId);
         Task<ExamBlueprint> CreateBlueprintAsync(ExamBlueprint blueprint, IEnumerable<ExamBlueprintChapter> rows);
     }
 }

@@ -23,10 +23,10 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Trang chủ</a>
                         </li>
-                        <li class="nav-item role-teacher role-student d-none">
+                        <li class="nav-item role-dependent role-teacher role-student d-none">
                             <a class="nav-link text-dark" href="/Course/CourseList">Khóa học</a>
                         </li>
-                        <li class="nav-item role-teacher d-none">
+                        <li class="nav-item role-dependent role-teacher d-none">
                             <a class="nav-link text-dark" href="/ExamBlueprint">Ma trận đề</a>
                         </li>
                     </ul>
@@ -42,7 +42,7 @@
                                 <li><a class="dropdown-item" href="javascript:void(0)" onclick="logout()">Đăng xuất</a></li>
                             </ul>
                         </li>
-                        <li class="nav-item role-teacher auth-user">
+                        <li class="nav-item role-teacher role-dependent">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Exam" asp-action="AssignExam">Assign Exam</a>
                         </li>
                     </ul>

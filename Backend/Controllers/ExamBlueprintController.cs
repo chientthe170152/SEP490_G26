@@ -27,7 +27,7 @@ namespace Backend.Controllers
                 var userId = GetCurrentUserId();
                 if (userId <= 0) return Unauthorized(new { message = "Invalid token." });
 
-                var result = await _examBlueprintService.GetBlueprintsAsync(query, userId, IsAdmin());
+                var result = await _examBlueprintService.GetBlueprintsAsync(query, userId);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -44,7 +44,7 @@ namespace Backend.Controllers
                 var userId = GetCurrentUserId();
                 if (userId <= 0) return Unauthorized(new { message = "Invalid token." });
 
-                var result = await _examBlueprintService.GetBlueprintDetailAsync(id, userId, IsAdmin());
+                var result = await _examBlueprintService.GetBlueprintDetailAsync(id, userId);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -102,13 +102,6 @@ namespace Backend.Controllers
         {
             var userIdString = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
             return int.TryParse(userIdString, out var userId) ? userId : 0;
-        }
-
-        private bool IsAdmin()
-        {
-            return User.IsInRole("Admin")
-                || User.IsInRole("Quản trị viên")
-                || User.IsInRole("Administrator");
         }
 
         private IActionResult HandleException(Exception ex)

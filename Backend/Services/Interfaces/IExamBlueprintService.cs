@@ -6,8 +6,8 @@ namespace Backend.Services.Interfaces
     {
         Task<List<SubjectOptionDto>> GetSubjectsAsync();
         Task<List<ChapterOptionDto>> GetChaptersBySubjectAsync(int subjectId);
-        Task<BlueprintListResponseDto> GetBlueprintsAsync(BlueprintListQueryDto query, int currentUserId, bool isAdmin);
-        Task<BlueprintDetailDto> GetBlueprintDetailAsync(int id, int currentUserId, bool isAdmin);
+        Task<BlueprintListResponseDto> GetBlueprintsAsync(BlueprintListQueryDto query, int currentUserId);
+        Task<BlueprintDetailDto> GetBlueprintDetailAsync(int id, int currentUserId);
         Task<CreateExamBlueprintResponse> CreateBlueprintAsync(int currentUserId, CreateExamBlueprintRequest request);
     }
 }

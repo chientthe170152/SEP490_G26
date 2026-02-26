@@ -84,7 +84,7 @@ namespace Backend.Repositories.Implements
             }).ToList();
         }
 
-        public async Task<(List<BlueprintListItemDto> Items, int TotalCount)> GetBlueprintsAsync(BlueprintListQueryDto query, int currentUserId, bool isAdmin)
+        public async Task<(List<BlueprintListItemDto> Items, int TotalCount)> GetBlueprintsAsync(BlueprintListQueryDto query, int currentUserId)
         {
             var page = query.Page < 1 ? 1 : query.Page;
             var pageSize = query.PageSize <= 0 ? 10 : Math.Min(query.PageSize, 100);
@@ -94,10 +94,7 @@ namespace Backend.Repositories.Implements
                 .Include(b => b.Subject)
                 .AsQueryable();
 
-            if (!isAdmin)
-            {
-                blueprints = blueprints.Where(b => b.TeacherId == currentUserId);
-            }
+            blueprints = blueprints.Where(b => b.TeacherId == currentUserId);
 
             if (query.SubjectId.HasValue && query.SubjectId.Value > 0)
             {
@@ -146,7 +143,7 @@ namespace Backend.Repositories.Implements
             return (items, totalCount);
         }
 
-        public async Task<BlueprintDetailDto?> GetBlueprintDetailAsync(int id, int currentUserId, bool isAdmin)
+        public async Task<BlueprintDetailDto?> GetBlueprintDetailAsync(int id, int currentUserId)
         {
             var query = _context.ExamBlueprints
                 .AsNoTracking()
@@ -155,10 +152,7 @@ namespace Backend.Repositories.Implements
                     .ThenInclude(r => r.Chapter)
                 .Where(b => b.ExamBlueprintId == id);
 
-            if (!isAdmin)
-            {
-                query = query.Where(b => b.TeacherId == currentUserId);
-            }
+            query = query.Where(b => b.TeacherId == currentUserId);
 
             var entity = await query.FirstOrDefaultAsync();
             if (entity == null)

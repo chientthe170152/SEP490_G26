@@ -37,7 +37,7 @@ namespace Backend.Services.Implements
             return await _examBlueprintRepository.GetChaptersBySubjectAsync(subjectId);
         }
 
-        public async Task<BlueprintListResponseDto> GetBlueprintsAsync(BlueprintListQueryDto query, int currentUserId, bool isAdmin)
+        public async Task<BlueprintListResponseDto> GetBlueprintsAsync(BlueprintListQueryDto query, int currentUserId)
         {
             if (currentUserId <= 0)
             {
@@ -47,7 +47,7 @@ namespace Backend.Services.Implements
             query.Page = query.Page < 1 ? 1 : query.Page;
             query.PageSize = query.PageSize <= 0 ? 10 : Math.Min(query.PageSize, 100);
 
-            var (items, totalCount) = await _examBlueprintRepository.GetBlueprintsAsync(query, currentUserId, isAdmin);
+            var (items, totalCount) = await _examBlueprintRepository.GetBlueprintsAsync(query, currentUserId);
             var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)query.PageSize);
 
             return new BlueprintListResponseDto
@@ -60,14 +60,14 @@ namespace Backend.Services.Implements
             };
         }
 
-        public async Task<BlueprintDetailDto> GetBlueprintDetailAsync(int id, int currentUserId, bool isAdmin)
+        public async Task<BlueprintDetailDto> GetBlueprintDetailAsync(int id, int currentUserId)
         {
             if (id <= 0)
             {
                 throw new ExamBlueprintValidationException(new[] { "Id ma trận đề không hợp lệ." });
             }
 
-            var detail = await _examBlueprintRepository.GetBlueprintDetailAsync(id, currentUserId, isAdmin);
+            var detail = await _examBlueprintRepository.GetBlueprintDetailAsync(id, currentUserId);
             if (detail == null)
             {
                 throw new KeyNotFoundException("Không tìm thấy ma trận đề.");
