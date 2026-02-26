@@ -10,21 +10,22 @@
 <body>
     <main class="page-shell py-4">
         <div class="container-fluid px-3 px-md-4">
+
             <section class="page-header d-flex justify-content-between align-items-start mb-3">
                 <div>
                     <h1 id="pageTitle"></h1>
                     <p class="page-subtitle" id="pageSubtitle"></p>
                 </div>
 
-                <div id="actionButtonContainer">
-                    <!-- Button render bằng JS -->
-                </div>
+                <div id="actionButtonContainer"></div>
             </section>
 
             <section class="panel-card mb-3">
                 <div class="row g-2">
                     <div class="col-12 col-lg-4">
-                        <input type="text" class="form-control" id="courseSearchInput"
+                        <input type="text"
+                               class="form-control"
+                               id="courseSearchInput"
                                placeholder="Tìm theo tên lớp hoặc giảng viên">
                     </div>
                     <div class="col-6 col-lg-3">
@@ -45,6 +46,47 @@
         </div>
     </main>
 
+    <!-- JOIN CLASS MODAL -->
+    <div class="modal fade" id="joinClassModal" tabindex="-1"
+         aria-labelledby="joinClassModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form class="modal-content" id="joinClassForm">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-5" id="joinClassModalLabel">
+                        Nhập mã mời vào lớp
+                    </h2>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label" for="joinClassCodeInput">
+                        Mã mời *
+                    </label>
+                    <input class="form-control"
+                           id="joinClassCodeInput"
+                           placeholder="Nhập mã mời (ví dụ: INV-SE1711)"
+                           autocomplete="off"
+                           required>
+                    <p class="mt-2 mb-0">
+                        Nhập mã mời do giảng viên cung cấp để tham gia lớp học.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+                        Hủy
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        Xác nhận tham gia
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="~/vendor/bootstrap-5.3.8/js/bootstrap.bundle.min.js"></script>
 
     <script>
@@ -53,6 +95,7 @@
         document.addEventListener("DOMContentLoaded", function () {
             initRoleUI();
             loadCourses();
+            initJoinForm();
         });
 
         function getToken() {
@@ -66,14 +109,12 @@
         }
 
         function initRoleUI() {
-
             const role = getUserRole();
             const title = document.getElementById("pageTitle");
             const subtitle = document.getElementById("pageSubtitle");
             const btnContainer = document.getElementById("actionButtonContainer");
 
             if (role === "Teacher") {
-
                 title.textContent = "Danh sách lớp giảng dạy";
                 subtitle.textContent = "Tìm kiếm và quản lý các lớp học bạn đang giảng dạy.";
 
@@ -82,24 +123,22 @@
                         + Tạo lớp
                     </a>
                 `;
-            }
-            else {
-
+            } else {
                 title.textContent = "Lớp học của tôi";
                 subtitle.textContent = "Tìm kiếm và truy cập các lớp đã tham gia.";
 
                 btnContainer.innerHTML = `
-                    <a href="/Course/Join" class="btn btn-primary">
+                    <button class="btn btn-primary"
+                            type="button"
+                            data-bs-toggle="modal"
+                            data-bs-target="#joinClassModal">
                         + Tham gia lớp
-                    </a>
-
+                    </button>
                 `;
-
             }
         }
 
         function loadCourses() {
-
             const token = getToken();
             if (!token) {
                 alert("Bạn chưa đăng nhập.");
@@ -125,10 +164,8 @@
         }
 
         function renderCourses(courses) {
-
             const role = getUserRole();
             const isTeacher = role === "Teacher";
-
             const grid = document.getElementById("courseGrid");
             grid.innerHTML = "";
 
@@ -141,16 +178,15 @@
             const subjects = new Set();
 
             courses.forEach(c => {
-
                 semesters.add(c.semester);
                 subjects.add(c.subjectName);
 
                 const article = document.createElement("article");
                 article.className = "class-card";
-                article.setAttribute("data-subject", c.subjectName || "");
-                article.setAttribute("data-semester", c.semester || "");
-                article.setAttribute("data-keyword",
-                    `${c.className} ${c.teacherName} ${c.subjectName}`.toLowerCase());
+                article.dataset.subject = c.subjectName || "";
+                article.dataset.semester = c.semester || "";
+                article.dataset.keyword =
+                    `${c.className} ${c.teacherName} ${c.subjectName}`.toLowerCase();
 
                 article.innerHTML = `
                     <h2>${c.className}</h2>
@@ -165,11 +201,11 @@
                            Vào khóa học
                         </a>
                         ${!isTeacher ? `
-            <button class="btn btn-sm btn-danger"
-                    onclick="leaveCourse(${c.classId})">
-                Rời khóa học
-            </button>
-        ` : ""}
+                            <button class="btn btn-sm btn-danger"
+                                    onclick="leaveCourse(${c.classId})">
+                                Rời khóa học
+                            </button>
+                        ` : ""}
                     </div>
                 `;
 
@@ -182,6 +218,7 @@
 
         function populateSelect(id, values) {
             const select = document.getElementById(id);
+            select.innerHTML = '<option value="">Tất cả</option>';
             values.forEach(v => {
                 if (!v) return;
                 const option = document.createElement("option");
@@ -203,13 +240,11 @@
         }
 
         function applyFilters() {
-
             const keyword = document.getElementById("courseSearchInput").value.toLowerCase();
             const semester = document.getElementById("courseSemesterFilter").value.toLowerCase();
             const subject = document.getElementById("courseSubjectFilter").value.toLowerCase();
 
             document.querySelectorAll(".class-card").forEach(card => {
-
                 const matchKeyword = !keyword || card.dataset.keyword.includes(keyword);
                 const matchSemester = !semester || card.dataset.semester.toLowerCase() === semester;
                 const matchSubject = !subject || card.dataset.subject.toLowerCase() === subject;
@@ -218,8 +253,8 @@
                     !(matchKeyword && matchSemester && matchSubject));
             });
         }
-                function leaveCourse(classId) {
 
+        function leaveCourse(classId) {
             if (!confirm("Bạn chắc chắn muốn rời khóa học này?")) return;
 
             const token = getToken();
@@ -237,6 +272,46 @@
             })
             .catch(() => {
                 alert("Không thể rời khóa học.");
+            });
+        }
+
+        function initJoinForm() {
+            const joinForm = document.getElementById("joinClassForm");
+
+            joinForm.addEventListener("submit", function (e) {
+                e.preventDefault();
+
+                const code = document
+                    .getElementById("joinClassCodeInput")
+                    .value
+                    .trim();
+
+                if (!code) return;
+
+                const token = getToken();
+
+                fetch(`${API_BASE}/api/course/join`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer " + token
+                    },
+                    body: JSON.stringify({ invitationCode: code })
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error();
+                    alert("Tham gia lớp thành công!");
+
+                    const modalEl = document.getElementById("joinClassModal");
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+
+                    joinForm.reset();
+                    loadCourses();
+                })
+                .catch(() => {
+                    alert("Mã mời không hợp lệ hoặc đã xảy ra lỗi.");
+                });
             });
         }
     </script>

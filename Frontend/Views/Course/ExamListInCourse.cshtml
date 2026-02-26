@@ -17,9 +17,6 @@
 
         <section class="mb-4">
             <h2>Danh sách đề trong lớp</h2>
-            <p class="text-muted mb-0">
-                Theo dõi đề thi theo lớp cho sinh viên và giảng viên
-            </p>
         </section>
 
         <!-- Filters -->
@@ -44,18 +41,12 @@
                 </div>
 
                 <!-- Search -->
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <input id="searchFilter"
                            class="form-control"
                            placeholder="Tìm theo tên đề..." />
                 </div>
 
-                <div class="col-md-2 d-grid">
-                    <button onclick="applyFilter()"
-                            class="btn btn-outline-secondary">
-                        Lọc
-                    </button>
-                </div>
 
             </div>
         </section>
@@ -131,6 +122,7 @@
 
             allExams = await response.json();
             renderExams(allExams);
+            initFilters();
         }
                 async function loadChapters() {
 
@@ -196,33 +188,29 @@
             return "upcoming";
         }
 
-        function applyFilter() {
+                function applyFilter() {
 
             const chapter = document.getElementById("chapterFilter").value;
-            const statusFilter = document.getElementById("statusFilter").value;
+            const status = document.getElementById("statusFilter").value;
             const keyword = document.getElementById("searchFilter").value.toLowerCase();
 
-            let filtered = allExams;
+            document.querySelectorAll(".exam-row").forEach(row => {
 
-            if (chapter !== "") {
-                filtered = filtered.filter(e => e.chapterId == chapter);
-            }
+                const matchChapter =
+                    !chapter || row.dataset.chapter == chapter;
 
-            if (statusFilter !== "") {
-                filtered = filtered.filter(e =>
-                    getExamStatus(e.openAt, e.closeAt) === statusFilter
+                const matchStatus =
+                    !status || row.dataset.status === status;
+
+                const matchKeyword =
+                    !keyword || row.dataset.keyword.includes(keyword);
+
+                row.classList.toggle(
+                    "d-none",
+                    !(matchChapter && matchStatus && matchKeyword)
                 );
-            }
-
-            if (keyword) {
-                filtered = filtered.filter(e =>
-                    e.title.toLowerCase().includes(keyword)
-                );
-            }
-
-            renderExams(filtered);
+            });
         }
-
         function formatDateTime(dateString) {
             if (!dateString) return "-";
             return new Date(dateString).toLocaleString("vi-VN");
@@ -242,7 +230,7 @@
             return '<span class="badge bg-secondary">Không xác định</span>';
         }
 
-        function renderExams(exams) {
+                function renderExams(exams) {
 
             const tbody = document.getElementById("examTableBody");
             tbody.innerHTML = "";
@@ -291,19 +279,38 @@
                     `;
                 }
 
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${exam.title}</td>
-                        <td>${formatDateTime(exam.openAt)} - ${formatDateTime(exam.closeAt)}</td>
-                        <td>${exam.durationMinutes ?? '-'} phút</td>
-                        <td>${renderStatusBadge(status)}</td>
-                        <td>${actions}</td>
-                    </tr>
+                const row = document.createElement("tr");
+
+                row.classList.add("exam-row");
+                row.dataset.chapter = exam.chapterId || "";
+                row.dataset.status = status;
+                row.dataset.keyword = exam.title.toLowerCase();
+
+                row.innerHTML = `
+                    <td>${exam.title}</td>
+                    <td>${formatDateTime(exam.openAt)} - ${formatDateTime(exam.closeAt)}</td>
+                    <td>${exam.durationMinutes ?? '-'} phút</td>
+                    <td>${renderStatusBadge(status)}</td>
+                    <td>${actions}</td>
                 `;
+
+                tbody.appendChild(row);
             });
         }
 
         document.addEventListener("DOMContentLoaded", loadExams);
+                function initFilters() {
+
+            const chapter = document.getElementById("chapterFilter");
+            const status = document.getElementById("statusFilter");
+            const search = document.getElementById("searchFilter");
+
+            [chapter, status].forEach(el =>
+                el.addEventListener("change", applyFilter)
+            );
+
+            search.addEventListener("input", applyFilter);
+        }
     </script>
 
 </body>
