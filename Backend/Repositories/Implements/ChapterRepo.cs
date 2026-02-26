@@ -1,4 +1,4 @@
-﻿using Backend.DTOs;
+﻿using Backend.DTOs.Course;
 using Backend.Models;
 using Backend.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
