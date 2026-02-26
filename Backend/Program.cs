@@ -7,8 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Backend.Services.Implements;
-using Backend.Services.Interfaces;
 
 namespace Backend
 {
@@ -28,32 +26,26 @@ namespace Backend
             );
 
             // Register Repositories
-            builder.Services.AddScoped<Backend.Repositories.Interfaces.IAuthRepository, Backend.Repositories.Implements.AuthRepository>();
-            builder.Services.AddScoped<Backend.Repositories.Interfaces.IExamBlueprintRepository, Backend.Repositories.Implements.ExamBlueprintRepository>();
-            builder.Services.AddScoped<Backend.Repositories.Interfaces.IStudentExamRepository, Backend.Repositories.Implements.StudentExamRepository>();
-
-            // Register Services
-            builder.Services.AddScoped<Backend.Services.Interfaces.IAuthService, Backend.Services.Implements.AuthService>();
-            builder.Services.AddScoped<Backend.Services.Interfaces.IEmailService, Backend.Services.Implements.EmailService>();
-            builder.Services.AddScoped<Backend.Services.Interfaces.IExamBlueprintService, Backend.Services.Implements.ExamBlueprintService>();
-            builder.Services.AddScoped<Backend.Services.Interfaces.IStudentExamService, Backend.Services.Implements.StudentExamService>(); 
-            builder.Services.AddScoped<Backend.Services.Interfaces.IAssignExamService, Backend.Services.Implements.AssignExamService>();
-            // =========================
-            // REPOSITORIES
-            // =========================
+            builder.Services.AddScoped<IAuthRepository, AuthRepository>();
+            builder.Services.AddScoped<IExamBlueprintRepository, ExamBlueprintRepository>();
+            builder.Services.AddScoped<IStudentExamRepository, StudentExamRepository>();
             builder.Services.AddScoped<ICourseRepo, CourseRepo>();
             builder.Services.AddScoped<IChapterRepo, ChapterRepo>();
             builder.Services.AddScoped<IAuthRepository, AuthRepository>();
             builder.Services.AddScoped<IStudentExamRepository, StudentExamRepository>();
 
-            // =========================
-            // SERVICES
-            // =========================
+            // Register Services
+            builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<IEmailService, EmailService>();
+            builder.Services.AddScoped<IExamBlueprintService, ExamBlueprintService>();
+            builder.Services.AddScoped<IStudentExamService, StudentExamService>(); 
+            builder.Services.AddScoped<IAssignExamService, AssignExamService>();
             builder.Services.AddScoped<ICourseService, CourseService>();
             builder.Services.AddScoped<IChapterService, ChapterService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IEmailService, EmailService>();
             builder.Services.AddScoped<IStudentExamService, StudentExamService>();
+
 
             // =========================
             // JWT AUTHENTICATION
