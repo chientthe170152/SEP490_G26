@@ -78,10 +78,13 @@ namespace Backend.Controllers
                 responseText = a.ResponseText ?? string.Empty
             }).Cast<object>().ToList() ?? new List<object>();
 
+            var paperDto = await _studentExamService.GetExamPaperAsync(studentId, request.ExamId, submission.PaperId);
+
             return Ok(new 
             { 
                 submissionId = submission.SubmissionId, 
                 paperId = submission.PaperId, 
+                paper = paperDto,
                 status = "Started",
                 remainingSeconds = remainingSeconds,
                 savedAnswers = savedAnswers
@@ -116,6 +119,26 @@ namespace Backend.Controllers
 
             await _studentExamService.SubmitExamAsync(studentId, submissionId);
             return Ok(new { message = "Exam submitted successfully." });
+        }
+
+        [HttpGet("{examId}/preview")]
+        public async Task<IActionResult> GetExamPreview(int examId)
+        {
+            var studentId = GetStudentId();
+            if (studentId == 0) return Unauthorized("Invalid token.");
+
+            try
+            {
+                var preview = await _studentExamService.GetExamPreviewAsync(studentId, examId);
+                if (preview == null)
+                    return NotFound("Exam not found.");
+
+                return Ok(preview);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
         }
     }
 }

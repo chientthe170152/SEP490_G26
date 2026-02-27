@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using Backend.DTOs;
 using Backend.DTOs.Auth;
 using Backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Backend.Constants;
 
@@ -15,6 +17,17 @@ namespace Backend.Controllers
         public AuthController(IAuthService authService)
         {
             _authService = authService;
+        }
+
+        [HttpGet("me")]
+        [Authorize]
+        public IActionResult GetMe()
+        {
+            var userIdString = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId) || userId <= 0)
+                return Unauthorized(new { message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+
+            return Ok(new { userId, email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value, role = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value });
         }
 
         [HttpPost("login")]

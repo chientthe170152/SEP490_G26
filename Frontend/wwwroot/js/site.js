@@ -1,16 +1,19 @@
 ﻿// Global Configuration
 const API_BASE_URL = "https://localhost:7167";
 
-// Setup global Ajax defaults
-$.ajaxSetup({
-    beforeSend: function (xhr) {
-        // Automatically attach JWT Token to every request if it exists
-        const token = localStorage.getItem('jwtToken');
-        if (token) {
-            xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-        }
+// Setup global Ajax defaults (chỉ chạy khi có jQuery; trang Assign Exam không load jQuery nên bỏ qua)
+try {
+    if (typeof window.$ !== 'undefined' && window.$.ajaxSetup) {
+        window.$.ajaxSetup({
+            beforeSend: function (xhr) {
+                const token = localStorage.getItem('jwtToken');
+                if (token) {
+                    xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+                }
+            }
+        });
     }
-});
+} catch (_) { /* bỏ qua nếu không có jQuery */ }
 
 // Helper functions for auth
 function setToken(token) {
@@ -38,6 +41,24 @@ function parseJwt(token) {
     } catch (e) {
         return null; // Invalid token
     }
+}
+
+// Get the user's ID from the stored JWT token (for teacherId, etc.)
+function getUserIdFromToken() {
+    const token = getToken();
+    if (!token) return null;
+
+    const decoded = parseJwt(token);
+    if (!decoded) return null;
+
+    const userId = decoded['sub']
+        || decoded['nameid']
+        || decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier']
+        || decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/nameidentifier'];
+    if (!userId) return null;
+
+    const num = parseInt(userId, 10);
+    return Number.isInteger(num) && num > 0 ? num : null;
 }
 
 // Get the user's role from the stored JWT token

@@ -29,14 +29,14 @@ namespace Backend.Repositories.Implements
             return submission;
         }
 
-        public async Task<Submission?> GetActiveSubmissionAsync(int studentId, int paperId)
+        public async Task<Submission?> GetAnyActiveSubmissionAsync(int studentId)
         {
             // Status 1 = Active / In Progress
             return await _context.Submissions
                 .Include(s => s.StudentAnswers)
                 .Include(s => s.Paper)
                     .ThenInclude(p => p.Exam)
-                .FirstOrDefaultAsync(s => s.StudentId == studentId && s.PaperId == paperId && s.Status == 1);
+                .FirstOrDefaultAsync(s => s.StudentId == studentId && s.Status == 1);
         }
 
         public async Task<StudentAnswer?> GetStudentAnswerAsync(int submissionId, int questionIndex)
@@ -151,5 +151,66 @@ namespace Backend.Repositories.Implements
             }
             await _context.SaveChangesAsync();
         }
+
+        public async Task<ExamPreviewData?> GetExamPreviewAsync(int examId)
+        {
+            var exam = await _context.Exams
+                .Include(e => e.Subject)
+                .Include(e => e.Teacher)
+                .FirstOrDefaultAsync(e => e.ExamId == examId);
+
+            if (exam == null) return null;
+
+            var result = new ExamPreviewData
+            {
+                ExamId = exam.ExamId,
+                Title = exam.Title,
+                Description = exam.Description,
+                Duration = exam.Duration,
+                Status = exam.Status,
+                OpenAt = exam.OpenAt,
+                CloseAt = exam.CloseAt,
+                UpdatedAtUtc = exam.UpdatedAtUtc,
+                SubjectCode = exam.Subject?.Code ?? string.Empty,
+                SubjectName = exam.Subject?.Name ?? string.Empty,
+                TeacherName = exam.Teacher?.FullName ?? string.Empty,
+            };
+
+            // Dùng raw SQL để lấy ExamBlueprintId vì chưa được map trong EF model
+            var examBlueprintId = await _context.Database
+                .SqlQuery<int?>($"SELECT ExamBlueprintId AS [Value] FROM Exams WHERE ExamId = {examId}")
+                .FirstOrDefaultAsync();
+
+            if (examBlueprintId.HasValue)
+            {
+                var blueprint = await _context.ExamBlueprints
+                    .FirstOrDefaultAsync(bp => bp.ExamBlueprintId == examBlueprintId.Value);
+
+                result.TotalQuestions = blueprint?.TotalQuestions ?? 0;
+
+                var blueprintChapters = await _context.ExamBlueprintChapters
+                    .Include(ebc => ebc.Chapter)
+                    .Where(ebc => ebc.ExamBlueprintId == examBlueprintId.Value)
+                    .ToListAsync();
+
+                result.BlueprintChapters = blueprintChapters.Select(ebc => new BlueprintChapterRaw
+                {
+                    ChapterName = ebc.Chapter?.Name ?? string.Empty,
+                    Difficulty = ebc.Difficulty,
+                    TotalOfQuestions = ebc.TotalOfQuestions
+                }).ToList();
+            }
+            else
+            {
+                var anyPaper = await _context.Papers
+                    .Include(p => p.PaperQuestions)
+                    .FirstOrDefaultAsync(p => p.ExamId == examId);
+
+                result.TotalQuestions = anyPaper?.PaperQuestions?.Count ?? 0;
+            }
+
+            return result;
+        }
+
     }
 }
