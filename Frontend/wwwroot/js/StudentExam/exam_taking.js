@@ -2,26 +2,31 @@ let examSignalRConnection = null;
 
 $(document).ready(function () {
     const examId = $('#ExamId').val();
-    const paperId = $('#PaperId').val();
 
-    if (!examId || !paperId) {
+    if (!examId) {
         Swal.fire('Lỗi', 'Thiếu định danh đề thi!', 'error');
         return;
     }
 
     // 1. Khởi tạo bài làm (Start Submission)
-    // Hệ thống sẽ tự bốc thăm PaperId nếu không gửi lên
-    apiClient.post('/api/student/exams/submission/start', { ExamId: parseInt(examId), PaperId: parseInt(paperId) })
+    // Hệ thống sẽ tự bốc thăm hoặc ưu tiên bài đanh làm dở theo cấu hình backend
+    apiClient.post('/api/student/exams/submission/start', { ExamId: parseInt(examId) })
         .then(function (res) {
             $('#SubmissionId').val(res.submissionId);
-            const assignedPaperId = res.paperId || paperId;
-            loadExamPaper(examId, assignedPaperId, res.remainingSeconds, res.savedAnswers);
+
+            // Render UI directy using the paper object returned from the start endpoint
+            if (res.paper) {
+                renderExamUI(res.paper, res.remainingSeconds, res.savedAnswers);
+            } else {
+                Swal.fire('Không thể tìm thấy', 'Không thể tải hệ thống đề thi.', 'error');
+                return;
+            }
 
             // 2. Khởi tạo kết nối SignalR để giám sát
             initSignalRConnection(examId);
 
             // 3. Khởi tạo Anti-Cheat
-            initAntiCheat();
+            // initAntiCheat(); // Tạm tắt để debug giao diện
         })
         .catch(function (error) {
             console.error("Start submission error:", error);
@@ -29,37 +34,50 @@ $(document).ready(function () {
         });
 });
 
-function loadExamPaper(examId, paperId, remainingSeconds, savedAnswers) {
-    apiClient.get(`/api/student/exams/${examId}/paper/${paperId}`)
-        .then(function (paper) {
-            renderExamUI(paper, remainingSeconds, savedAnswers);
-        })
-        .catch(function (error) {
-            console.error("Load paper error:", error);
-            Swal.fire('Không thể tìm thấy', 'Không thể tải hệ thống đề thi.', 'error');
-        });
-}
 
-// Simple Seeded PRNG
-function mulberry32(a) {
-    return function () {
-        var t = a += 0x6D2B79F5;
-        t = Math.imul(t ^ t >>> 15, t | 1);
-        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-        return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    }
-}
 
-// Helper function to shuffle an array consistently based on a seed
-function shuffleArray(array, seed) {
-    const randomFunc = mulberry32(seed);
-    let currentIndex = array.length, randomIndex;
-    while (currentIndex !== 0) {
-        randomIndex = Math.floor(randomFunc() * currentIndex);
-        currentIndex--;
-        [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+// Hàm Helper: Khắc phục lỗi MathLive không tự xuống dòng và dính ký tự bằng cách tách riêng Text (html thường) và Math (MathLive)
+function renderMixedContent(str, isFillInTheBlank = false, questionId = null) {
+    if (!str) return '';
+    str = str.replace(/<br\s*\/?>/gi, '<br>');
+    const parts = str.split('$');
+    let html = '<div style="line-height: 1.8; word-wrap: break-word; white-space: normal;">';
+
+    // Regex nhận diện chỗ trống
+    const blankRegex = /\[\s*fill_[0-9]+\s*\]/gi;
+    const generalBlankRegex = /(\.{3,}|_{3,}|\\[cC]dots|\\[lL]dots|\\[dD]dots|\\[vV]dots)/gi;
+
+    let pCount = 0;
+
+    for (let i = 0; i < parts.length; i++) {
+        let segment = parts[i];
+        if (i % 2 === 0) {
+            // Nằm ngoài thẻ $ (là chữ Tiếng Việt bình thường) -> Giữ nguyên span html để text có thể tự do mọc dòng và cách chữ
+            if (isFillInTheBlank) {
+                segment = segment.replace(blankRegex, function (match) {
+                    return `<math-field class="math-input answer-field d-inline-block align-middle mx-1" style="min-width: 50px; padding: 0.2rem; --placeholder-background-color: #ffffff; --placeholder-color: #333333; background: transparent; border: none;" data-qid="${questionId}" data-is-fill="true" oninput="autoSaveFillInTheBlank(${questionId}, this)">\\placeholder[p${pCount++}]{}</math-field>`;
+                });
+                segment = segment.replace(generalBlankRegex, function (match) {
+                    return `<math-field class="math-input answer-field d-inline-block align-middle mx-1" style="min-width: 50px; padding: 0.2rem; --placeholder-background-color: #ffffff; --placeholder-color: #333333; background: transparent; border: none;" data-qid="${questionId}" data-is-fill="true" oninput="autoSaveFillInTheBlank(${questionId}, this)">\\placeholder[p${pCount++}]{}</math-field>`;
+                });
+            }
+            html += `<span>${segment}</span>`;
+        } else {
+            // Nằm block toán học -> Tạo Box Mathlive
+            if (isFillInTheBlank && (segment.match(blankRegex) || segment.match(generalBlankRegex))) {
+                // Những công thức toán học có biểu thức trống [fill] hoặc ... phải biến mình thành ô tương tác để học sinh sửa
+                let mathContent = segment;
+                mathContent = mathContent.replace(blankRegex, function () { return `\\placeholder[p${pCount++}]{}`; });
+                mathContent = mathContent.replace(generalBlankRegex, function () { return `\\placeholder[p${pCount++}]{}`; });
+                html += `<math-field class="math-input answer-field d-inline-block align-middle mx-1" style="min-width: 60px; padding: 0.2rem; --placeholder-background-color: #ffffff; --placeholder-color: #333333; background: transparent; border: none; border-bottom: 2px dashed #007bff; border-radius: 0;" data-qid="${questionId}" data-is-fill="true" oninput="autoSaveFillInTheBlank(${questionId}, this)">${mathContent}</math-field>`;
+            } else {
+                // Biểu thức toán học thuần túy (không chứa placeholder điền khuyết)
+                html += `<math-field read-only class="math-display d-inline-block align-middle mx-0 px-1" style="border:none !important; background:transparent !important; min-height:auto;">${segment}</math-field>`;
+            }
+        }
     }
-    return array;
+    html += '</div>';
+    return html;
 }
 
 function renderExamUI(paper, remainingSeconds, savedAnswers) {
@@ -78,11 +96,7 @@ function renderExamUI(paper, remainingSeconds, savedAnswers) {
     container.empty();
     navMap.empty();
 
-    // 1. Lấy ID bài làm hiện tại làm Hạt giống (Seed) để trộn đề
-    // Cách này giúp 10 sinh viên có 10 thứ tự khác nhau, nhưng 1 sinh viên reload lại trang vẫn giữ nguyên thứ tự cũ
-    const currentSubmissionId = parseInt($('#SubmissionId').val()) || paper.paperId;
     let shuffledQuestions = [...paper.questions];
-    shuffleArray(shuffledQuestions, currentSubmissionId);
 
     shuffledQuestions.forEach((q, index) => {
         const qIndex = index + 1;
@@ -93,45 +107,51 @@ function renderExamUI(paper, remainingSeconds, savedAnswers) {
 
         let answerAreaHtml = '';
         let displayContent = q.contentLatex || '';
-        let optA = 'A', optB = 'B', optC = 'C', optD = 'D';
 
-        // Parse any JSON attached to the question
-        let multipleChoiceData = null;
-        let stepByStepData = null;
+        let shortAnswerData = null;
 
-        if (q.questionType === 'MultipleChoice') {
+        // The Backend already parsed and shuffled these into q.options and q.steps
+        let isFillInTheBlank = false;
+
+        // Chuẩn hóa format nội dung hiển thị sang dạng MathLive giữ khoảng trắng chữ
+        let originalContent = displayContent;
+        // Tạm thời biến finalDisplayContent thành originalContent, hàm renderMixedContent sẽ sinh ra html xịn hơn sau.
+
+        if (q.questionType === 'FillInBlank') {
             try {
                 if (q.answer) {
-                    multipleChoiceData = JSON.parse(q.answer); // ["...", "..."] or {"opts": [...], "correct": "..."} 
+                    let parsed = JSON.parse(q.answer);
+                    // parsed là mảng chứa các đáp án cho ô trống
+                    if (Array.isArray(parsed) && parsed.length >= 1) {
+                        shortAnswerData = parsed;
+                    }
                 }
-            } catch (e) {
-                console.error("Lỗi parse MultipleChoice JSON:", e);
+            } catch (e) { }
+
+            isFillInTheBlank = true; // Luôn coi là điền khuyết
+            const blankRegex = /(\.{3,}|_{3,}|\\[cC]dots|\\[lL]dots|\\[dD]dots|\\[vV]dots|\[\s*fill_[0-9]+\s*\])/gi;
+
+            if (!originalContent.match(blankRegex)) {
+                if (shortAnswerData && shortAnswerData.length >= 1) {
+                    // Nếu DB báo mảng n phần tử mà RegExp không tìm ra chỗ trống rõ ràng
+                    for (let i = 0; i < shortAnswerData.length; i++) {
+                        originalContent += ` [fill_${i}]`;
+                    }
+                } else {
+                    originalContent += ` [fill_0]`;
+                }
             }
         }
-        else if (q.questionType === 'StepByStep') {
-            try {
-                if (q.answer) {
-                    stepByStepData = JSON.parse(q.answer); // [{"s": 1, "a": "...", "h": "..."}]
-                }
-            } catch (e) {
-                console.error("Lỗi parse StepByStep JSON:", e);
-            }
-        }
+
+        // Tạo ra content bằng html thay vì 1 khung mathlive khổng lồ
+        let finalDisplayContent = renderMixedContent(originalContent, isFillInTheBlank, q.questionId);
 
         // Handle Step-by-Step format
-        if (stepByStepData && Array.isArray(stepByStepData)) {
-            // 2. Không tráo ngẫu nhiên các bước Step-by-Step
-            const shuffledSteps = [...stepByStepData];
-            // shuffleArray(shuffledSteps); // Đã tắt để giữ đúng thứ tự các bước
-
+        if (q.steps && Array.isArray(q.steps) && q.steps.length > 0) {
             let stepHtml = '';
-            shuffledSteps.forEach((stepObj, idx) => {
-                let s = stepObj.s || stepObj.step || stepObj.Step;
-                let hint = stepObj.h || stepObj.hint || stepObj.Hint;
-                let correctAnswer = stepObj.a || stepObj.answer || stepObj.Answer || '';
-
-                // Escape quotes for inserting into HTML attribute
-                let escapedAnswer = correctAnswer.toString().replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            q.steps.forEach((stepObj, idx) => {
+                let s = stepObj.step;
+                let hint = stepObj.hint;
 
                 stepHtml += `
                     <div class="step-card mb-3 p-3 border rounded bg-light" id="step-${q.questionId}-${s}" style="box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);">
@@ -150,67 +170,42 @@ function renderExamUI(paper, remainingSeconds, savedAnswers) {
                 stepHtml += `</div>`;
             });
             answerAreaHtml = stepHtml;
+            answerAreaHtml = stepHtml;
+        }
+        // Handle Fill-in-the-blank (Điền khuyết) format inline
+        else if (isFillInTheBlank) {
+            // Bởi vì câu hỏi FillInBlank đã tích hợp sẵn khung nhập (math field) ngay trong phần Content sinh ra bởi renderMixedContent
+            answerAreaHtml = `
+                <div class="mb-3">
+                    <label class="form-label text-primary fw-bold" style="font-size: 0.9rem;">Hoàn thiện biểu thức / Điền trực tiếp vào ô trống:</label>
+                    <div class="border rounded p-3 bg-white" style="font-size: 1.15rem;">
+                        ${finalDisplayContent}
+                    </div>
+                </div>
+                <small class="text-muted">Nhấn phím Tab hoặc click chuột để chuyển qua lại giữa các ô trống.</small>
+            `;
+            // Ẩn câu hỏi dư bằng cách cho thành rỗng, vì ta đã in ra trong answerAreaHtml
+            finalDisplayContent = '';
         }
         // Handle MultipleChoice format
         else if (q.questionType === 'MultipleChoice') {
-
-            let mcOpts = [];
-
-            if (multipleChoiceData) {
-                let optionsArray = null;
-                if (Array.isArray(multipleChoiceData)) {
-                    optionsArray = multipleChoiceData;
-                } else if (multipleChoiceData.opts && Array.isArray(multipleChoiceData.opts)) {
-                    optionsArray = multipleChoiceData.opts;
-                }
-
-                if (optionsArray && optionsArray.length >= 4) {
-                    mcOpts = [
-                        { id: 'A', text: optionsArray[0] || '' },
-                        { id: 'B', text: optionsArray[1] || '' },
-                        { id: 'C', text: optionsArray[2] || '' },
-                        { id: 'D', text: optionsArray[3] || '' }
-                    ];
-                }
-            }
-
-            if (mcOpts.length === 0) {
-                // Fallback Regex
-                const rex = /(.*?)(?:A\.|A\))(.*?)(?:B\.|B\))(.*?)(?:C\.|C\))(.*?)(?:D\.|D\))(.*)/is;
-                const match = displayContent.match(rex);
-
-                if (match && match.length === 6) {
-                    displayContent = match[1].trim();
-                    mcOpts = [
-                        { id: 'A', text: match[2].trim() },
-                        { id: 'B', text: match[3].trim() },
-                        { id: 'C', text: match[4].trim() },
-                        { id: 'D', text: match[5].trim() }
-                    ];
-                }
-            }
-
-            // 3. Shuffle Multiple Choice Options if array is populated
-            if (mcOpts.length > 0) {
-                shuffleArray(mcOpts);
-
-                // Build answerAreaHtml using shuffled options
-                const letters = ['A', 'B', 'C', 'D'];
-                mcOpts.forEach((opt, idx) => {
-                    const displayLetter = letters[idx];
-                    // IMPORTANT: The value attribute is still opt.id (A,B,C,D) to map back to the real correct answer in DB.
-                    // The student sees A, B, C, D visually mapped to the new shuffled text.
+            if (q.options && q.options.length > 0) {
+                // IMPORTANT: q.options is ALREADY parsed, cleaned of answers, and cleanly shuffled by the C# Backend
+                q.options.forEach((opt, idx) => {
+                    const displayLetter = ['A', 'B', 'C', 'D', 'E', 'F'][idx] || '?';
+                    // opt.id is the real letter mapping safely managed by the server
                     answerAreaHtml += `
                         <div class="form-check mb-2 d-flex align-items-center">
                             <input class="form-check-input answer-field me-2" type="radio" name="q-${q.questionId}" id="q${q.questionId}${displayLetter}" value="${opt.id}" data-qid="${q.questionId}" onchange="autoSaveAnswer(${q.questionId}, this.value)">
-                            <label class="form-check-label w-100" for="q${q.questionId}${displayLetter}">
-                                <math-field class="math-input math-display" read-only style="border:none !important; background:transparent !important; min-height:auto;">${displayLetter}. ${opt.text}</math-field>
+                            <label class="form-check-label w-100 d-flex align-items-center" for="q${q.questionId}${displayLetter}" style="font-size: 1.1rem; line-height: 1.5; cursor: pointer;">
+                                <span class="fw-bold me-2">${displayLetter}.</span>
+                                <div class="flex-grow-1">${renderMixedContent(opt.text)}</div>
                             </label>
                         </div>
                     `;
                 });
             } else {
-                answerAreaHtml = `Lỗi hiển thị đáp án: không tìm thấy JSON hoặc Text không đúng chuẩn.`;
+                answerAreaHtml = `Lỗi hiển thị đáp án: không tìm thấy nội dung Options từ máy chủ.`;
             }
         } else {
             answerAreaHtml = `
@@ -222,20 +217,28 @@ function renderExamUI(paper, remainingSeconds, savedAnswers) {
         if (q.questionType === 'MultipleChoice') typeLabel = '(Trắc nghiệm)';
         else if (q.questionType === 'StepByStep') typeLabel = '(Từng bước)';
         else if (q.questionType === 'ShortAnswer' || q.questionType === 'Trả lời ngắn') typeLabel = '(Trả lời ngắn)';
+        else if (q.questionType === 'FillInBlank') typeLabel = '(Điền khuyết - Điền trực tiếp)';
         else if (q.questionType) typeLabel = `(${q.questionType})`;
 
         // Build Question HTML (Pagination style)
         const displayStyle = qIndex === 1 ? 'block' : 'none';
+
+        // Nếu là Điền Khuyết Inline, ta bỏ phần view read-only ở trên đi vì nó đã tích hợp thẳng vào ô trả lời
+        const latexViewerHtml = q.questionType !== 'FillInBlank' && displayContent ? `
+            <div class="mb-2" style="font-size: 1.15rem;">
+                ${renderMixedContent(displayContent)}
+            </div>
+        ` : '';
+
         const html = `
           <section class="question-block" id="question-index-${qIndex}" data-question-id="${q.questionId}" data-question-index="${qIndex}" style="display: ${displayStyle}">
-            <h2 class="question-title">Câu ${qIndex} ${typeLabel}</h2>
-            <div class="mb-2">
-                <!-- Content Latex is normally displayed by MathLive or MathJax -->
-                <math-field class="math-input math-display mb-2" read-only>${displayContent}</math-field>
-            </div>
-            <label class="form-label">Phần trả lời của bạn:</label>
-            <div>
-                ${answerAreaHtml}
+            <h2 class="question-title fs-5 fw-bold text-dark mb-3">Câu ${qIndex} <span class="text-primary">${typeLabel}</span></h2>
+            ${latexViewerHtml}
+            <div class="mt-3">
+                <label class="form-label text-muted">Phần trả lời của bạn:</label>
+                <div class="bg-white p-3 border rounded shadow-sm">
+                    ${answerAreaHtml}
+                </div>
             </div>
           </section>
         `;
@@ -277,23 +280,57 @@ function renderExamUI(paper, remainingSeconds, savedAnswers) {
                             isAnswered = true;
                         }
                     });
-                } else if (inputs.length === 1 && inputs[0].tagName.toLowerCase() === 'math-field') {
-                    // For single short-answer
-                    inputs[0].value = ans.responseText;
-                    isAnswered = true;
-                } else if (inputs.length > 1 && inputs[0].tagName.toLowerCase() === 'math-field') {
-                    // For StepByStep
-                    try {
-                        let stepAnswers = JSON.parse(ans.responseText);
-                        inputs.each(function () {
-                            let sIdx = $(this).data('step');
-                            if (sIdx && stepAnswers[`step${sIdx}`]) {
-                                this.value = stepAnswers[`step${sIdx}`];
-                                isAnswered = true;
+                } else if (inputs.length > 0 && inputs[0].tagName.toLowerCase() === 'math-field') {
+                    // Check if it is Inline Fill-in-the-blank
+                    if ($(inputs[0]).data('is-fill') === true) {
+                        try {
+                            let savedAnsArray = JSON.parse(ans.responseText);
+                            if (Array.isArray(savedAnsArray)) {
+                                let ansIndex = 0;
+                                inputs.each(function () {
+                                    let mf = this;
+                                    let promptIds = mf.getPrompts ? mf.getPrompts() : [];
+                                    if (promptIds && promptIds.length > 0) {
+                                        promptIds.forEach(id => {
+                                            if (ansIndex < savedAnsArray.length && savedAnsArray[ansIndex] !== "") {
+                                                mf.setPromptValue(id, savedAnsArray[ansIndex], { focus: false });
+                                                isAnswered = true;
+                                            }
+                                            ansIndex++;
+                                        });
+                                    } else {
+                                        // Backup case for no prompt IDs
+                                        if (ansIndex < savedAnsArray.length && savedAnsArray[ansIndex] !== "") {
+                                            mf.value = savedAnsArray[ansIndex];
+                                            isAnswered = true;
+                                        }
+                                        ansIndex++;
+                                    }
+                                });
                             }
-                        });
-                    } catch (e) {
-                        console.error("Error parsing saved StepByStep answers:", e);
+                        } catch (e) {
+                            console.error("Error parsing saved Inline Fill-in-the-blank:", e);
+                        }
+                    } else if ($(inputs[0]).data('step') !== undefined) {
+                        // For StepByStep
+                        try {
+                            let stepAnswers = JSON.parse(ans.responseText);
+                            inputs.each(function () {
+                                let sIdx = $(this).data('step');
+                                if (sIdx && stepAnswers[`step${sIdx}`]) {
+                                    this.value = stepAnswers[`step${sIdx}`];
+                                    isAnswered = true;
+                                }
+                            });
+                        } catch (e) {
+                            console.error("Error parsing saved StepByStep answers:", e);
+                        }
+                    } else if (inputs.length === 1) {
+                        // Single short-answer
+                        inputs[0].value = ans.responseText;
+                        if (ans.responseText && ans.responseText.trim() !== '') {
+                            isAnswered = true;
+                        }
                     }
                 }
 
@@ -476,6 +513,50 @@ function autoSaveAnswer(questionId, value, stepIndex = null) {
     }, 3000); // 3 giây
 }
 
+// Hàm AutoSave dành riêng cho dạng bài Inline Fill-in-the-blank 
+function autoSaveFillInTheBlank(questionId, mathFieldElement) {
+    const qBlock = $(`#question-index-${currentQuestionIndex}`);
+    const qIndex = qBlock.data('question-index');
+
+    let stepAnswers = [];
+
+    // Tìm tất cả các math-field chứa placeholder của riêng câu hỏi này 
+    // Do hệ thống render tách matrix block và text thành nhiều math-field nên gộp đáp án.
+    const mathFields = qBlock.find(`math-field.answer-field[data-qid="${questionId}"]`);
+
+    mathFields.each(function () {
+        const mf = this;
+        let promptIds = mf.getPrompts ? mf.getPrompts() : [];
+        if (promptIds && promptIds.length > 0) {
+            promptIds.forEach(id => {
+                let val = mf.getPromptValue(id);
+                stepAnswers.push(val);
+            });
+        } else {
+            // Chữa cháy trường hợp thẻ MathLive không có promptID hoặc bị xóa mất bởi sinh viên
+            let val = mf.value;
+            if (val === '\\placeholder{}' || val === '\\placeholder') val = '';
+            stepAnswers.push(val);
+        }
+    });
+
+    let responseTextToSave = JSON.stringify(stepAnswers);
+
+    // Queue for batch save
+    pendingSaves[qIndex] = {
+        questionId: questionId,
+        responseText: responseTextToSave
+    };
+
+    $(`#nav-btn-${questionId}`).removeClass('btn-outline-primary btn-primary btn-danger').addClass('btn-warning');
+    $('#autoSaveStatus').html('⏳ Đã ghi nhận thay đổi vào ô trống (Đang đợi...).').removeClass('text-success text-danger text-muted').addClass('text-warning');
+
+    clearTimeout(autoSaveDebounceTimer);
+    autoSaveDebounceTimer = setTimeout(() => {
+        savePendingBatch().catch(() => { });
+    }, 3000);
+}
+
 function highlightUnanswered() {
     let hasUnanswered = false;
 
@@ -494,9 +575,22 @@ function highlightUnanswered() {
             }
         } else {
             // Check if math-field has value
-            const mathVal = inputs.prop('value');
-            if (mathVal && mathVal.trim() !== '') {
-                isAnswered = true;
+            if (inputs.length === 1 && $(inputs[0]).data('is-fill') === true) {
+                let mf = inputs[0];
+                let pts = mf.getPrompts();
+                // Chỉ cần ít nhất 1 ô trống có dữ liệu là coi như đang làm
+                for (let i = 0; i < pts.length; i++) {
+                    let val = mf.getPromptValue(pts[i]);
+                    if (val && val.trim() !== '') {
+                        isAnswered = true;
+                        break;
+                    }
+                }
+            } else {
+                const mathVal = inputs.prop('value');
+                if (mathVal && mathVal.trim() !== '') {
+                    isAnswered = true;
+                }
             }
         }
 
@@ -670,12 +764,56 @@ function initAntiCheat() {
 
         if (cheatWarnings >= MAX_CHEAT_WARNINGS) {
             isForcingSubmit = true; // Block các sự kiện blur tiếp theo
-            // Block giao diện ngay lập tức mà không dùng alert (vì alert gây nghẽn luồng)
+
+            // Xóa đồng hồ đếm ngược và giấu bài thi
+            clearInterval(countdownTimerInterval);
             $('#examWorkspace').hide();
             $('#questionNavMap').parent().hide();
-            $('body').html('<h2 style="text-align:center; margin-top: 20%; color: red;">Cảnh báo cấp độ cao nhất! Lỗi vi phạm chuyển màn hình. Hệ thống đang thu bài tự động...</h2>');
 
-            forceSubmitExam();
+            // Hiển thị thông báo KHÔNG THỂ TẮT cho sinh viên
+            Swal.fire({
+                title: 'CẢNH BÁO TỐI ĐA',
+                html: '<span class="text-danger fw-bold">Thao tác gian lận vượt quá 3 lần!!</span><br/><br/>Hệ thống đang niêm phong dữ liệu và thu bài của bạn...',
+                icon: 'error',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // Ghi nhận lên hệ thống ngay lập tức
+            const submissionId = $('#SubmissionId').val();
+            // Cố gắng đẩy các đáp án còn lưu đọng lại lên server lần cuối
+            flushPendingSaves().then(() => {
+                // Đóng SignalR ngay lập tức
+                if (examSignalRConnection) examSignalRConnection.stop();
+
+                // Gửi lệnh nộp bài cuối cùng
+                apiClient.post(`/api/student/exams/submission/${submissionId}/submit`)
+                    .then(() => {
+                        // Nộp thành công
+                        Swal.fire({
+                            title: 'BÀI THI ĐÃ BỊ THU',
+                            text: 'Bài thi của bạn bị thu vì quá nhiều lần chuyển tab/cửa sổ. Điểm sẽ được ghi nhận dựa trên các câu đã lưu.',
+                            icon: 'info',
+                            allowOutsideClick: false,
+                            confirmButtonText: 'Quay về trang chủ'
+                        }).then(() => {
+                            window.location.href = '/Home/Index';
+                        });
+                    })
+                    .catch(err => {
+                        // Kể cả lỗi API cũng văng ra màn hình ngoài vì giao diện trong nay đã bị hủy
+                        console.error('Submit due to cheat error:', err);
+                        window.location.href = '/Home/Index';
+                    });
+            }).catch(err => {
+                // Nếu quá trình flush bị lỗi do rớt mạng, vẫn đá về trang chủ để tránh lách luật
+                window.location.href = '/Home/Index';
+            });
+
         } else {
             window.isAlerting = true;
             Swal.fire({

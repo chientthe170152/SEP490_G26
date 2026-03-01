@@ -13,8 +13,13 @@ namespace Frontend
 
             builder.Services.AddHttpClient("BackendAPI", client =>
             {
-                // In production, this base address will be from configuration
-                client.BaseAddress = new Uri(builder.Configuration["BackendApiUrl"] ?? "https://localhost:7167/");
+                // Support both legacy and nested config keys.
+                var backendApiUrl =
+                    builder.Configuration["BackendApiUrl"]
+                    ?? builder.Configuration["Backend:BaseUrl"]
+                    ?? "https://localhost:7167/";
+
+                client.BaseAddress = new Uri(backendApiUrl);
             });
 
             builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

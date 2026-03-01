@@ -56,7 +56,20 @@ namespace Backend.Controllers
             {
                 var durationSeconds = submission.Paper.Exam.Duration * 60;
                 var elapsedSeconds = (DateTime.UtcNow - submission.CreatedAtUtc).TotalSeconds;
-                remainingSeconds = (int)Math.Max(0, durationSeconds - elapsedSeconds);
+                
+                // Thời gian làm bài còn lại dựa vào duration
+                var timeBasedOnDuration = durationSeconds - elapsedSeconds;
+
+                // Thời gian làm bài còn lại dựa vào thời điểm đóng kỳ thi (CloseAt)
+                double timeBasedOnCloseAt = double.MaxValue;
+                if (submission.Paper.Exam.CloseAt.HasValue)
+                {
+                    timeBasedOnCloseAt = (submission.Paper.Exam.CloseAt.Value - DateTime.UtcNow).TotalSeconds;
+                }
+
+                // Lấy thời gian nhỏ hơn giữa 2 điều kiện
+                var actualRemaining = Math.Min(timeBasedOnDuration, timeBasedOnCloseAt);
+                remainingSeconds = (int)Math.Max(0, actualRemaining);
             }
 
             var savedAnswers = submission.StudentAnswers?.Select(a => new 
@@ -65,10 +78,13 @@ namespace Backend.Controllers
                 responseText = a.ResponseText ?? string.Empty
             }).Cast<object>().ToList() ?? new List<object>();
 
+            var paperDto = await _studentExamService.GetExamPaperAsync(studentId, request.ExamId, submission.PaperId);
+
             return Ok(new 
             { 
                 submissionId = submission.SubmissionId, 
                 paperId = submission.PaperId, 
+                paper = paperDto,
                 status = "Started",
                 remainingSeconds = remainingSeconds,
                 savedAnswers = savedAnswers

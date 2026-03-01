@@ -11,6 +11,8 @@ public partial class Class
 
     public string Name { get; set; } = null!;
 
+    public string Semester { get; set; } = null!;
+
     public string InvitationCode { get; set; } = null!;
 
     public int InvitationCodeStatus { get; set; }
@@ -26,6 +28,8 @@ public partial class Class
     public virtual ICollection<ClassMember> ClassMembers { get; set; } = new List<ClassMember>();
 
     public virtual ICollection<Exam> Exams { get; set; } = new List<Exam>();
+
+    public virtual Subject Subject { get; set; } = null!;
 
     public virtual User Teacher { get; set; } = null!;
 }

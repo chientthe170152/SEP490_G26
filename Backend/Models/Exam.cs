@@ -7,6 +7,8 @@ public partial class Exam
 {
     public int ExamId { get; set; }
 
+    public int? ExamBlueprintId { get; set; }
+
     public int TeacherId { get; set; }
 
     public int? ClassId { get; set; }
@@ -42,6 +44,8 @@ public partial class Exam
     public byte[] ConcurrencyStamp { get; set; } = null!;
 
     public virtual Class? Class { get; set; }
+
+    public virtual ExamBlueprint? ExamBlueprint { get; set; }
 
     public virtual ICollection<Paper> Papers { get; set; } = new List<Paper>();
 

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -23,11 +23,11 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Trang chủ</a>
                         </li>
-                        <li class="nav-item role-dependent role-student d-none">
-                            <a class="nav-link text-dark" href="#">Làm Bài Tập (Học Sinh)</a>
+                        <li class="nav-item role-dependent role-teacher role-student d-none">
+                            <a class="nav-link text-dark" href="/Course/CourseList">Khóa học</a>
                         </li>
                         <li class="nav-item role-dependent role-teacher d-none">
-                            <a class="nav-link text-dark" href="#">Quản lý Lớp (Giáo Viên)</a>
+                            <a class="nav-link text-dark" href="/ExamBlueprint">Ma trận đề</a>
                         </li>
                     </ul>
                     <ul class="navbar-nav" id="auth-nav">
@@ -41,6 +41,9 @@
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarUserDropdown">
                                 <li><a class="dropdown-item" href="javascript:void(0)" onclick="logout()">Đăng xuất</a></li>
                             </ul>
+                        </li>
+                        <li class="nav-item role-teacher role-dependent">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Exam" asp-action="AssignExam">Assign Exam</a>
                         </li>
                     </ul>
                 </div>
