@@ -13,5 +13,9 @@ namespace Backend.Services.Interfaces
 
         // New: service method to get visible exams for a class
         Task<List<ExamInCourseDTO>> GetExamsByClassAsync(int classId);
+
+        Task<CourseDTO> CreateCourseAsync(int teacherId, CreateCourseRequestDTO dto);
+
+        Task JoinCourseAsync(int studentId, string inviteCode);
     }
 }

@@ -276,6 +276,10 @@
 
                 if (isTeacher) {
                     actions += `
+                        <a class="btn btn-sm btn-info text-white"
+                           href="/Course/ExamAnalytics?examId=${exam.examId}">
+                            <i class="fas fa-chart-pie"></i> Phân tích
+                        </a>
                         <a class="btn btn-sm btn-primary"
                            href="/Exam/Edit/${exam.examId}">
                             Sửa

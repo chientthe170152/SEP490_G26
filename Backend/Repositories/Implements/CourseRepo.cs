@@ -127,5 +127,97 @@ namespace Backend.Repositories.Implements
                 })
                 .ToListAsync();
         }
+
+        public async Task<string?> GetDuplicateClassErrorAsync(string className, string semester, int subjectId)
+        {
+            var existingClasses = await _context.Classes
+                .Where(c => c.Name == className)
+                .ToListAsync();
+
+            foreach (var c in existingClasses)
+            {
+                if (c.Semester == semester)
+                {
+                    return "Lớp học này đã tồn tại trong học kỳ được chọn";
+                }
+                if (c.SubjectId == subjectId)
+                {
+                    return "Lớp học này đã học môn này ở học kỳ khác";
+                }
+            }
+            return null;
+        }
+
+        private string GenerateInvitationCode()
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            var random = new Random();
+            var code = new string(Enumerable.Repeat(chars, 6)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
+            return $"INV-{code}";
+        }
+
+        public async Task<CourseDTO> CreateCourseAsync(Class newClass)
+        {
+            bool isUnique = false;
+            string code = "";
+            while (!isUnique)
+            {
+                code = GenerateInvitationCode();
+                isUnique = !await _context.Classes.AnyAsync(c => c.InvitationCode == code);
+            }
+
+            newClass.InvitationCode = code;
+            _context.Classes.Add(newClass);
+            await _context.SaveChangesAsync();
+
+            // Load Subject and Teacher for the returned DTO
+            await _context.Entry(newClass).Reference(c => c.Subject).LoadAsync();
+            await _context.Entry(newClass).Reference(c => c.Teacher).LoadAsync();
+
+            return new CourseDTO
+            {
+                ClassId = newClass.ClassId,
+                ClassName = newClass.Name,
+                SubjectId = newClass.SubjectId,
+                SubjectName = newClass.Subject?.Name ?? string.Empty,
+                TeacherName = newClass.Teacher?.FullName ?? string.Empty,
+                InvitationCode = newClass.InvitationCode,
+                Semester = newClass.Semester ?? string.Empty,
+                StudentCount = 0,
+                ExamCount = 0,
+                Role = "Teacher"
+            };
+        }
+
+        public async Task<Class?> GetClassByInviteCodeAsync(string inviteCode)
+        {
+            return await _context.Classes
+                .FirstOrDefaultAsync(c => c.InvitationCode == inviteCode && c.Status == 1 && c.InvitationCodeStatus == 1);
+        }
+
+        public async Task<bool> IsUserInClassAsync(int classId, int userId)
+        {
+            return await _context.ClassMembers
+                .AnyAsync(cm => cm.ClassId == classId && cm.StudentId == userId && cm.MemberStatus == 1);
+        }
+
+        public async Task JoinClassAsync(int classId, int userId)
+        {
+            // Avoid duplicate insertions safely
+            var exists = await _context.ClassMembers.AnyAsync(cm => cm.ClassId == classId && cm.StudentId == userId);
+            if (!exists)
+            {
+                var membership = new ClassMember
+                {
+                    ClassId = classId,
+                    StudentId = userId,
+                    MemberStatus = 1 // Active status based on standard patterns
+                };
+                
+                _context.ClassMembers.Add(membership);
+                await _context.SaveChangesAsync();
+            }
+        }
     }
 }

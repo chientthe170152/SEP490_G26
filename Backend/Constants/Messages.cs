@@ -5,6 +5,7 @@ namespace Backend.Constants
         // Auth errors
         public const string InvalidEmailOrPassword = "Invalid email or password";
         public const string UserAlreadyExists = "User already exists";
+        public const string UserNotFound = "Tài khoản không tồn tại.";
         public const string EmailAlreadyRegistered = "Email này đã được đăng ký trong hệ thống. Vui lòng sử dụng Email khác.";
         public const string OtpExpiredOrNotExists = "OTP đã hết hạn hoặc không tồn tại.";
         public const string InvalidOtp = "Mã OTP không chính xác.";

@@ -30,7 +30,40 @@ $(document).ready(function () {
         })
         .catch(function (error) {
             console.error("Start submission error:", error);
-            Swal.fire('Lỗi đăng nhập', 'Lỗi khi bắt đầu làm bài. Vui lòng kiểm tra tài khoản.', 'error');
+            const msg = error.message || 'Lỗi khi bắt đầu làm bài. Vui lòng kiểm tra tài khoản.';
+            const activeExamId = error.xhr?.responseJSON?.activeExamId;
+
+            if (activeExamId) {
+                Swal.fire({
+                    title: 'Không thể vào thi!',
+                    text: msg,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Làm tiếp bài đang dở',
+                    cancelButtonText: 'Quay lại danh sách'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const form = $('<form>', { method: 'POST', action: '/StudentExam/TakeExam' });
+                        form.append($('<input>', { type: 'hidden', name: 'examId', value: activeExamId }));
+                        $('body').append(form);
+                        form.submit();
+                    } else {
+                        window.location.href = '/Course/ExamListInCourse';
+                    }
+                });
+            } else {
+                Swal.fire({
+                    title: 'Không thể vào thi!',
+                    text: msg,
+                    icon: 'warning',
+                    confirmButtonColor: '#3085d6',
+                    confirmButtonText: 'Đã hiểu, quay lại'
+                }).then(() => {
+                    window.location.href = '/Course/ExamListInCourse';
+                });
+            }
         });
 });
 
@@ -84,9 +117,9 @@ function renderExamUI(paper, remainingSeconds, savedAnswers) {
     $('#examTitle').text(paper.title);
     $('#examSubtitle').text(paper.description || 'Sinh viên đang làm bài tự động lưu');
 
-    // Display Paper Code
-    if (paper.code) {
-        $('#paperCodeDisplay').text(paper.code);
+    // Display Exam ID instead of Paper Code
+    if (examId) {
+        $('#paperCodeDisplay').text(examId);
     } else {
         $('#paperCodeDisplay').text('N/A');
     }

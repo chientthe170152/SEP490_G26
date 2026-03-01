@@ -42,9 +42,8 @@ namespace Backend
             builder.Services.AddScoped<IAssignExamService, AssignExamService>();
             builder.Services.AddScoped<ICourseService, CourseService>();
             builder.Services.AddScoped<IChapterService, ChapterService>();
-            builder.Services.AddScoped<IAuthService, AuthService>();
-            builder.Services.AddScoped<IEmailService, EmailService>();
-            builder.Services.AddScoped<IStudentExamService, StudentExamService>();
+            // Add AnalyticsService
+            builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 
 
             // =========================

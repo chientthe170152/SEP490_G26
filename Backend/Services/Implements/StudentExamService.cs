@@ -215,7 +215,7 @@ namespace Backend.Services.Implements
                 }
                 else
                 {
-                    throw new InvalidOperationException($"Bạn đang có bài thi '{active.Paper?.Exam?.Title ?? "khác"}' chưa nộp. Vui lòng nộp bài trước khi bắt đầu bài thi mới.");
+                    throw new InvalidOperationException($"Bạn đang có bài thi khác chưa nộp. Vui lòng hoàn thành hoặc nộp bài đó trước khi bắt đầu bài thi mới.|ACTIVE_EXAM_ID:{active.Paper?.ExamId}");
                 }
             }
 

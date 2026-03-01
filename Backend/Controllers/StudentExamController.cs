@@ -1,4 +1,5 @@
 using Backend.DTOs.StudentExam;
+using Backend.Models;
 using Backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -49,7 +50,26 @@ namespace Backend.Controllers
             var studentId = GetStudentId();
             if (studentId == 0) return Unauthorized("Invalid token.");
 
-            var submission = await _studentExamService.StartExamAsync(studentId, request);
+            Submission submission;
+            try
+            {
+                submission = await _studentExamService.StartExamAsync(studentId, request);
+            }
+            catch (InvalidOperationException ex)
+            {
+                if (ex.Message.Contains("|ACTIVE_EXAM_ID:"))
+                {
+                    var parts = ex.Message.Split("|ACTIVE_EXAM_ID:");
+                    var message = parts[0];
+                    var activeExamId = int.Parse(parts[1]);
+                    return BadRequest(new { message = message, activeExamId = activeExamId });
+                }
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
 
             int remainingSeconds = 40 * 60; // default fallback
             if (submission.Paper != null && submission.Paper.Exam != null)

@@ -39,5 +39,45 @@ namespace Backend.Services.Implements
         {
             return _repo.GetExamsByClassAsync(classId);
         }
+        public async Task<CourseDTO> CreateCourseAsync(int teacherId, CreateCourseRequestDTO dto)
+        {
+            // Kiểm tra trùng lặp
+            var duplicateError = await _repo.GetDuplicateClassErrorAsync(dto.ClassName, dto.Semester, dto.SubjectId);
+            if (duplicateError != null)
+            {
+                throw new System.Exception(duplicateError); // Throw an exception to be caught by the controller
+            }
+
+            // Create new Class entity
+            var newClass = new Class
+            {
+                Name = dto.ClassName,
+                Semester = dto.Semester,
+                SubjectId = dto.SubjectId,
+                TeacherId = teacherId,
+                Status = 1, // Mặc định là đang mở/hoạt động
+                InvitationCodeStatus = 1, // Mặc định cho phép dùng mã mời
+                CreatedAtUtc = System.DateTime.UtcNow
+            };
+
+            return await _repo.CreateCourseAsync(newClass);
+        }
+
+        public async Task JoinCourseAsync(int studentId, string inviteCode)
+        {
+            var course = await _repo.GetClassByInviteCodeAsync(inviteCode);
+            if (course == null)
+            {
+                throw new System.Exception("Mã mời không chính xác hoặc lớp học đã bị đóng.");
+            }
+
+            bool alreadyJoined = await _repo.IsUserInClassAsync(course.ClassId, studentId);
+            if (alreadyJoined)
+            {
+                throw new System.Exception("Bạn đã ở trong lớp học này rồi.");
+            }
+
+            await _repo.JoinClassAsync(course.ClassId, studentId);
+        }
     }
 }
