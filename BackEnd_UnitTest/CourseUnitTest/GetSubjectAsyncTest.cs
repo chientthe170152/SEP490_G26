@@ -1,4 +1,4 @@
-﻿using Backend.DTOs.Course;
+﻿using Backend.DTOs.ExamBlueprint;
 using Backend.UnitTest;
 using Moq;
 using System;
@@ -12,40 +12,35 @@ namespace BackEnd_UnitTest.CourseUnitTest
     public class GetSubjectAsyncTest : CourseTestBase
     {
         [Fact]
-        public async Task GetSubjects_WhenDataExists_ShouldReturnList()
+        public async Task GetSubjects_ShouldReturnList_WhenDataExists()
         {
-            // Arrange: Giả lập DB có 3 môn học
-            var mockData = new List<CourseDTO> { new CourseDTO { ClassId = 1 }, new CourseDTO { ClassId = 2 } };
-            _mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(mockData);
+            // 1. Arrange: Phải Mock đúng hàm mà GetSubjectsAsync gọi (trong ảnh là GetSubjectsAsync của repo)
+            var mockData = new List<SubjectOptionDto>
+        {
+            new SubjectOptionDto { SubjectId = 1, Name = "Math" },
+            new SubjectOptionDto { SubjectId = 2, Name = "Physics" }
+        };
 
-            // Act
-            var result = await _courseService.GetAllAsync();
+            _mockRepo.Setup(r => r.GetSubjectsAsync())
+             .Returns(Task.FromResult(mockData));
 
-            // Assert
-            Assert.Equal(2, result.Count); // Confirm Return T
+            // 2. Act: Gọi ĐÚNG hàm cần đo coverage
+            var result = await _courseService.GetSubjectsAsync();
+
+            // 3. Assert
+            Assert.NotNull(result);
+            Assert.Equal(2, result.Count);
+            _mockRepo.Verify(r => r.GetSubjectsAsync(), Times.Once);
         }
 
         [Fact]
-        public async Task GetSubjects_WhenNoData_ShouldReturnEmptyList()
+        public async Task GetSubjects_ShouldThrow_WhenRepoFails()
         {
-            // Arrange: Giả lập DB trống
-            _mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<CourseDTO>());
+            // Arrange
+            _mockRepo.Setup(r => r.GetSubjectsAsync()).ThrowsAsync(new Exception("DB Error"));
 
-            // Act
-            var result = await _courseService.GetAllAsync();
-
-            // Assert
-            Assert.Empty(result); // Confirm Return T (Empty List)
-        }
-
-        [Fact]
-        public async Task GetSubjects_WhenDbError_ShouldThrowException()
-        {
-            // Arrange: Giả lập mất kết nối server
-            _mockRepo.Setup(r => r.GetAllAsync()).ThrowsAsync(new Exception("Database connection failed"));
-
-            // Act & Assert
-            await Assert.ThrowsAsync<Exception>(() => _courseService.GetAllAsync()); // Confirm Exception
+            // Act & Assert: Gọi ĐÚNG hàm GetSubjectsAsync
+            await Assert.ThrowsAsync<Exception>(() => _courseService.GetSubjectsAsync());
         }
     }
 }
