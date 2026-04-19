@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Backend.Constants;
+using Backend.Models;
 using Backend.Repositories.Interfaces;
 using Backend.Services.Implements;
 using Moq;
@@ -26,15 +28,29 @@ namespace BackEnd_UnitTest.AssignExamUnitTest
         {
             // Arrange
             int examId = 1;
+            var exam = CreateExam(examId);
+            var questionIds = new List<int> { 101, 102, 103 };
 
+            _repoMock.Setup(r => r.GetExamByIdAsync(examId, _ct))
+                     .ReturnsAsync(exam);
             _repoMock.Setup(r => r.UpdateExamStatusAsync(examId, ExamStatus.Published, _ct))
+                     .Returns(Task.CompletedTask);
+            _repoMock.Setup(r => r.GetAllQuestionIdsInExamAsync(examId, _ct))
+                     .ReturnsAsync(questionIds);
+            _repoMock.Setup(r => r.UpdateQuestionsToInprogressAsync(questionIds, _ct))
+                     .Returns(Task.CompletedTask);
+            _repoMock.Setup(r => r.UpdateBlueprintToInprogressAsync(examId, _ct))
                      .Returns(Task.CompletedTask);
 
             // Act
             await _service.ApproveExamAsync(examId, _ct);
 
             // Assert
+            _repoMock.Verify(r => r.GetExamByIdAsync(examId, _ct), Times.Once);
             _repoMock.Verify(r => r.UpdateExamStatusAsync(examId, ExamStatus.Published, _ct), Times.Once);
+            _repoMock.Verify(r => r.GetAllQuestionIdsInExamAsync(examId, _ct), Times.Once);
+            _repoMock.Verify(r => r.UpdateQuestionsToInprogressAsync(questionIds, _ct), Times.Once);
+            _repoMock.Verify(r => r.UpdateBlueprintToInprogressAsync(examId, _ct), Times.Once);
             _repoMock.VerifyAll();
         }
 
@@ -44,8 +60,8 @@ namespace BackEnd_UnitTest.AssignExamUnitTest
             // Arrange
             int examId = 999;
 
-            _repoMock.Setup(r => r.UpdateExamStatusAsync(examId, ExamStatus.Published, _ct))
-                     .ThrowsAsync(new KeyNotFoundException("Exam not found."));
+            _repoMock.Setup(r => r.GetExamByIdAsync(examId, _ct))
+                     .ReturnsAsync((Exam?)null);
 
             // Act
             var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
@@ -53,24 +69,39 @@ namespace BackEnd_UnitTest.AssignExamUnitTest
 
             // Assert
             Assert.Equal("Exam not found.", ex.Message);
-            _repoMock.Verify(r => r.UpdateExamStatusAsync(examId, ExamStatus.Published, _ct), Times.Once);
+            _repoMock.Verify(r => r.GetExamByIdAsync(examId, _ct), Times.Once);
+            _repoMock.Verify(r => r.UpdateExamStatusAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
             _repoMock.VerifyAll();
         }
 
-        [Fact(DisplayName = "ApproveExamAsync - UTCID03 - ExamId = 0 -> still forward to repository")]
-        public async Task ApproveExamAsync_UTCID03_ExamIdZero_ShouldStillForwardToRepository()
+        [Fact(DisplayName = "ApproveExamAsync - UTCID03 - ExamId = 0 and repository returns exam -> continue flow")]
+        public async Task ApproveExamAsync_UTCID03_ExamIdZero_WhenExamExists_ShouldContinueFlow()
         {
             // Arrange
             int examId = 0;
+            var exam = CreateExam(examId);
+            var questionIds = new List<int>();
 
+            _repoMock.Setup(r => r.GetExamByIdAsync(examId, _ct))
+                     .ReturnsAsync(exam);
             _repoMock.Setup(r => r.UpdateExamStatusAsync(examId, ExamStatus.Published, _ct))
+                     .Returns(Task.CompletedTask);
+            _repoMock.Setup(r => r.GetAllQuestionIdsInExamAsync(examId, _ct))
+                     .ReturnsAsync(questionIds);
+            _repoMock.Setup(r => r.UpdateQuestionsToInprogressAsync(questionIds, _ct))
+                     .Returns(Task.CompletedTask);
+            _repoMock.Setup(r => r.UpdateBlueprintToInprogressAsync(examId, _ct))
                      .Returns(Task.CompletedTask);
 
             // Act
             await _service.ApproveExamAsync(examId, _ct);
 
             // Assert
+            _repoMock.Verify(r => r.GetExamByIdAsync(examId, _ct), Times.Once);
             _repoMock.Verify(r => r.UpdateExamStatusAsync(examId, ExamStatus.Published, _ct), Times.Once);
+            _repoMock.Verify(r => r.GetAllQuestionIdsInExamAsync(examId, _ct), Times.Once);
+            _repoMock.Verify(r => r.UpdateQuestionsToInprogressAsync(questionIds, _ct), Times.Once);
+            _repoMock.Verify(r => r.UpdateBlueprintToInprogressAsync(examId, _ct), Times.Once);
             _repoMock.VerifyAll();
         }
 
@@ -79,7 +110,10 @@ namespace BackEnd_UnitTest.AssignExamUnitTest
         {
             // Arrange
             int examId = 2;
+            var exam = CreateExam(examId);
 
+            _repoMock.Setup(r => r.GetExamByIdAsync(examId, _ct))
+                     .ReturnsAsync(exam);
             _repoMock.Setup(r => r.UpdateExamStatusAsync(examId, ExamStatus.Published, _ct))
                      .ThrowsAsync(new Exception("Database error"));
 
@@ -89,8 +123,30 @@ namespace BackEnd_UnitTest.AssignExamUnitTest
 
             // Assert
             Assert.Equal("Database error", ex.Message);
+            _repoMock.Verify(r => r.GetExamByIdAsync(examId, _ct), Times.Once);
             _repoMock.Verify(r => r.UpdateExamStatusAsync(examId, ExamStatus.Published, _ct), Times.Once);
             _repoMock.VerifyAll();
+        }
+
+        private static Exam CreateExam(int examId)
+        {
+            return new Exam
+            {
+                ExamId = examId,
+                TeacherId = 1,
+                SubjectId = 5,
+                Title = $"Exam {examId}",
+                Duration = 60,
+                ShowScore = 1,
+                ShowAnswer = 1,
+                MaxAttempts = 1,
+                AnswerTimingMode = 0,
+                Status = 0,
+                OpenAt = null,
+                CloseAt = null,
+                UpdatedAtUtc = DateTime.UtcNow,
+                ConcurrencyStamp = Array.Empty<byte>()
+            };
         }
     }
 }

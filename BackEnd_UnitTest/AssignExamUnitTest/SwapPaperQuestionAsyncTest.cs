@@ -204,14 +204,14 @@ namespace Backend_UnitTest.AssignExamTests
                      .ReturnsAsync(paper);
             _repoMock.Setup(r => r.GetQuestionByIdAsync(request.NewQuestionId, _ct))
                      .ReturnsAsync(newQuestion);
-            _repoMock.Setup(r => r.SwapExamQuestionGloballyAsync(paper.ExamId, request.OldQuestionId, request.NewQuestionId, _ct))
+            _repoMock.Setup(r => r.SwapExamQuestionGloballyAsync(paper.ExamId ?? 0, request.OldQuestionId, request.NewQuestionId, _ct))
                      .Returns(Task.CompletedTask);
 
             // Act
             await _service.SwapPaperQuestionAsync(request, _ct);
 
             // Assert
-            _repoMock.Verify(r => r.SwapExamQuestionGloballyAsync(paper.ExamId, request.OldQuestionId, request.NewQuestionId, _ct), Times.Once);
+            _repoMock.Verify(r => r.SwapExamQuestionGloballyAsync(paper.ExamId ?? 0, request.OldQuestionId, request.NewQuestionId, _ct), Times.Once);
             _repoMock.Verify(r => r.SwapPaperQuestionAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
             _repoMock.VerifyAll();
         }
