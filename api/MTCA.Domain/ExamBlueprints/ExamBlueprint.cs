@@ -4,12 +4,11 @@ using MTCA.Domain.MasterData;
 
 namespace MTCA.Domain.ExamBlueprints;
 
-public class ExamBlueprint : AuditableEntity
+public class ExamBlueprint : AggregateRoot<int>
 {
-    public int Id { get; set; }
     public string Name { get; set; } = default!;
     public int SubjectId { get; set; }
-    public string? OwnerId { get; set; }
+    public Guid? OwnerId { get; set; }
     public int? CurrentVersionId { get; set; }
 
     public Subject Subject { get; set; } = default!;

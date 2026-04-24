@@ -13,7 +13,6 @@ public class QuestionVersionConfiguration : IEntityTypeConfiguration<QuestionVer
 
         b.Property(x => x.BodyLatex).IsRequired();
         b.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
-        b.Property(x => x.CreatedById).IsRequired().HasMaxLength(450);
 
         b.HasIndex(x => new { x.QuestionId, x.VersionNumber })
             .IsUnique()

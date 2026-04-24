@@ -13,7 +13,6 @@ public class EventLogConfiguration : IEntityTypeConfiguration<EventLog>
 
         b.Property(x => x.Timestamp).HasDefaultValueSql("SYSUTCDATETIME()");
         b.Property(x => x.Type).HasConversion<byte>();
-        b.Property(x => x.ActorId).HasMaxLength(450);
         b.Property(x => x.DetailsJson).IsRequired();
 
         b.HasIndex(x => new { x.Type, x.Timestamp }).HasDatabaseName("IX_EventLog_Type_Timestamp");

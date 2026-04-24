@@ -3,9 +3,8 @@ using MTCA.Domain.ExamBlueprints.Enums;
 
 namespace MTCA.Domain.ExamBlueprints;
 
-public class ExamBlueprintVersion : AuditableEntity
+public class ExamBlueprintVersion : AggregateRoot<int>
 {
-    public int Id { get; set; }
     public int BlueprintId { get; set; }
     public int VersionNumber { get; set; }
     public ExamBlueprintStatus Status { get; set; } = ExamBlueprintStatus.DRAFT;

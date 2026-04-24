@@ -4,13 +4,12 @@ using MTCA.Domain.MasterData;
 
 namespace MTCA.Domain.Classrooms;
 
-public class Classroom : AuditableEntity
+public class Classroom : AggregateRoot<int>
 {
-    public int Id { get; set; }
     public string Name { get; set; } = default!;
     public int SubjectId { get; set; }
     public int SemesterId { get; set; }
-    public string TeacherUserId { get; set; } = default!;
+    public Guid TeacherUserId { get; set; }
     public string? JoinCode { get; set; }
     public bool JoinCodeEnabled { get; set; }
     public bool IsArchived { get; set; }

@@ -1,8 +1,9 @@
+using MTCA.Domain.Common;
+
 namespace MTCA.Domain.QuestionBank;
 
-public class QuestionOption
+public class QuestionOption : BaseEntity<int>
 {
-    public int Id { get; set; }
     public int QuestionVersionId { get; set; }
     public int OrderIndex { get; set; }
     public string ContentLatex { get; set; } = default!;

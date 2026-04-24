@@ -17,8 +17,6 @@ public class ExamBlueprintVersionConfiguration : IEntityTypeConfiguration<ExamBl
         b.Property(x => x.TotalScore).HasPrecision(5, 2).HasDefaultValue(10.00m);
 
         b.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
-        b.Property(x => x.CreatedById).IsRequired().HasMaxLength(450);
-        b.Property(x => x.UpdatedById).HasMaxLength(450);
         b.Property(x => x.RowVersion).IsRowVersion();
 
         b.HasIndex(x => new { x.BlueprintId, x.VersionNumber })

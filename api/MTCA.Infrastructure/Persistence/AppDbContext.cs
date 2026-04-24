@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using MTCA.Application.Common.Interfaces.Persistence;
 using MTCA.Domain.Analytics;
 using MTCA.Domain.Classrooms;
 using MTCA.Domain.ExamBlueprints;
@@ -14,7 +15,7 @@ using MTCA.Domain.QuestionBank;
 namespace MTCA.Infrastructure.Persistence;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options)
-    : IdentityDbContext<ApplicationUser, ApplicationRole, string>(options)
+    : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>(options), IAppDbContext
 {
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
 

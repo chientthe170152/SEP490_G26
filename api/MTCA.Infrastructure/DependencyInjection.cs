@@ -1,7 +1,14 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using MTCA.Application.Common.Interfaces.Persistence;
+using MTCA.Application.Common.Interfaces.Services;
+using MTCA.Infrastructure.Identity;
+using MTCA.Infrastructure.Identity.Services;
 using MTCA.Infrastructure.Persistence;
+using MTCA.Infrastructure.Persistence.Interceptors;
+using MTCA.Infrastructure.Persistence.Seeders;
 using StackExchange.Redis;
 
 namespace MTCA.Infrastructure;
@@ -12,7 +19,24 @@ public static class DependencyInjection
     {
         var sqlConn = configuration.GetConnectionString("Default")
             ?? throw new InvalidOperationException("ConnectionStrings:Default is missing.");
-        services.AddDbContext<AppDbContext>(opts => opts.UseSqlServer(sqlConn));
+
+        services.AddHttpContextAccessor();
+        services.AddSingleton(TimeProvider.System);
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<AuditSaveChangesInterceptor>();
+
+        services.AddDbContext<AppDbContext>((sp, opts) =>
+        {
+            opts.UseSqlServer(sqlConn);
+            opts.AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>());
+        });
+        services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+
+        services.AddMtcaIdentity();
+
+        services.AddScoped<RoleSeeder>();
+        services.AddScoped<AdminUserSeeder>();
+        services.AddScoped<DbInitializer>();
 
         var redisConn = configuration.GetSection("Redis")["Connection"]
             ?? throw new InvalidOperationException("Redis:Connection is missing.");

@@ -4,9 +4,8 @@ using MTCA.Domain.QuestionBank.Enums;
 
 namespace MTCA.Domain.QuestionBank;
 
-public class Question : AuditableEntity
+public class Question : AggregateRoot<int>
 {
-    public int Id { get; set; }
     public int QuestionBankId { get; set; }
     public int SubjectId { get; set; }
     public int ChapterId { get; set; }

@@ -1,10 +1,10 @@
+using MTCA.Domain.Common;
 using MTCA.Domain.Identity;
 
 namespace MTCA.Domain.QuestionBank;
 
-public class QuestionVersion
+public class QuestionVersion : BaseEntity<int>
 {
-    public int Id { get; set; }
     public int QuestionId { get; set; }
     public int VersionNumber { get; set; }
     public string BodyLatex { get; set; } = default!;
@@ -12,7 +12,7 @@ public class QuestionVersion
     public string? TemplateVarsJson { get; set; }
 
     public DateTime CreatedAt { get; set; }
-    public string CreatedById { get; set; } = default!;
+    public Guid CreatedById { get; set; }
 
     public Question Question { get; set; } = default!;
     public ApplicationUser CreatedBy { get; set; } = default!;

@@ -5,11 +5,10 @@ using MTCA.Domain.QuestionBank.Enums;
 
 namespace MTCA.Domain.QuestionBank;
 
-public class QuestionBank : AuditableEntity
+public class QuestionBank : AggregateRoot<int>
 {
-    public int Id { get; set; }
     public int SubjectId { get; set; }
-    public string? OwnerId { get; set; }
+    public Guid? OwnerId { get; set; }
     public QuestionBankPurpose Purpose { get; set; }
     public string Name { get; set; } = default!;
 

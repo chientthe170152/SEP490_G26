@@ -26,8 +26,6 @@ public class ExamConfiguration : IEntityTypeConfiguration<Exam>
         b.Property(x => x.VariantCount).HasDefaultValue(1);
 
         b.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
-        b.Property(x => x.CreatedById).IsRequired().HasMaxLength(450);
-        b.Property(x => x.UpdatedById).HasMaxLength(450);
         b.Property(x => x.RowVersion).IsRowVersion();
 
         b.HasIndex(x => x.SubjectId).HasDatabaseName("IX_Exam_SubjectId");

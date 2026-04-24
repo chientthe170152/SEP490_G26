@@ -11,7 +11,6 @@ public class ClassroomStudentConfiguration : IEntityTypeConfiguration<ClassroomS
         b.ToTable("ClassroomStudent");
         b.HasKey(x => x.Id);
 
-        b.Property(x => x.StudentUserId).IsRequired().HasMaxLength(450);
         b.Property(x => x.Status).HasConversion<byte>();
         b.Property(x => x.RowVersion).IsRowVersion();
 

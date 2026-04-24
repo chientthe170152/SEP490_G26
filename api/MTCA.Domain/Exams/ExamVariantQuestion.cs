@@ -1,10 +1,10 @@
+using MTCA.Domain.Common;
 using MTCA.Domain.QuestionBank;
 
 namespace MTCA.Domain.Exams;
 
-public class ExamVariantQuestion
+public class ExamVariantQuestion : BaseEntity<int>
 {
-    public int Id { get; set; }
     public int ExamVariantId { get; set; }
     public int QuestionVersionId { get; set; }
     public decimal Score { get; set; }

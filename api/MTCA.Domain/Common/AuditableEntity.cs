@@ -1,10 +1,10 @@
 namespace MTCA.Domain.Common;
 
-public abstract class AuditableEntity
+public abstract class AuditableEntity<TKey> : BaseEntity<TKey>, IAuditable, IConcurrencyAware
 {
     public DateTime CreatedAt { get; set; }
-    public string CreatedById { get; set; } = default!;
+    public Guid CreatedById { get; set; }
     public DateTime? UpdatedAt { get; set; }
-    public string? UpdatedById { get; set; }
+    public Guid? UpdatedById { get; set; }
     public byte[] RowVersion { get; set; } = default!;
 }

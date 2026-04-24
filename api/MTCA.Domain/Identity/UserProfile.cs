@@ -5,7 +5,7 @@ namespace MTCA.Domain.Identity;
 
 public class UserProfile
 {
-    public string UserId { get; set; } = default!;
+    public Guid UserId { get; set; }
     public string StudentCode { get; set; } = default!;
     public string FullName { get; set; } = default!;
     public UserProfileStatus Status { get; set; } = UserProfileStatus.ACTIVE;

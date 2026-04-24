@@ -1,10 +1,10 @@
+using MTCA.Domain.Common;
 using MTCA.Domain.Exams;
 
 namespace MTCA.Domain.ExamSessions;
 
-public class SubmissionItem
+public class SubmissionItem : BaseEntity<int>
 {
-    public int Id { get; set; }
     public int SubmissionId { get; set; }
     public int ExamVariantQuestionId { get; set; }
     public string RawAnswer { get; set; } = default!;

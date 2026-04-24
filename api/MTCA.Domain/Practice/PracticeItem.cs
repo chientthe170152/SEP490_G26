@@ -1,10 +1,10 @@
+using MTCA.Domain.Common;
 using MTCA.Domain.QuestionBank;
 
 namespace MTCA.Domain.Practice;
 
-public class PracticeItem
+public class PracticeItem : BaseEntity<int>
 {
-    public int Id { get; set; }
     public int PracticeSessionId { get; set; }
     public int QuestionVersionId { get; set; }
     public string? RawAnswer { get; set; }

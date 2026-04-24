@@ -17,11 +17,8 @@ public class ExamSessionConfiguration : IEntityTypeConfiguration<ExamSession>
 
         b.Property(x => x.Status).HasConversion<byte>().HasDefaultValue(ExamSessionStatus.SCHEDULED);
         b.Property(x => x.EarlySubmitPolicy).HasConversion<byte>().HasDefaultValue(EarlySubmitPolicy.ALLOW);
-        b.Property(x => x.CancelledById).HasMaxLength(450);
 
         b.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
-        b.Property(x => x.CreatedById).IsRequired().HasMaxLength(450);
-        b.Property(x => x.UpdatedById).HasMaxLength(450);
         b.Property(x => x.RowVersion).IsRowVersion();
 
         b.HasIndex(x => new { x.ExamId, x.ClassroomId })

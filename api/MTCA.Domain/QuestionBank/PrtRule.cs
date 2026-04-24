@@ -1,10 +1,10 @@
+using MTCA.Domain.Common;
 using MTCA.Domain.QuestionBank.Enums;
 
 namespace MTCA.Domain.QuestionBank;
 
-public class PrtRule
+public class PrtRule : BaseEntity<int>
 {
-    public int Id { get; set; }
     public int QuestionBlankId { get; set; }
     public int? ParentRuleId { get; set; }
     public int Priority { get; set; }

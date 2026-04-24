@@ -1,14 +1,14 @@
+using MTCA.Domain.Common;
 using MTCA.Domain.ExamSessions.Enums;
 using MTCA.Domain.Exams;
 using MTCA.Domain.Identity;
 
 namespace MTCA.Domain.ExamSessions;
 
-public class Submission
+public class Submission : BaseEntity<int>, IConcurrencyAware
 {
-    public int Id { get; set; }
     public int ExamSessionId { get; set; }
-    public string StudentUserId { get; set; } = default!;
+    public Guid StudentUserId { get; set; }
     public int ExamVariantId { get; set; }
     public SubmissionStatus Status { get; set; } = SubmissionStatus.IN_PROGRESS;
     public DateTime TimerStartedAt { get; set; }

@@ -1,8 +1,9 @@
+using MTCA.Domain.Common;
+
 namespace MTCA.Domain.MasterData;
 
-public class Semester
+public class Semester : BaseEntity<int>
 {
-    public int Id { get; set; }
     public string Code { get; set; } = default!;
     public string Name { get; set; } = default!;
     public DateTime StartDate { get; set; }

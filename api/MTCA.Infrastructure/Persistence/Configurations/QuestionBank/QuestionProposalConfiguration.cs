@@ -13,12 +13,9 @@ public class QuestionProposalConfiguration : IEntityTypeConfiguration<QuestionPr
         b.ToTable("QuestionProposal");
         b.HasKey(x => x.Id);
 
-        b.Property(x => x.ReviewerId).HasMaxLength(450);
         b.Property(x => x.Status).HasConversion<byte>().HasDefaultValue(ProposalStatus.PENDING);
 
         b.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
-        b.Property(x => x.CreatedById).IsRequired().HasMaxLength(450);
-        b.Property(x => x.UpdatedById).HasMaxLength(450);
         b.Property(x => x.RowVersion).IsRowVersion();
 
         b.HasIndex(x => x.Status).HasDatabaseName("IX_QuestionProposal_Status");

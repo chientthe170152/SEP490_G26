@@ -11,7 +11,6 @@ public class PracticeSessionConfiguration : IEntityTypeConfiguration<PracticeSes
         b.ToTable("PracticeSession");
         b.HasKey(x => x.Id);
 
-        b.Property(x => x.StudentUserId).IsRequired().HasMaxLength(450);
         b.Property(x => x.StartedAt).HasDefaultValueSql("SYSUTCDATETIME()");
         b.Property(x => x.TotalScore).HasPrecision(5, 2);
 

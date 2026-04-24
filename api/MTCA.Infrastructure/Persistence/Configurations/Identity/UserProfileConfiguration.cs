@@ -12,7 +12,7 @@ public class UserProfileConfiguration : IEntityTypeConfiguration<UserProfile>
         b.ToTable("UserProfile");
 
         b.HasKey(p => p.UserId);
-        b.Property(p => p.UserId).HasMaxLength(450).ValueGeneratedNever();
+        b.Property(p => p.UserId).ValueGeneratedNever();
 
         b.Property(p => p.StudentCode).IsRequired().HasMaxLength(50);
         b.Property(p => p.FullName).IsRequired().HasMaxLength(255);

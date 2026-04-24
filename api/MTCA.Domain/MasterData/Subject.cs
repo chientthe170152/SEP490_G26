@@ -1,8 +1,9 @@
+using MTCA.Domain.Common;
+
 namespace MTCA.Domain.MasterData;
 
-public class Subject
+public class Subject : BaseEntity<int>
 {
-    public int Id { get; set; }
     public string Code { get; set; } = default!;
     public string Name { get; set; } = default!;
     public bool IsActive { get; set; } = true;

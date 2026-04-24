@@ -1,12 +1,12 @@
+using MTCA.Domain.Common;
 using MTCA.Domain.Identity;
 using MTCA.Domain.MasterData;
 
 namespace MTCA.Domain.Practice;
 
-public class PracticeSession
+public class PracticeSession : BaseEntity<int>
 {
-    public int Id { get; set; }
-    public string StudentUserId { get; set; } = default!;
+    public Guid StudentUserId { get; set; }
     public int SubjectId { get; set; }
     public int SemesterId { get; set; }
     public DateTime StartedAt { get; set; }

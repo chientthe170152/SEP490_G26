@@ -1,8 +1,9 @@
+using MTCA.Domain.Common;
+
 namespace MTCA.Domain.QuestionBank;
 
-public class QuestionBlank
+public class QuestionBlank : BaseEntity<int>
 {
-    public int Id { get; set; }
     public int QuestionVersionId { get; set; }
     public int BlankIndex { get; set; }
     public int Position { get; set; }

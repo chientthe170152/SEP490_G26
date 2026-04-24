@@ -12,7 +12,6 @@ public class SubmissionConfiguration : IEntityTypeConfiguration<Submission>
         b.ToTable("Submission");
         b.HasKey(x => x.Id);
 
-        b.Property(x => x.StudentUserId).IsRequired().HasMaxLength(450);
         b.Property(x => x.Status).HasConversion<byte>().HasDefaultValue(SubmissionStatus.IN_PROGRESS);
         b.Property(x => x.TotalPausedMs).HasDefaultValue(0L);
         b.Property(x => x.TotalScore).HasPrecision(5, 2);

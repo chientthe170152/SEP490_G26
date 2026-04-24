@@ -6,9 +6,8 @@ using MTCA.Domain.Identity;
 
 namespace MTCA.Domain.ExamSessions;
 
-public class ExamSession : AuditableEntity
+public class ExamSession : AggregateRoot<int>
 {
-    public int Id { get; set; }
     public int ExamId { get; set; }
     public int ClassroomId { get; set; }
     public DateTime StartAt { get; set; }
@@ -16,7 +15,7 @@ public class ExamSession : AuditableEntity
     public int DurationMin { get; set; }
     public ExamSessionStatus Status { get; set; } = ExamSessionStatus.SCHEDULED;
     public string? CancelReason { get; set; }
-    public string? CancelledById { get; set; }
+    public Guid? CancelledById { get; set; }
     public DateTime? CancelledAt { get; set; }
     public long ShuffleSeed { get; set; }
     public EarlySubmitPolicy EarlySubmitPolicy { get; set; } = EarlySubmitPolicy.ALLOW;

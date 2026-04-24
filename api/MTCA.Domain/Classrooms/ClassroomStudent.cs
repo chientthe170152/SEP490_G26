@@ -1,13 +1,13 @@
 using MTCA.Domain.Classrooms.Enums;
+using MTCA.Domain.Common;
 using MTCA.Domain.Identity;
 
 namespace MTCA.Domain.Classrooms;
 
-public class ClassroomStudent
+public class ClassroomStudent : BaseEntity<int>, IConcurrencyAware
 {
-    public int Id { get; set; }
     public int ClassroomId { get; set; }
-    public string StudentUserId { get; set; } = default!;
+    public Guid StudentUserId { get; set; }
     public ClassroomStudentStatus Status { get; set; }
     public DateTime? JoinedAt { get; set; }
     public DateTime? RequestedAt { get; set; }

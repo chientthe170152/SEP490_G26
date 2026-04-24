@@ -1,12 +1,12 @@
+using MTCA.Domain.Common;
 using MTCA.Domain.ExamSessions;
 using MTCA.Domain.Practice;
 using MTCA.Domain.QuestionBank;
 
 namespace MTCA.Domain.Analytics;
 
-public class GeneratedVariant
+public class GeneratedVariant : BaseEntity<int>
 {
-    public int Id { get; set; }
     public int QuestionVersionId { get; set; }
     public int? SubmissionId { get; set; }
     public int? PracticeSessionId { get; set; }

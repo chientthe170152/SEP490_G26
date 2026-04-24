@@ -1,11 +1,11 @@
+using MTCA.Domain.Common;
 using MTCA.Domain.MasterData;
 using MTCA.Domain.QuestionBank.Enums;
 
 namespace MTCA.Domain.ExamBlueprints;
 
-public class BlueprintCell
+public class BlueprintCell : BaseEntity<int>
 {
-    public int Id { get; set; }
     public int BlueprintVersionId { get; set; }
     public int ChapterId { get; set; }
     public BloomLevel BloomLevel { get; set; }

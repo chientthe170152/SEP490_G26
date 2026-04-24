@@ -12,7 +12,6 @@ public class ExamVariantConfiguration : IEntityTypeConfiguration<ExamVariant>
         b.HasKey(x => x.Id);
 
         b.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
-        b.Property(x => x.CreatedById).IsRequired().HasMaxLength(450);
 
         b.HasIndex(x => new { x.ExamId, x.VariantNumber })
             .IsUnique()

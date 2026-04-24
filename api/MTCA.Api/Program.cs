@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using MTCA.Application;
 using MTCA.Infrastructure;
+using MTCA.Infrastructure.Persistence.Seeders;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,6 +42,12 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var initializer = scope.ServiceProvider.GetRequiredService<DbInitializer>();
+    await initializer.SeedAsync();
+}
+
 app.UseForwardedHeaders();
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler("/error");
@@ -53,8 +60,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseRouting();
 app.UseCors("MtcaPolicy");
-// app.UseAuthentication();   // enable when Identity wiring lands
-// app.UseAuthorization();    // enable when Identity wiring lands
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 app.MapHealthChecks("/health", new HealthCheckOptions

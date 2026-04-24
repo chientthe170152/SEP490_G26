@@ -1,8 +1,9 @@
+using MTCA.Domain.Common;
+
 namespace MTCA.Domain.MasterData;
 
-public class Chapter
+public class Chapter : BaseEntity<int>
 {
-    public int Id { get; set; }
     public int SubjectId { get; set; }
     public int OrderIndex { get; set; }
     public string Name { get; set; } = default!;

@@ -25,8 +25,6 @@ public class QuestionConfiguration : IEntityTypeConfiguration<Question>
         b.Property(x => x.DifficultyEmpirical).HasDefaultValue(0.5);
 
         b.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
-        b.Property(x => x.CreatedById).IsRequired().HasMaxLength(450);
-        b.Property(x => x.UpdatedById).HasMaxLength(450);
         b.Property(x => x.RowVersion).IsRowVersion();
 
         b.HasIndex(x => new { x.SubjectId, x.BloomLevel }).HasDatabaseName("IX_Question_Subject_Bloom");
