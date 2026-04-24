@@ -9,6 +9,7 @@ using MTCA.Infrastructure.Identity.Services;
 using MTCA.Infrastructure.Persistence;
 using MTCA.Infrastructure.Persistence.Interceptors;
 using MTCA.Infrastructure.Persistence.Seeders;
+using MTCA.Infrastructure.Services.Tokens;
 using StackExchange.Redis;
 
 namespace MTCA.Infrastructure;
@@ -33,6 +34,9 @@ public static class DependencyInjection
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
         services.AddMtcaIdentity();
+
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IRefreshTokenStore, RefreshTokenStore>();
 
         services.AddScoped<RoleSeeder>();
         services.AddScoped<AdminUserSeeder>();

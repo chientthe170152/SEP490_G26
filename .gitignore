@@ -19,3 +19,5 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/
+.plan/
+.agents/

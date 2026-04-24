@@ -1,6 +1,7 @@
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
+using MTCA.Api.Extensions;
 using MTCA.Application;
 using MTCA.Infrastructure;
 using MTCA.Infrastructure.Persistence.Seeders;
@@ -39,6 +40,7 @@ builder.Services.AddHealthChecks();
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddMtcaAuth(builder.Configuration);
 
 var app = builder.Build();
 

@@ -9,7 +9,7 @@ public static class IdentityConfigExtensions
 {
     public static IServiceCollection AddMtcaIdentity(this IServiceCollection services)
     {
-        services.AddIdentity<ApplicationUser, ApplicationRole>(opts =>
+        services.AddIdentityCore<ApplicationUser>(opts =>
         {
             opts.Password.RequiredLength = 10;
             opts.Password.RequireNonAlphanumeric = true;
@@ -24,8 +24,11 @@ public static class IdentityConfigExtensions
             opts.User.RequireUniqueEmail = false;
             opts.SignIn.RequireConfirmedEmail = false;
         })
+        .AddRoles<ApplicationRole>()
         .AddEntityFrameworkStores<AppDbContext>()
-        .AddDefaultTokenProviders();
+        .AddDefaultTokenProviders()
+        .AddSignInManager()
+        .AddUserManager<UserManager<ApplicationUser>>();
 
         return services;
     }
