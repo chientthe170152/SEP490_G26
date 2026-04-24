@@ -1,0 +1,26 @@
+# .NET build artifacts
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+
+# Rider / VS local
+.vs/
+.idea/
+
+# Env (docker-compose) — commit .env.example only
+.env
+
+# Runtime logs
+logs/
+*.log
+
+# Per-dev local overrides (not committed)
+appsettings.Local.json
+
+# Publish output
+publish/
+out/
+
+.design
