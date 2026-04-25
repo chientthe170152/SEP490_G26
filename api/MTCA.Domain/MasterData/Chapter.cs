@@ -7,7 +7,7 @@ public class Chapter : BaseEntity<int>
     public int SubjectId { get; set; }
     public int OrderIndex { get; set; }
     public string Name { get; set; } = default!;
-    public bool IsActive { get; set; } = true;
+    public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 

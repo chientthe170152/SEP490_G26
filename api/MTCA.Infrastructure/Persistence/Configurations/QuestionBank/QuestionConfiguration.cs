@@ -21,8 +21,6 @@ public class QuestionConfiguration : IEntityTypeConfiguration<Question>
         b.HasKey(x => x.Id);
 
         b.Property(x => x.BloomLevel).HasConversion<byte>();
-        b.Property(x => x.DifficultyExpected).HasDefaultValue(0.5);
-        b.Property(x => x.DifficultyEmpirical).HasDefaultValue(0.5);
 
         b.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
         b.Property(x => x.RowVersion).IsRowVersion();

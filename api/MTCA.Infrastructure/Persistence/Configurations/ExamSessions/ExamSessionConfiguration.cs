@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MTCA.Domain.ExamSessions;
-using MTCA.Domain.ExamSessions.Enums;
 using MTCA.Domain.Identity;
 
 namespace MTCA.Infrastructure.Persistence.Configurations.ExamSessions;
@@ -15,8 +14,8 @@ public class ExamSessionConfiguration : IEntityTypeConfiguration<ExamSession>
             "([EarlySubmitPolicy] = 2 AND [MinDurationMinutes] IS NOT NULL) OR ([EarlySubmitPolicy] <> 2 AND [MinDurationMinutes] IS NULL)"));
         b.HasKey(x => x.Id);
 
-        b.Property(x => x.Status).HasConversion<byte>().HasDefaultValue(ExamSessionStatus.SCHEDULED);
-        b.Property(x => x.EarlySubmitPolicy).HasConversion<byte>().HasDefaultValue(EarlySubmitPolicy.ALLOW);
+        b.Property(x => x.Status).HasConversion<byte>();
+        b.Property(x => x.EarlySubmitPolicy).HasConversion<byte>();
 
         b.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
         b.Property(x => x.RowVersion).IsRowVersion();

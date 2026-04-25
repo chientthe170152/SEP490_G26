@@ -13,12 +13,12 @@ public class ExamSession : AggregateRoot<int>
     public DateTime StartAt { get; set; }
     public DateTime EndAt { get; set; }
     public int DurationMin { get; set; }
-    public ExamSessionStatus Status { get; set; } = ExamSessionStatus.SCHEDULED;
+    public ExamSessionStatus Status { get; set; }
     public string? CancelReason { get; set; }
     public Guid? CancelledById { get; set; }
     public DateTime? CancelledAt { get; set; }
     public long ShuffleSeed { get; set; }
-    public EarlySubmitPolicy EarlySubmitPolicy { get; set; } = EarlySubmitPolicy.ALLOW;
+    public EarlySubmitPolicy EarlySubmitPolicy { get; set; }
     public int? MinDurationMinutes { get; set; }
 
     public Exam Exam { get; set; } = default!;

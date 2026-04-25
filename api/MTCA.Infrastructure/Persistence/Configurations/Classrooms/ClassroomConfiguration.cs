@@ -14,8 +14,6 @@ public class ClassroomConfiguration : IEntityTypeConfiguration<Classroom>
 
         b.Property(x => x.Name).IsRequired().HasMaxLength(200);
         b.Property(x => x.JoinCode).HasMaxLength(10);
-        b.Property(x => x.JoinCodeEnabled).HasDefaultValue(false);
-        b.Property(x => x.IsArchived).HasDefaultValue(false);
 
         b.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
         b.Property(x => x.RowVersion).IsRowVersion();

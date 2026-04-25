@@ -10,7 +10,7 @@ public class Submission : BaseEntity<int>, IConcurrencyAware
     public int ExamSessionId { get; set; }
     public Guid StudentUserId { get; set; }
     public int ExamVariantId { get; set; }
-    public SubmissionStatus Status { get; set; } = SubmissionStatus.IN_PROGRESS;
+    public SubmissionStatus Status { get; set; }
     public DateTime TimerStartedAt { get; set; }
     public DateTime? TimerPausedAt { get; set; }
     public long TotalPausedMs { get; set; }

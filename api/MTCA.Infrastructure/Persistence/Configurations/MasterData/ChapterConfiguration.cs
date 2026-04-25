@@ -12,7 +12,6 @@ public class ChapterConfiguration : IEntityTypeConfiguration<Chapter>
         b.HasKey(x => x.Id);
 
         b.Property(x => x.Name).IsRequired().HasMaxLength(255);
-        b.Property(x => x.IsActive).HasDefaultValue(true);
         b.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
 
         b.HasOne(x => x.Subject)

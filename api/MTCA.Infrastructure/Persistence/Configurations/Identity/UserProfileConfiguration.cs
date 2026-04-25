@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MTCA.Domain.Identity;
-using MTCA.Domain.Identity.Enums;
 
 namespace MTCA.Infrastructure.Persistence.Configurations.Identity;
 
@@ -16,9 +15,7 @@ public class UserProfileConfiguration : IEntityTypeConfiguration<UserProfile>
 
         b.Property(p => p.StudentCode).IsRequired().HasMaxLength(50);
         b.Property(p => p.FullName).IsRequired().HasMaxLength(255);
-        b.Property(p => p.Status)
-            .HasConversion<byte>()
-            .HasDefaultValue(UserProfileStatus.ACTIVE);
+        b.Property(p => p.Status).HasConversion<byte>();
         b.Property(p => p.Nickname).HasMaxLength(20);
 
         b.HasIndex(p => p.StudentCode).IsUnique();

@@ -89,18 +89,14 @@ namespace MTCA.Infrastructure.Persistence.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("IsArchived")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
+                        .HasColumnType("bit");
 
                     b.Property<string>("JoinCode")
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
                     b.Property<bool>("JoinCodeEnabled")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
+                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -329,18 +325,14 @@ namespace MTCA.Infrastructure.Persistence.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<byte>("Status")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("tinyint")
-                        .HasDefaultValue((byte)0);
+                        .HasColumnType("tinyint");
 
                     b.Property<int>("TotalQuestions")
                         .HasColumnType("int");
 
                     b.Property<decimal>("TotalScore")
-                        .ValueGeneratedOnAdd()
                         .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)")
-                        .HasDefaultValue(10.00m);
+                        .HasColumnType("decimal(5,2)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -404,9 +396,7 @@ namespace MTCA.Infrastructure.Persistence.Migrations
                         .HasColumnType("int");
 
                     b.Property<byte>("EarlySubmitPolicy")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("tinyint")
-                        .HasDefaultValue((byte)0);
+                        .HasColumnType("tinyint");
 
                     b.Property<DateTime>("EndAt")
                         .HasColumnType("datetime2");
@@ -430,9 +420,7 @@ namespace MTCA.Infrastructure.Persistence.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<byte>("Status")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("tinyint")
-                        .HasDefaultValue((byte)0);
+                        .HasColumnType("tinyint");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -493,9 +481,7 @@ namespace MTCA.Infrastructure.Persistence.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<byte>("Status")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("tinyint")
-                        .HasDefaultValue((byte)0);
+                        .HasColumnType("tinyint");
 
                     b.Property<Guid>("StudentUserId")
                         .HasColumnType("uniqueidentifier");
@@ -510,9 +496,7 @@ namespace MTCA.Infrastructure.Persistence.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<long>("TotalPausedMs")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasDefaultValue(0L);
+                        .HasColumnType("bigint");
 
                     b.Property<decimal?>("TotalScore")
                         .HasPrecision(5, 2)
@@ -619,9 +603,7 @@ namespace MTCA.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<byte>("ResultVisibilityTiming")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("tinyint")
-                        .HasDefaultValue((byte)1);
+                        .HasColumnType("tinyint");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -630,29 +612,19 @@ namespace MTCA.Infrastructure.Persistence.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<bool>("ShowCorrectAnswers")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
+                        .HasColumnType("bit");
 
                     b.Property<bool>("ShowTotalScore")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
+                        .HasColumnType("bit");
 
                     b.Property<bool>("ShuffleOptions")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
+                        .HasColumnType("bit");
 
                     b.Property<bool>("ShuffleQuestions")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
+                        .HasColumnType("bit");
 
                     b.Property<byte>("Status")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("tinyint")
-                        .HasDefaultValue((byte)0);
+                        .HasColumnType("tinyint");
 
                     b.Property<int>("SubjectId")
                         .HasColumnType("int");
@@ -664,9 +636,7 @@ namespace MTCA.Infrastructure.Persistence.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("VariantCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(1);
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -867,9 +837,7 @@ namespace MTCA.Infrastructure.Persistence.Migrations
                         .HasColumnType("int");
 
                     b.Property<byte>("Status")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("tinyint")
-                        .HasDefaultValue((byte)0);
+                        .HasColumnType("tinyint");
 
                     b.Property<string>("StudentCode")
                         .IsRequired()
@@ -942,9 +910,7 @@ namespace MTCA.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
+                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -991,9 +957,7 @@ namespace MTCA.Infrastructure.Persistence.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
+                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1033,9 +997,7 @@ namespace MTCA.Infrastructure.Persistence.Migrations
                         .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
+                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1205,14 +1167,10 @@ namespace MTCA.Infrastructure.Persistence.Migrations
                         .HasColumnType("int");
 
                     b.Property<double>("DifficultyEmpirical")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("float")
-                        .HasDefaultValue(0.5);
+                        .HasColumnType("float");
 
                     b.Property<double>("DifficultyExpected")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("float")
-                        .HasDefaultValue(0.5);
+                        .HasColumnType("float");
 
                     b.Property<int>("QuestionBankId")
                         .HasColumnType("int");
@@ -1414,9 +1372,7 @@ namespace MTCA.Infrastructure.Persistence.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<byte>("Status")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("tinyint")
-                        .HasDefaultValue((byte)0);
+                        .HasColumnType("tinyint");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");

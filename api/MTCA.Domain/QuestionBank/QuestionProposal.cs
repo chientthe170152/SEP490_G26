@@ -8,7 +8,7 @@ public class QuestionProposal : AggregateRoot<int>
 {
     public int QuestionId { get; set; }
     public Guid? ReviewerId { get; set; }
-    public ProposalStatus Status { get; set; } = ProposalStatus.PENDING;
+    public ProposalStatus Status { get; set; }
     public string? Reason { get; set; }
 
     public Question Question { get; set; } = default!;

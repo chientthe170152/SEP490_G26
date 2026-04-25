@@ -13,7 +13,6 @@ public class SubjectConfiguration : IEntityTypeConfiguration<Subject>
 
         b.Property(x => x.Code).IsRequired().HasMaxLength(50);
         b.Property(x => x.Name).IsRequired().HasMaxLength(255);
-        b.Property(x => x.IsActive).HasDefaultValue(true);
         b.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
 
         b.HasIndex(x => x.Code).IsUnique();

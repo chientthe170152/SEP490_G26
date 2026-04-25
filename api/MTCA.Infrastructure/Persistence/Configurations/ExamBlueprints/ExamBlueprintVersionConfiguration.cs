@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MTCA.Domain.ExamBlueprints;
-using MTCA.Domain.ExamBlueprints.Enums;
 using MTCA.Domain.Identity;
 
 namespace MTCA.Infrastructure.Persistence.Configurations.ExamBlueprints;
@@ -13,8 +12,8 @@ public class ExamBlueprintVersionConfiguration : IEntityTypeConfiguration<ExamBl
         b.ToTable("ExamBlueprintVersion");
         b.HasKey(x => x.Id);
 
-        b.Property(x => x.Status).HasConversion<byte>().HasDefaultValue(ExamBlueprintStatus.DRAFT);
-        b.Property(x => x.TotalScore).HasPrecision(5, 2).HasDefaultValue(10.00m);
+        b.Property(x => x.Status).HasConversion<byte>();
+        b.Property(x => x.TotalScore).HasPrecision(5, 2);
 
         b.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
         b.Property(x => x.RowVersion).IsRowVersion();

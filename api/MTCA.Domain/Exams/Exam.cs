@@ -11,15 +11,15 @@ public class Exam : AggregateRoot<int>
     public string? Description { get; set; }
     public int SubjectId { get; set; }
     public int BlueprintVersionId { get; set; }
-    public ExamStatus Status { get; set; } = ExamStatus.DRAFT;
+    public ExamStatus Status { get; set; }
     public string? Password { get; set; }
     public int DurationMin { get; set; }
-    public ResultVisibilityTiming ResultVisibilityTiming { get; set; } = ResultVisibilityTiming.AFTER_SESSION_CLOSE;
-    public bool ShowTotalScore { get; set; } = true;
+    public ResultVisibilityTiming ResultVisibilityTiming { get; set; }
+    public bool ShowTotalScore { get; set; }
     public bool ShowCorrectAnswers { get; set; }
-    public bool ShuffleQuestions { get; set; } = true;
-    public bool ShuffleOptions { get; set; } = true;
-    public int VariantCount { get; set; } = 1;
+    public bool ShuffleQuestions { get; set; }
+    public bool ShuffleOptions { get; set; }
+    public int VariantCount { get; set; }
 
     public Subject Subject { get; set; } = default!;
     public ExamBlueprintVersion BlueprintVersion { get; set; } = default!;

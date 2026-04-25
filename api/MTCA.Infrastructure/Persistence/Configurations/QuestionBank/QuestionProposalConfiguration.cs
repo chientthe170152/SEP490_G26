@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MTCA.Domain.Identity;
 using MTCA.Domain.QuestionBank;
-using MTCA.Domain.QuestionBank.Enums;
 
 namespace MTCA.Infrastructure.Persistence.Configurations.QuestionBank;
 
@@ -13,7 +12,7 @@ public class QuestionProposalConfiguration : IEntityTypeConfiguration<QuestionPr
         b.ToTable("QuestionProposal");
         b.HasKey(x => x.Id);
 
-        b.Property(x => x.Status).HasConversion<byte>().HasDefaultValue(ProposalStatus.PENDING);
+        b.Property(x => x.Status).HasConversion<byte>();
 
         b.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
         b.Property(x => x.RowVersion).IsRowVersion();

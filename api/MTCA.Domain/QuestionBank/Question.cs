@@ -11,8 +11,8 @@ public class Question : AggregateRoot<int>
     public int ChapterId { get; set; }
     public int? CurrentVersionId { get; set; }
     public BloomLevel BloomLevel { get; set; }
-    public double DifficultyExpected { get; set; } = 0.5;
-    public double DifficultyEmpirical { get; set; } = 0.5;
+    public double DifficultyExpected { get; set; }
+    public double DifficultyEmpirical { get; set; }
 
     public QuestionBank Bank { get; set; } = default!;
     public Subject Subject { get; set; } = default!;

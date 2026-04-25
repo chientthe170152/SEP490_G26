@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using MTCA.Domain.Exams;
-using MTCA.Domain.Exams.Enums;
 using MTCA.Domain.Identity;
 
 namespace MTCA.Infrastructure.Persistence.Configurations.Exams;
@@ -15,16 +14,8 @@ public class ExamConfiguration : IEntityTypeConfiguration<Exam>
 
         b.Property(x => x.Name).IsRequired().HasMaxLength(200);
         b.Property(x => x.Password).HasMaxLength(100);
-        b.Property(x => x.Status).HasConversion<byte>().HasDefaultValue(ExamStatus.DRAFT);
-        b.Property(x => x.ResultVisibilityTiming)
-            .HasConversion<byte>()
-            .HasDefaultValue(ResultVisibilityTiming.AFTER_SESSION_CLOSE);
-        b.Property(x => x.ShowTotalScore).HasDefaultValue(true);
-        b.Property(x => x.ShowCorrectAnswers).HasDefaultValue(false);
-        b.Property(x => x.ShuffleQuestions).HasDefaultValue(true);
-        b.Property(x => x.ShuffleOptions).HasDefaultValue(true);
-        b.Property(x => x.VariantCount).HasDefaultValue(1);
-
+        b.Property(x => x.Status).HasConversion<byte>();
+        b.Property(x => x.ResultVisibilityTiming).HasConversion<byte>();
         b.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
         b.Property(x => x.RowVersion).IsRowVersion();
 
