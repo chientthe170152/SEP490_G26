@@ -7,6 +7,7 @@ using MTCA.Api.Extensions;
 using MTCA.Api.Options;
 using MTCA.Application.Features.Auth.Commands.Login;
 using MTCA.Application.Features.Auth.Queries.GetCurrentUser;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MTCA.Api.Controllers.Auth;
 
@@ -18,6 +19,7 @@ public sealed class AuthController(ISender mediator, IOptions<AuthCookieOptions>
 
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
         var command = request.ToCommand(HttpContext);
@@ -38,6 +40,47 @@ public sealed class AuthController(ISender mediator, IOptions<AuthCookieOptions>
             login.FullName,
             login.Roles,
             login.MustChangePassword));
+    }
+
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
+    {
+        if (!Request.Cookies.TryGetValue(_cookieOpts.RefreshName, out var refreshToken))
+        {
+            CookieHelper.ClearAuthCookies(Response, _cookieOpts);
+            return Unauthorized();
+        }
+
+        var ip = Request.HttpContext.Connection.RemoteIpAddress?.ToString();
+        var ua = Request.Headers.UserAgent.ToString();
+        var command = new MTCA.Application.Features.Auth.Commands.Refresh.RefreshCommand(refreshToken, ip, ua);
+        
+        var result = await mediator.Send(command, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            CookieHelper.ClearAuthCookies(Response, _cookieOpts);
+            return result.ToActionResult(this);
+        }
+
+        var refreshResult = result.Value;
+        CookieHelper.SetAccessCookie(Response, refreshResult.AccessToken, refreshResult.AccessExpiresAt, _cookieOpts);
+        CookieHelper.SetRefreshCookie(Response, refreshResult.RefreshToken, refreshResult.RefreshExpiresAt, _cookieOpts);
+
+        return Ok(new RefreshResponse(refreshResult.MustChangePassword));
+    }
+
+    [HttpPost("logout")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
+    {
+        Request.Cookies.TryGetValue(_cookieOpts.RefreshName, out var refreshToken);
+
+        var command = new MTCA.Application.Features.Auth.Commands.Logout.LogoutCommand(refreshToken);
+        await mediator.Send(command, cancellationToken);
+
+        CookieHelper.ClearAuthCookies(Response, _cookieOpts);
+        return NoContent();
     }
 
     [HttpGet("me")]

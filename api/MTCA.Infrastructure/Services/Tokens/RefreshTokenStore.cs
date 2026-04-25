@@ -60,6 +60,87 @@ public sealed class RefreshTokenStore(
             .Replace('+', '-')
             .Replace('/', '_');
 
+    public async Task<RefreshTokenValidation?> ValidateAsync(string rawToken, CancellationToken cancellationToken)
+    {
+        var hash = Sha256Hex(rawToken);
+        var hashKey = $"rt-hash:{hash}";
+        var db = redis.GetDatabase();
+
+        var value = await db.StringGetAsync(hashKey);
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        var parts = value.ToString().Split('|');
+        if (parts.Length != 2 || !Guid.TryParse(parts[0], out var userId))
+        {
+            return null;
+        }
+
+        var jti = parts[1];
+        var tokenKey = $"rt:{userId}:{jti}";
+        var storedHash = await db.HashGetAsync(tokenKey, "hash");
+
+        if (!storedHash.HasValue || storedHash.ToString() != hash)
+        {
+            // Token Reuse Detection
+            await RevokeAllAsync(userId, cancellationToken);
+            return null;
+        }
+
+        return new RefreshTokenValidation(userId, jti);
+    }
+
+    public async Task RevokeAsync(Guid userId, string jti, CancellationToken cancellationToken)
+    {
+        var db = redis.GetDatabase();
+        var tokenKey = $"rt:{userId}:{jti}";
+        
+        var hash = await db.HashGetAsync(tokenKey, "hash");
+        
+        var batch = db.CreateBatch();
+        if (hash.HasValue)
+        {
+            _ = batch.KeyDeleteAsync($"rt-hash:{hash}");
+        }
+        _ = batch.KeyDeleteAsync(tokenKey);
+        _ = batch.SetRemoveAsync($"rt-user:{userId}", jti);
+        batch.Execute();
+    }
+
+    public async Task RevokeAllAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var db = redis.GetDatabase();
+        var userSetKey = $"rt-user:{userId}";
+        
+        var jtis = await db.SetMembersAsync(userSetKey);
+        if (jtis.Length == 0)
+        {
+            return;
+        }
+
+        // Gather all hashes first to delete their reverse indexes
+        var hashTasks = jtis.Select(jti => db.HashGetAsync($"rt:{userId}:{jti}", "hash")).ToList();
+        await Task.WhenAll(hashTasks);
+
+        var batch = db.CreateBatch();
+        for (int i = 0; i < jtis.Length; i++)
+        {
+            var jti = jtis[i];
+            var hashTask = hashTasks[i];
+            
+            if (hashTask.Result.HasValue)
+            {
+                _ = batch.KeyDeleteAsync($"rt-hash:{hashTask.Result}");
+            }
+            _ = batch.KeyDeleteAsync($"rt:{userId}:{jti}");
+        }
+        
+        _ = batch.KeyDeleteAsync(userSetKey);
+        batch.Execute();
+    }
+
     private static string Sha256Hex(string value)
     {
         var bytes = System.Text.Encoding.UTF8.GetBytes(value);

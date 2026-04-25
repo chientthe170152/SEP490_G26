@@ -42,6 +42,7 @@ builder.Services.AddHealthChecks();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddMtcaAuth(builder.Configuration);
+builder.Services.AddMtcaRateLimiting();
 
 var app = builder.Build();
 
@@ -63,6 +64,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseRouting();
 app.UseCors("MtcaPolicy");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseMiddleware<FirstLoginPasswordMiddleware>();
 app.UseAuthorization();

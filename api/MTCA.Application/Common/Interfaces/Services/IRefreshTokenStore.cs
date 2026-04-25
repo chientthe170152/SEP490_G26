@@ -1,5 +1,7 @@
 namespace MTCA.Application.Common.Interfaces.Services;
 
+public record RefreshTokenValidation(Guid UserId, string Jti);
+
 public interface IRefreshTokenStore
 {
     Task<(string RawToken, DateTimeOffset ExpiresAt)> IssueAsync(
@@ -8,4 +10,10 @@ public interface IRefreshTokenStore
         string? ip,
         string? userAgent,
         CancellationToken cancellationToken);
+
+    Task<RefreshTokenValidation?> ValidateAsync(string rawToken, CancellationToken cancellationToken);
+    
+    Task RevokeAsync(Guid userId, string jti, CancellationToken cancellationToken);
+    
+    Task RevokeAllAsync(Guid userId, CancellationToken cancellationToken);
 }

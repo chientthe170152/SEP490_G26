@@ -18,6 +18,12 @@ public static class CookieHelper
     public static void ClearRefreshCookie(HttpResponse response, AuthCookieOptions opts) =>
         response.Cookies.Delete(opts.RefreshName, BuildDeleteOptions(opts, path: RefreshCookiePath));
 
+    public static void ClearAuthCookies(HttpResponse response, AuthCookieOptions opts)
+    {
+        ClearAccessCookie(response, opts);
+        ClearRefreshCookie(response, opts);
+    }
+
     private static CookieOptions BuildOptions(AuthCookieOptions opts, string path, DateTimeOffset expiresAt) => new()
     {
         HttpOnly = opts.HttpOnly,
