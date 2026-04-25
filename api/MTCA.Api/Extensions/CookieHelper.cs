@@ -4,7 +4,7 @@ namespace MTCA.Api.Extensions;
 
 public static class CookieHelper
 {
-    private const string RefreshCookiePath = "/api/auth";
+    private const string RefreshCookiePath = "/api/auth/refresh";
 
     public static void SetAccessCookie(HttpResponse response, string token, DateTimeOffset expiresAt, AuthCookieOptions opts) =>
         response.Cookies.Append(opts.Name, token, BuildOptions(opts, path: "/", expiresAt));

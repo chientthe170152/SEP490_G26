@@ -70,7 +70,7 @@ public sealed class AuthController(ISender mediator, IOptions<AuthCookieOptions>
         return Ok(new RefreshResponse(refreshResult.MustChangePassword));
     }
 
-    [HttpPost("logout")]
+    [HttpPost("refresh/logout")]
     [AllowAnonymous]
     public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
