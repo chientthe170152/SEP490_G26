@@ -117,7 +117,28 @@ Entity implement `IConcurrencyAware` (có RowVersion). EF detect conflict → th
 
 `schema.dbml` KHÔNG đặc tả `[default: 'XXX']` cho cột business (default được handler set tường minh). Audit field (`CreatedAt SYSUTCDATETIME()`) giữ DB default vì infrastructure-level.
 
-## 10. Review checklist khi PR đụng Domain hoặc EF Configuration
+## 10. Time & UTC
+
+Mọi giá trị thời gian trong hệ thống đều **là UTC**. Không lưu local time, không lưu `Unspecified`.
+
+**Quy tắc code**:
+
+| Việc | ✅ Dùng | ❌ Cấm |
+|---|---|---|
+| Lấy "now" trong service/handler/interceptor | `TimeProvider.GetUtcNow()` (inject `TimeProvider`) | `DateTime.Now`, `DateTime.Today`, `DateTime.UtcNow` (hard-code — khó test), `DateTimeOffset.Now` |
+| Pass vào JWT/Cookie/DB | `.UtcDateTime` (từ `DateTimeOffset`) | `.LocalDateTime`, `.ToLocalTime()` |
+| DB default cho audit/timestamp field | `HasDefaultValueSql("SYSUTCDATETIME()")` | `GETDATE()`, `CURRENT_TIMESTAMP` (trả local time trên SQL Server) |
+
+**Enforcement ở Infrastructure**:
+- `UtcDateTimeConverter` / `UtcNullableDateTimeConverter` được apply globally trong `AppDbContext.OnModelCreating` cho **mọi** property `DateTime` / `DateTime?`. Hành vi:
+  - **Write**: giá trị `Kind != Utc` → `ToUniversalTime()` trước khi persist (safety net nếu ai đó set nhầm Local).
+  - **Read**: giá trị từ SQL Server `datetime2` (Kind = `Unspecified`) → `SpecifyKind(Utc)` để downstream code không bị convert sai khi gọi `.ToLocalTime()`.
+- Quy ước: **DB lưu UTC thuần** — không mix timezone. Frontend tự convert sang local time theo IANA timezone của user.
+
+**Khi nào dùng `DateTimeOffset` thay vì `DateTime`?**
+- Khi domain cần ghi lại "thời điểm kèm offset của sự kiện" (ví dụ lịch thi đa múi giờ, audit trail từ client ở nhiều quốc gia). Hiện tại MTCA chạy 1 múi giờ (VN) → `DateTime` UTC là đủ, rẻ hơn `DateTimeOffset`.
+
+## 11. Review checklist khi PR đụng Domain hoặc EF Configuration
 
 - [ ] Entity mới: KHÔNG có default trên BẤT KỲ business field (enum, bool, decimal, int, double, string)?
 - [ ] EF Configuration: KHÔNG có `HasDefaultValue` cho business field?

@@ -11,6 +11,7 @@ using MTCA.Domain.Logging;
 using MTCA.Domain.MasterData;
 using MTCA.Domain.Practice;
 using MTCA.Domain.QuestionBank;
+using MTCA.Infrastructure.Persistence.Conventions;
 
 namespace MTCA.Infrastructure.Persistence;
 
@@ -56,5 +57,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        var utcConverter = new UtcDateTimeConverter();
+        var utcNullableConverter = new UtcNullableDateTimeConverter();
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(DateTime))
+                {
+                    property.SetValueConverter(utcConverter);
+                }
+                else if (property.ClrType == typeof(DateTime?))
+                {
+                    property.SetValueConverter(utcNullableConverter);
+                }
+            }
+        }
     }
 }
