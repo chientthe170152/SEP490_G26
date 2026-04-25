@@ -2,6 +2,7 @@ using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using MTCA.Api.Extensions;
+using MTCA.Api.Middleware;
 using MTCA.Application;
 using MTCA.Infrastructure;
 using MTCA.Infrastructure.Persistence.Seeders;
@@ -63,13 +64,14 @@ if (app.Environment.IsDevelopment())
 app.UseRouting();
 app.UseCors("MtcaPolicy");
 app.UseAuthentication();
+app.UseMiddleware<FirstLoginPasswordMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
-});
-app.Map("/error", () => Results.Problem());
+}).AllowAnonymous();
+app.Map("/error", () => Results.Problem()).AllowAnonymous();
 
 app.Run();

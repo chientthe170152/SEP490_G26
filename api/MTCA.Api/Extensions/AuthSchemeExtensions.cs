@@ -1,7 +1,9 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using MTCA.Api.Authorization;
 using MTCA.Api.Options;
 using MTCA.Infrastructure.Options;
 
@@ -61,7 +63,19 @@ public static class AuthSchemeExtensions
                 };
             });
 
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy(AuthPolicies.AllowPasswordChange,
+                p => p.RequireAuthenticatedUser());
+
+            var passwordFresh = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .RequireClaim("mcp", "false")
+                .Build();
+
+            options.DefaultPolicy = passwordFresh;
+            options.FallbackPolicy = passwordFresh;
+        });
 
         return services;
     }
