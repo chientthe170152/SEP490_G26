@@ -8,7 +8,7 @@ namespace MTCA.Api.Middleware;
 public sealed class FirstLoginPasswordMiddleware(RequestDelegate next)
 {
     private static readonly string ProblemBody =
-        $$"""{"type":"{{ProblemTypes.Prefix}}{{ErrorCodes.PasswordChangeRequired}}","title":"{{ErrorCodes.PasswordChangeRequired}}","status":403,"detail":"{{ErrorMessages.PasswordChangeRequired}}"}""";
+        $$"""{"type":"{{ProblemTypes.Prefix}}{{ErrorCodes.PasswordChangeRequired}}","title":"{{ErrorCodes.PasswordChangeRequired}}","status":403}""";
 
     public async Task Invoke(HttpContext context)
     {

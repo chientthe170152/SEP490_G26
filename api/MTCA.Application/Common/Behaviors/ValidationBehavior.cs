@@ -34,13 +34,9 @@ public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidat
             return await next();
         }
 
-        var errors = failures
-            .Select(f => Error.Validation(f.ErrorCode ?? ErrorCodes.ValidationError, f.ErrorMessage))
-            .ToArray();
-
         if (typeof(IResultResponse).IsAssignableFrom(typeof(TResponse)))
         {
-            return CreateFailureResult(errors);
+            return CreateFailureResult([Error.Validation(ErrorCodes.Validation)]);
         }
 
         throw new ValidationException(failures);

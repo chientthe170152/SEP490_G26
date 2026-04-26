@@ -19,42 +19,24 @@ public static class ResultExtensions
 
     private static IActionResult MapFailure(IReadOnlyList<Error> errors, ControllerBase controller)
     {
-        var primary = errors.Count > 0 ? errors[0] : Error.Unexpected(ErrorCodes.Unexpected, ErrorMessages.Unexpected);
+        var primary = errors.Count > 0 ? errors[0] : Error.Unexpected(ErrorCodes.Unexpected);
         return primary.Type switch
         {
-            ErrorType.Validation => BuildValidationProblem(errors, controller),
-            ErrorType.Unauthorized => controller.StatusCode(StatusCodes.Status401Unauthorized, BuildProblem(primary, 401)),
-            ErrorType.Forbidden => controller.StatusCode(StatusCodes.Status403Forbidden, BuildProblem(primary, 403)),
-            ErrorType.NotFound => controller.StatusCode(StatusCodes.Status404NotFound, BuildProblem(primary, 404)),
-            ErrorType.Conflict => controller.StatusCode(StatusCodes.Status409Conflict, BuildProblem(primary, 409)),
-            ErrorType.Locked => controller.StatusCode(StatusCodes.Status423Locked, BuildProblem(primary, 423)),
-            ErrorType.TooManyRequests => controller.StatusCode(StatusCodes.Status429TooManyRequests, BuildProblem(primary, 429)),
-            _ => controller.StatusCode(StatusCodes.Status500InternalServerError, BuildProblem(primary, 500))
+            ErrorType.Validation => controller.StatusCode(StatusCodes.Status422UnprocessableEntity, BuildProblem(ErrorCodes.Validation, 422)),
+            ErrorType.Unauthorized => controller.StatusCode(StatusCodes.Status401Unauthorized, BuildProblem(primary.Code, 401)),
+            ErrorType.Forbidden => controller.StatusCode(StatusCodes.Status403Forbidden, BuildProblem(primary.Code, 403)),
+            ErrorType.NotFound => controller.StatusCode(StatusCodes.Status404NotFound, BuildProblem(primary.Code, 404)),
+            ErrorType.Conflict => controller.StatusCode(StatusCodes.Status409Conflict, BuildProblem(primary.Code, 409)),
+            ErrorType.Locked => controller.StatusCode(StatusCodes.Status423Locked, BuildProblem(primary.Code, 423)),
+            ErrorType.TooManyRequests => controller.StatusCode(StatusCodes.Status429TooManyRequests, BuildProblem(primary.Code, 429)),
+            _ => controller.StatusCode(StatusCodes.Status500InternalServerError, BuildProblem(primary.Code, 500))
         };
     }
 
-    private static ProblemDetails BuildProblem(Error error, int status) => new()
+    private static ProblemDetails BuildProblem(string code, int status) => new()
     {
-        Type = $"{ProblemTypes.Prefix}{error.Code}",
-        Title = error.Code,
-        Status = status,
-        Detail = error.Message
+        Type = $"{ProblemTypes.Prefix}{code}",
+        Title = code,
+        Status = status
     };
-
-    private static IActionResult BuildValidationProblem(IReadOnlyList<Error> errors, ControllerBase controller)
-    {
-        var modelState = new Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary();
-        foreach (var error in errors)
-        {
-            modelState.AddModelError(error.Code, error.Message);
-        }
-
-        var problem = new ValidationProblemDetails(modelState)
-        {
-            Status = StatusCodes.Status422UnprocessableEntity,
-            Title = ErrorMessages.ValidationOccurred,
-            Type = $"{ProblemTypes.Prefix}{ErrorCodes.Validation}"
-        };
-        return controller.StatusCode(StatusCodes.Status422UnprocessableEntity, problem);
-    }
 }

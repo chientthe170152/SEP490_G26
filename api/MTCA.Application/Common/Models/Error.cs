@@ -12,16 +12,16 @@ public enum ErrorType
     Unexpected
 }
 
-public sealed record Error(string Code, string Message, ErrorType Type)
+public sealed record Error(string Code, ErrorType Type)
 {
-    public static readonly Error None = new(string.Empty, string.Empty, ErrorType.Unexpected);
+    public static readonly Error None = new(string.Empty, ErrorType.Unexpected);
 
-    public static Error Validation(string code, string message) => new(code, message, ErrorType.Validation);
-    public static Error Unauthorized(string code, string message) => new(code, message, ErrorType.Unauthorized);
-    public static Error Forbidden(string code, string message) => new(code, message, ErrorType.Forbidden);
-    public static Error NotFound(string code, string message) => new(code, message, ErrorType.NotFound);
-    public static Error Conflict(string code, string message) => new(code, message, ErrorType.Conflict);
-    public static Error Locked(string code, string message) => new(code, message, ErrorType.Locked);
-    public static Error TooManyRequests(string code, string message) => new(code, message, ErrorType.TooManyRequests);
-    public static Error Unexpected(string code, string message) => new(code, message, ErrorType.Unexpected);
+    public static Error Validation(string code) => new(code, ErrorType.Validation);
+    public static Error Unauthorized(string code) => new(code, ErrorType.Unauthorized);
+    public static Error Forbidden(string code) => new(code, ErrorType.Forbidden);
+    public static Error NotFound(string code) => new(code, ErrorType.NotFound);
+    public static Error Conflict(string code) => new(code, ErrorType.Conflict);
+    public static Error Locked(string code) => new(code, ErrorType.Locked);
+    public static Error TooManyRequests(string code) => new(code, ErrorType.TooManyRequests);
+    public static Error Unexpected(string code) => new(code, ErrorType.Unexpected);
 }
