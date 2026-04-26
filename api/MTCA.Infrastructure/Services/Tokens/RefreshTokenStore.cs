@@ -92,21 +92,19 @@ public sealed class RefreshTokenStore(
         return new RefreshTokenValidation(userId, jti);
     }
 
-    public async Task RevokeAsync(Guid userId, string jti, CancellationToken cancellationToken)
+    public Task RevokeAsync(Guid userId, string jti, CancellationToken cancellationToken)
     {
+        // Keep rt-hash:{hash} as tombstone so a replayed token resolves to userId|jti
+        // and ValidateAsync detects it as reuse (rt:userId:jti missing). Tombstone expires at TTL.
         var db = redis.GetDatabase();
         var tokenKey = $"rt:{userId}:{jti}";
-        
-        var hash = await db.HashGetAsync(tokenKey, "hash");
-        
+
         var batch = db.CreateBatch();
-        if (hash.HasValue)
-        {
-            _ = batch.KeyDeleteAsync($"rt-hash:{hash}");
-        }
         _ = batch.KeyDeleteAsync(tokenKey);
         _ = batch.SetRemoveAsync($"rt-user:{userId}", jti);
         batch.Execute();
+
+        return Task.CompletedTask;
     }
 
     public async Task RevokeAllAsync(Guid userId, CancellationToken cancellationToken)
