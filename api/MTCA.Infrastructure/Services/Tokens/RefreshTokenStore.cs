@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MTCA.Application.Common.Interfaces.Services;
 using MTCA.Infrastructure.Options;
@@ -9,9 +10,11 @@ namespace MTCA.Infrastructure.Services.Tokens;
 public sealed class RefreshTokenStore(
     IConnectionMultiplexer redis,
     IOptions<JwtOptions> options,
-    TimeProvider timeProvider) : IRefreshTokenStore
+    TimeProvider timeProvider,
+    ILogger<RefreshTokenStore> logger) : IRefreshTokenStore
 {
     private const int RawTokenByteLength = 32;
+    private const int UserAgentMaxLength = 512;
 
     private readonly JwtOptions _options = options.Value;
 
@@ -35,78 +38,82 @@ public sealed class RefreshTokenStore(
         var hashKey = Keys.Hash(hash);
         var userSetKey = Keys.UserSet(userId);
 
-        var batch = db.CreateBatch();
-        var hashSetTask = batch.HashSetAsync(tokenKey, new HashEntry[]
+        var ua = Truncate(userAgent ?? string.Empty, UserAgentMaxLength);
+
+        // MULTI/EXEC: all-or-nothing so Validate never observes partial state.
+        var tran = db.CreateTransaction();
+        _ = tran.HashSetAsync(tokenKey, new HashEntry[]
         {
             new("hash", hash),
             new("issuedAt", now.ToUnixTimeSeconds()),
-            new("ua", userAgent ?? string.Empty),
+            new("ua", ua),
             new("ip", ip ?? string.Empty),
             new("expiresAt", expiresAt.ToUnixTimeSeconds())
         });
-        var tokenExpireTask = batch.KeyExpireAsync(tokenKey, ttl);
-        var hashIndexTask = batch.StringSetAsync(hashKey, $"{userId}|{jti}", ttl);
-        var userSetTask = batch.SetAddAsync(userSetKey, jti);
-        var userSetExpireTask = batch.KeyExpireAsync(userSetKey, ttl);
+        _ = tran.KeyExpireAsync(tokenKey, ttl);
+        _ = tran.StringSetAsync(hashKey, $"{userId}|{jti}", ttl);
+        _ = tran.SetAddAsync(userSetKey, jti);
+        _ = tran.KeyExpireAsync(userSetKey, ttl);
 
-        batch.Execute();
-
-        await Task.WhenAll(hashSetTask, tokenExpireTask, hashIndexTask, userSetTask, userSetExpireTask);
+        var committed = await tran.ExecuteAsync();
+        if (!committed)
+        {
+            throw new InvalidOperationException("Failed to persist refresh token to Redis.");
+        }
 
         return (rawToken, expiresAt);
     }
 
-    private static string Base64UrlEncode(byte[] bytes) =>
-        Convert.ToBase64String(bytes)
-            .TrimEnd('=')
-            .Replace('+', '-')
-            .Replace('/', '_');
-
-    public async Task<RefreshTokenValidation?> ValidateAsync(string rawToken, CancellationToken cancellationToken)
+    public async Task<RefreshTokenValidation?> ConsumeAsync(string rawToken, CancellationToken cancellationToken)
     {
         var hash = Sha256Hex(rawToken);
         var hashKey = Keys.Hash(hash);
         var db = redis.GetDatabase();
 
-        var value = await db.StringGetAsync(hashKey);
-        if (!value.HasValue)
+        var owner = await db.StringGetAsync(hashKey);
+        if (owner.IsNull)
         {
             return null;
         }
 
-        var parts = value.ToString().Split('|');
-        if (parts.Length != 2 || !Guid.TryParse(parts[0], out var userId))
+        var ownerStr = owner.ToString();
+        var sep = ownerStr.IndexOf('|');
+        if (sep <= 0 || !Guid.TryParse(ownerStr[..sep], out var userId))
         {
             return null;
         }
+        var jti = ownerStr[(sep + 1)..];
 
-        var jti = parts[1];
         var tokenKey = Keys.Token(userId, jti);
-        var storedHash = await db.HashGetAsync(tokenKey, "hash");
+        var userSetKey = Keys.UserSet(userId);
 
-        if (!storedHash.HasValue || storedHash.ToString() != hash)
+        var tran = db.CreateTransaction();
+        tran.AddCondition(Condition.HashEqual(tokenKey, "hash", hash));
+        var delTask = tran.KeyDeleteAsync(tokenKey);
+        var sremTask = tran.SetRemoveAsync(userSetKey, jti);
+
+        var committed = await tran.ExecuteAsync();
+        if (committed)
         {
-            // Token Reuse Detection
-            await RevokeAllAsync(userId, cancellationToken);
-            return null;
+            await Task.WhenAll(delTask, sremTask);
+            return new RefreshTokenValidation(userId, jti);
         }
 
-        return new RefreshTokenValidation(userId, jti);
+        await RevokeAllAsync(userId, cancellationToken);
+        return null;
     }
 
-    public Task RevokeAsync(Guid userId, string jti, CancellationToken cancellationToken)
+    public async Task RevokeAsync(Guid userId, string jti, CancellationToken cancellationToken)
     {
-        // Keep rt-hash:{hash} as tombstone so a replayed token resolves to userId|jti
-        // and ValidateAsync detects it as reuse (rt:userId:jti missing). Tombstone expires at TTL.
         var db = redis.GetDatabase();
         var tokenKey = Keys.Token(userId, jti);
 
         var batch = db.CreateBatch();
-        _ = batch.KeyDeleteAsync(tokenKey);
-        _ = batch.SetRemoveAsync(Keys.UserSet(userId), jti);
+        var del = batch.KeyDeleteAsync(tokenKey);
+        var srem = batch.SetRemoveAsync(Keys.UserSet(userId), jti);
         batch.Execute();
 
-        return Task.CompletedTask;
+        await Task.WhenAll(del, srem);
     }
 
     public async Task RevokeAllAsync(Guid userId, CancellationToken cancellationToken)
@@ -120,33 +127,45 @@ public sealed class RefreshTokenStore(
             return;
         }
 
-        // Gather all hashes first to delete their reverse indexes
-        var hashTasks = jtis.Select(jti => db.HashGetAsync(Keys.Token(userId, jti.ToString()), "hash")).ToList();
+        var hashTasks = jtis
+            .Select(jti => db.HashGetAsync(Keys.Token(userId, jti.ToString()), "hash"))
+            .ToList();
         await Task.WhenAll(hashTasks);
 
         var batch = db.CreateBatch();
+        var pending = new List<Task>(jtis.Length * 2 + 1);
         for (int i = 0; i < jtis.Length; i++)
         {
             var jti = jtis[i].ToString();
-            var hashTask = hashTasks[i];
+            var storedHash = hashTasks[i].Result;
 
-            if (hashTask.Result.HasValue)
+            if (storedHash.HasValue)
             {
-                _ = batch.KeyDeleteAsync(Keys.Hash(hashTask.Result.ToString()));
+                pending.Add(batch.KeyDeleteAsync(Keys.Hash(storedHash.ToString())));
             }
-            _ = batch.KeyDeleteAsync(Keys.Token(userId, jti));
+            pending.Add(batch.KeyDeleteAsync(Keys.Token(userId, jti)));
         }
-
-        _ = batch.KeyDeleteAsync(userSetKey);
+        pending.Add(batch.KeyDeleteAsync(userSetKey));
         batch.Execute();
+
+        await Task.WhenAll(pending);
     }
+
+    private static string Base64UrlEncode(byte[] bytes) =>
+        Convert.ToBase64String(bytes)
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
 
     private static string Sha256Hex(string value)
     {
-        var bytes = System.Text.Encoding.UTF8.GetBytes(value);
+        var bytes = System.Text.Encoding.ASCII.GetBytes(value);
         var hash = SHA256.HashData(bytes);
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
+
+    private static string Truncate(string value, int max) =>
+        value.Length <= max ? value : value[..max];
 
     private static class Keys
     {

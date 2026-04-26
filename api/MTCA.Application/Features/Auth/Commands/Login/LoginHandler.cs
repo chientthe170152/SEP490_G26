@@ -36,26 +36,37 @@ public sealed class LoginHandler(
             return AuthErrors.InvalidCredentials;
         }
 
-        var profile = await dbContext.UserProfiles
+        // Single round-trip: UserProfile + roles join. Identity already loaded `user`,
+        // so we project only what's still missing.
+        var snapshot = await dbContext.UserProfiles
             .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == user.Id, cancellationToken);
+            .Where(p => p.UserId == user.Id)
+            .Select(p => new
+            {
+                p.Status,
+                p.FullName,
+                Roles = dbContext.UserRoles
+                    .Where(ur => ur.UserId == p.UserId)
+                    .Join(dbContext.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name!)
+                    .ToArray()
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
-        if (profile is null || profile.Status != UserProfileStatus.ACTIVE)
+        if (snapshot is null || snapshot.Status != UserProfileStatus.ACTIVE)
         {
             return AuthErrors.ProfileInactive;
         }
 
-        var roles = await userManager.GetRolesAsync(user);
-
-        var (accessToken, jti, accessExpiresAt) = jwtTokenService.Issue(user, roles, user.MustChangePassword);
+        var (accessToken, jti, accessExpiresAt) = jwtTokenService.Issue(
+            user.Id, user.Email, user.UserName, snapshot.Roles, user.MustChangePassword);
         var (refreshToken, refreshExpiresAt) = await refreshTokenStore.IssueAsync(
             user.Id, jti, request.Ip, request.UserAgent, cancellationToken);
 
         return new LoginResult(
             UserId: user.Id,
             Email: user.Email ?? string.Empty,
-            FullName: profile.FullName,
-            Roles: roles.ToArray(),
+            FullName: snapshot.FullName,
+            Roles: snapshot.Roles,
             MustChangePassword: user.MustChangePassword,
             AccessToken: accessToken,
             AccessExpiresAt: accessExpiresAt,

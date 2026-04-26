@@ -14,12 +14,8 @@ public sealed class LogoutHandler(IRefreshTokenStore refreshTokenStore)
             return Result.Success();
         }
 
-        var validation = await refreshTokenStore.ValidateAsync(request.RefreshToken, cancellationToken);
-        if (validation != null)
-        {
-            await refreshTokenStore.RevokeAsync(validation.UserId, validation.Jti, cancellationToken);
-        }
-
+        // Consume already deletes the tokenKey atomically; no separate Revoke needed.
+        await refreshTokenStore.ConsumeAsync(request.RefreshToken, cancellationToken);
         return Result.Success();
     }
 }

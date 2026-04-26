@@ -5,7 +5,6 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MTCA.Application.Common.Constants;
 using MTCA.Application.Common.Interfaces.Services;
-using MTCA.Domain.Identity;
 using MTCA.Infrastructure.Options;
 
 namespace MTCA.Infrastructure.Services.Tokens;
@@ -17,7 +16,9 @@ public sealed class JwtTokenService(
     private readonly JwtOptions _options = options.Value;
 
     public (string Token, string Jti, DateTimeOffset ExpiresAt) Issue(
-        ApplicationUser user,
+        Guid userId,
+        string? email,
+        string? userName,
         IEnumerable<string> roles,
         bool mustChangePassword)
     {
@@ -27,12 +28,12 @@ public sealed class JwtTokenService(
 
         var claims = new List<Claim>
         {
-            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new(JwtRegisteredClaimNames.Jti, jti),
-            new(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
+            new(JwtRegisteredClaimNames.Email, email ?? string.Empty),
             new(JwtRegisteredClaimNames.Iat, now.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.UserName ?? user.Email ?? user.Id.ToString()),
+            new(ClaimTypes.NameIdentifier, userId.ToString()),
+            new(ClaimTypes.Name, userName ?? email ?? userId.ToString()),
             new(AuthClaims.MustChangePassword, mustChangePassword ? AuthClaims.True : AuthClaims.False)
         };
 

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -17,6 +18,8 @@ namespace MTCA.Application.Common.Interfaces.Persistence;
 public interface IAppDbContext
 {
     DbSet<ApplicationUser> Users { get; }
+    DbSet<ApplicationRole> Roles { get; }
+    DbSet<IdentityUserRole<Guid>> UserRoles { get; }
     DbSet<UserProfile> UserProfiles { get; }
 
     DbSet<Subject> Subjects { get; }

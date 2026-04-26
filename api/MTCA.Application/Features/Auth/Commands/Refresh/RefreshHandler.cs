@@ -1,61 +1,73 @@
 using MediatR;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MTCA.Application.Common.Errors;
 using MTCA.Application.Common.Interfaces.Persistence;
 using MTCA.Application.Common.Interfaces.Services;
 using MTCA.Application.Common.Models;
-using MTCA.Domain.Identity;
 using MTCA.Domain.Identity.Enums;
 
 namespace MTCA.Application.Features.Auth.Commands.Refresh;
 
 public sealed class RefreshHandler(
     IRefreshTokenStore refreshTokenStore,
-    UserManager<ApplicationUser> userManager,
     IJwtTokenService jwtTokenService,
     IAppDbContext dbContext)
     : IRequestHandler<RefreshCommand, Result<RefreshResult>>
 {
     public async Task<Result<RefreshResult>> Handle(RefreshCommand request, CancellationToken cancellationToken)
     {
-        var validation = await refreshTokenStore.ValidateAsync(request.RefreshToken, cancellationToken);
+        // Atomic validate + consume; defensible against concurrent rotation.
+        var validation = await refreshTokenStore.ConsumeAsync(request.RefreshToken, cancellationToken);
         if (validation == null)
         {
             return AuthErrors.RefreshTokenInvalid;
         }
 
-        var user = await userManager.FindByIdAsync(validation.UserId.ToString());
-        if (user == null)
+        // Single round-trip: AspNetUsers + UserProfiles + AspNetUserRoles join.
+        // Trade-off: Consume already burned the rt; transient DB errors here
+        // force the user to log in again. Acceptable — the alternative is a race.
+        var snapshot = await dbContext.Users
+            .AsNoTracking()
+            .Where(u => u.Id == validation.UserId)
+            .Select(u => new
+            {
+                u.Id,
+                u.Email,
+                u.UserName,
+                u.MustChangePassword,
+                ProfileStatus = dbContext.UserProfiles
+                    .Where(p => p.UserId == u.Id)
+                    .Select(p => (UserProfileStatus?)p.Status)
+                    .FirstOrDefault(),
+                Roles = dbContext.UserRoles
+                    .Where(ur => ur.UserId == u.Id)
+                    .Join(dbContext.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name!)
+                    .ToArray()
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (snapshot is null)
         {
-            await refreshTokenStore.RevokeAsync(validation.UserId, validation.Jti, cancellationToken);
             return AuthErrors.RefreshTokenInvalid;
         }
 
-        var profile = await dbContext.UserProfiles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == user.Id, cancellationToken);
-
-        if (profile is null || profile.Status != UserProfileStatus.ACTIVE)
+        if (snapshot.ProfileStatus != UserProfileStatus.ACTIVE)
         {
-            await refreshTokenStore.RevokeAsync(validation.UserId, validation.Jti, cancellationToken);
             return AuthErrors.ProfileInactive;
         }
 
-        var roles = await userManager.GetRolesAsync(user);
-
-        // Revoke the old token (rotation)
-        await refreshTokenStore.RevokeAsync(validation.UserId, validation.Jti, cancellationToken);
-
-        // Issue new tokens
         var (accessToken, newJti, accessExpiresAt) = jwtTokenService.Issue(
-            user, roles, user.MustChangePassword);
+            snapshot.Id,
+            snapshot.Email,
+            snapshot.UserName,
+            snapshot.Roles,
+            snapshot.MustChangePassword);
 
         var (refreshToken, refreshExpiresAt) = await refreshTokenStore.IssueAsync(
-            user.Id, newJti, request.Ip, request.UserAgent, cancellationToken);
+            snapshot.Id, newJti, request.Ip, request.UserAgent, cancellationToken);
 
         return new RefreshResult(
-            MustChangePassword: user.MustChangePassword,
+            MustChangePassword: snapshot.MustChangePassword,
             AccessToken: accessToken,
             AccessExpiresAt: accessExpiresAt,
             RefreshToken: refreshToken,
