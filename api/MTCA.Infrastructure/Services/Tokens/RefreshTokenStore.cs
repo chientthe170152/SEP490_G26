@@ -11,6 +11,8 @@ public sealed class RefreshTokenStore(
     IOptions<JwtOptions> options,
     TimeProvider timeProvider) : IRefreshTokenStore
 {
+    private const int RawTokenByteLength = 32;
+
     private readonly JwtOptions _options = options.Value;
 
     public async Task<(string RawToken, DateTimeOffset ExpiresAt)> IssueAsync(
@@ -24,14 +26,14 @@ public sealed class RefreshTokenStore(
         var expiresAt = now.AddDays(_options.RefreshTokenDays);
         var ttl = expiresAt - now;
 
-        var rawBytes = RandomNumberGenerator.GetBytes(32);
+        var rawBytes = RandomNumberGenerator.GetBytes(RawTokenByteLength);
         var rawToken = Base64UrlEncode(rawBytes);
         var hash = Sha256Hex(rawToken);
 
         var db = redis.GetDatabase();
-        var tokenKey = $"rt:{userId}:{jti}";
-        var hashKey = $"rt-hash:{hash}";
-        var userSetKey = $"rt-user:{userId}";
+        var tokenKey = Keys.Token(userId, jti);
+        var hashKey = Keys.Hash(hash);
+        var userSetKey = Keys.UserSet(userId);
 
         var batch = db.CreateBatch();
         var hashSetTask = batch.HashSetAsync(tokenKey, new HashEntry[]
@@ -63,7 +65,7 @@ public sealed class RefreshTokenStore(
     public async Task<RefreshTokenValidation?> ValidateAsync(string rawToken, CancellationToken cancellationToken)
     {
         var hash = Sha256Hex(rawToken);
-        var hashKey = $"rt-hash:{hash}";
+        var hashKey = Keys.Hash(hash);
         var db = redis.GetDatabase();
 
         var value = await db.StringGetAsync(hashKey);
@@ -79,7 +81,7 @@ public sealed class RefreshTokenStore(
         }
 
         var jti = parts[1];
-        var tokenKey = $"rt:{userId}:{jti}";
+        var tokenKey = Keys.Token(userId, jti);
         var storedHash = await db.HashGetAsync(tokenKey, "hash");
 
         if (!storedHash.HasValue || storedHash.ToString() != hash)
@@ -97,11 +99,11 @@ public sealed class RefreshTokenStore(
         // Keep rt-hash:{hash} as tombstone so a replayed token resolves to userId|jti
         // and ValidateAsync detects it as reuse (rt:userId:jti missing). Tombstone expires at TTL.
         var db = redis.GetDatabase();
-        var tokenKey = $"rt:{userId}:{jti}";
+        var tokenKey = Keys.Token(userId, jti);
 
         var batch = db.CreateBatch();
         _ = batch.KeyDeleteAsync(tokenKey);
-        _ = batch.SetRemoveAsync($"rt-user:{userId}", jti);
+        _ = batch.SetRemoveAsync(Keys.UserSet(userId), jti);
         batch.Execute();
 
         return Task.CompletedTask;
@@ -110,8 +112,8 @@ public sealed class RefreshTokenStore(
     public async Task RevokeAllAsync(Guid userId, CancellationToken cancellationToken)
     {
         var db = redis.GetDatabase();
-        var userSetKey = $"rt-user:{userId}";
-        
+        var userSetKey = Keys.UserSet(userId);
+
         var jtis = await db.SetMembersAsync(userSetKey);
         if (jtis.Length == 0)
         {
@@ -119,22 +121,22 @@ public sealed class RefreshTokenStore(
         }
 
         // Gather all hashes first to delete their reverse indexes
-        var hashTasks = jtis.Select(jti => db.HashGetAsync($"rt:{userId}:{jti}", "hash")).ToList();
+        var hashTasks = jtis.Select(jti => db.HashGetAsync(Keys.Token(userId, jti.ToString()), "hash")).ToList();
         await Task.WhenAll(hashTasks);
 
         var batch = db.CreateBatch();
         for (int i = 0; i < jtis.Length; i++)
         {
-            var jti = jtis[i];
+            var jti = jtis[i].ToString();
             var hashTask = hashTasks[i];
-            
+
             if (hashTask.Result.HasValue)
             {
-                _ = batch.KeyDeleteAsync($"rt-hash:{hashTask.Result}");
+                _ = batch.KeyDeleteAsync(Keys.Hash(hashTask.Result.ToString()));
             }
-            _ = batch.KeyDeleteAsync($"rt:{userId}:{jti}");
+            _ = batch.KeyDeleteAsync(Keys.Token(userId, jti));
         }
-        
+
         _ = batch.KeyDeleteAsync(userSetKey);
         batch.Execute();
     }
@@ -144,5 +146,12 @@ public sealed class RefreshTokenStore(
         var bytes = System.Text.Encoding.UTF8.GetBytes(value);
         var hash = SHA256.HashData(bytes);
         return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    private static class Keys
+    {
+        public static string Token(Guid userId, string jti) => $"rt:{userId}:{jti}";
+        public static string Hash(string hash) => $"rt-hash:{hash}";
+        public static string UserSet(Guid userId) => $"rt-user:{userId}";
     }
 }

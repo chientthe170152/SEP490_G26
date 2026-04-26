@@ -1,11 +1,15 @@
 using Microsoft.AspNetCore.Authorization;
 using MTCA.Api.Authorization;
+using MTCA.Api.Common;
+using MTCA.Application.Common.Constants;
 
 namespace MTCA.Api.Middleware;
 
 public sealed class FirstLoginPasswordMiddleware(RequestDelegate next)
 {
-    private const string ProblemBody = """{"type":"https://mtca.local/errors/PASSWORD_CHANGE_REQUIRED","title":"PASSWORD_CHANGE_REQUIRED","status":403,"detail":"Bạn cần đổi mật khẩu trước khi tiếp tục."}""";
+    private const string ErrorCode = "PASSWORD_CHANGE_REQUIRED";
+    private static readonly string ProblemBody =
+        $$"""{"type":"{{ProblemTypes.Prefix}}{{ErrorCode}}","title":"{{ErrorCode}}","status":403,"detail":"Bạn cần đổi mật khẩu trước khi tiếp tục."}""";
 
     public async Task Invoke(HttpContext context)
     {
@@ -37,8 +41,8 @@ public sealed class FirstLoginPasswordMiddleware(RequestDelegate next)
             return;
         }
 
-        var mcp = context.User.FindFirst("mcp")?.Value;
-        if (!string.Equals(mcp, "true", StringComparison.Ordinal))
+        var mcp = context.User.FindFirst(AuthClaims.MustChangePassword)?.Value;
+        if (!string.Equals(mcp, AuthClaims.True, StringComparison.Ordinal))
         {
             await next(context);
             return;

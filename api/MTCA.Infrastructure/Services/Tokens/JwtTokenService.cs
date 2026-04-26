@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using MTCA.Application.Common.Constants;
 using MTCA.Application.Common.Interfaces.Services;
 using MTCA.Domain.Identity;
 using MTCA.Infrastructure.Options;
@@ -32,7 +33,7 @@ public sealed class JwtTokenService(
             new(JwtRegisteredClaimNames.Iat, now.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, user.UserName ?? user.Email ?? user.Id.ToString()),
-            new("mcp", mustChangePassword ? "true" : "false")
+            new(AuthClaims.MustChangePassword, mustChangePassword ? AuthClaims.True : AuthClaims.False)
         };
 
         foreach (var role in roles)

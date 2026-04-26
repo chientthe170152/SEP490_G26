@@ -2,10 +2,13 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using MTCA.Api.Authorization;
 using MTCA.Api.Controllers.Auth.Dtos;
 using MTCA.Api.Extensions;
 using MTCA.Api.Options;
 using MTCA.Application.Features.Auth.Commands.Login;
+using MTCA.Application.Features.Auth.Commands.Logout;
+using MTCA.Application.Features.Auth.Commands.Refresh;
 using MTCA.Application.Features.Auth.Queries.GetCurrentUser;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -19,7 +22,7 @@ public sealed class AuthController(ISender mediator, IOptions<AuthCookieOptions>
 
     [HttpPost("login")]
     [AllowAnonymous]
-    [EnableRateLimiting("login")]
+    [EnableRateLimiting(RateLimitPolicies.Login)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
         var command = request.ToCommand(HttpContext);
@@ -52,10 +55,9 @@ public sealed class AuthController(ISender mediator, IOptions<AuthCookieOptions>
             return Unauthorized();
         }
 
-        var ip = Request.HttpContext.Connection.RemoteIpAddress?.ToString();
-        var ua = Request.Headers.UserAgent.ToString();
-        var command = new MTCA.Application.Features.Auth.Commands.Refresh.RefreshCommand(refreshToken, ip, ua);
-        
+        var (ip, ua) = HttpClientContext.Resolve(HttpContext);
+        var command = new RefreshCommand(refreshToken, ip, ua);
+
         var result = await mediator.Send(command, cancellationToken);
         if (!result.IsSuccess)
         {
@@ -76,7 +78,7 @@ public sealed class AuthController(ISender mediator, IOptions<AuthCookieOptions>
     {
         Request.Cookies.TryGetValue(_cookieOpts.RefreshName, out var refreshToken);
 
-        var command = new MTCA.Application.Features.Auth.Commands.Logout.LogoutCommand(refreshToken);
+        var command = new LogoutCommand(refreshToken);
         await mediator.Send(command, cancellationToken);
 
         CookieHelper.ClearAuthCookies(Response, _cookieOpts);

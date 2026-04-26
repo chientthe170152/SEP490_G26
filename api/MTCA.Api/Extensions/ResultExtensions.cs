@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using MTCA.Api.Common;
 using MTCA.Application.Common.Models;
 
 namespace MTCA.Api.Extensions;
@@ -33,7 +34,7 @@ public static class ResultExtensions
 
     private static ProblemDetails BuildProblem(Error error, int status) => new()
     {
-        Type = $"https://mtca.local/errors/{error.Code}",
+        Type = $"{ProblemTypes.Prefix}{error.Code}",
         Title = error.Code,
         Status = status,
         Detail = error.Message
@@ -51,7 +52,7 @@ public static class ResultExtensions
         {
             Status = StatusCodes.Status422UnprocessableEntity,
             Title = "One or more validation errors occurred.",
-            Type = "https://mtca.local/errors/VALIDATION"
+            Type = $"{ProblemTypes.Prefix}VALIDATION"
         };
         return controller.StatusCode(StatusCodes.Status422UnprocessableEntity, problem);
     }

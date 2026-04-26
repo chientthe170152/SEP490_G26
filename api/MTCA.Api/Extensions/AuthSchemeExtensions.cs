@@ -5,12 +5,15 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MTCA.Api.Authorization;
 using MTCA.Api.Options;
+using MTCA.Application.Common.Constants;
 using MTCA.Infrastructure.Options;
 
 namespace MTCA.Api.Extensions;
 
 public static class AuthSchemeExtensions
 {
+    private const int JwtClockSkewSeconds = 30;
+
     public static IServiceCollection AddMtcaAuth(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOptions<JwtOptions>()
@@ -37,7 +40,7 @@ public static class AuthSchemeExtensions
                     ValidIssuer = jwt.Issuer,
                     ValidAudience = jwt.Audience,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
-                    ClockSkew = TimeSpan.FromSeconds(30)
+                    ClockSkew = TimeSpan.FromSeconds(JwtClockSkewSeconds)
                 };
 
                 options.Events = new JwtBearerEvents
@@ -70,7 +73,7 @@ public static class AuthSchemeExtensions
 
             var passwordFresh = new AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser()
-                .RequireClaim("mcp", "false")
+                .RequireClaim(AuthClaims.MustChangePassword, AuthClaims.False)
                 .Build();
 
             options.DefaultPolicy = passwordFresh;

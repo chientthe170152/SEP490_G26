@@ -1,4 +1,5 @@
 using FluentValidation;
+using MTCA.Application.Common.Constants;
 
 namespace MTCA.Application.Features.Auth.Commands.Login;
 
@@ -12,6 +13,6 @@ public sealed class LoginValidator : AbstractValidator<LoginCommand>
 
         RuleFor(x => x.Password)
             .NotEmpty().WithErrorCode("PASSWORD_REQUIRED")
-            .MinimumLength(8).WithErrorCode("PASSWORD_TOO_SHORT");
+            .MinimumLength(PasswordPolicy.MinimumLength).WithErrorCode("PASSWORD_TOO_SHORT");
     }
 }
