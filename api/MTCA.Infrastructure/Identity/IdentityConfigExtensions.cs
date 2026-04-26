@@ -16,10 +16,10 @@ public static class IdentityConfigExtensions
         services.AddIdentityCore<ApplicationUser>(opts =>
         {
             opts.Password.RequiredLength = PasswordPolicy.MinimumLength;
-            opts.Password.RequireNonAlphanumeric = true;
-            opts.Password.RequireDigit = true;
-            opts.Password.RequireUppercase = true;
-            opts.Password.RequireLowercase = true;
+            opts.Password.RequireNonAlphanumeric = false;
+            opts.Password.RequireDigit = false;
+            opts.Password.RequireUppercase = false;
+            opts.Password.RequireLowercase = false;
 
             opts.Lockout.MaxFailedAccessAttempts = MaxFailedAttempts;
             opts.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(LockoutMinutes);
@@ -32,7 +32,8 @@ public static class IdentityConfigExtensions
         .AddEntityFrameworkStores<AppDbContext>()
         .AddDefaultTokenProviders()
         .AddSignInManager()
-        .AddUserManager<UserManager<ApplicationUser>>();
+        .AddUserManager<UserManager<ApplicationUser>>()
+        .AddPasswordValidator<MtcaPasswordValidator>();
 
         return services;
     }

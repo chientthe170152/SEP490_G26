@@ -7,12 +7,7 @@ public sealed class LoginValidator : AbstractValidator<LoginCommand>
 {
     public LoginValidator()
     {
-        RuleFor(x => x.Email)
-            .NotEmpty().WithErrorCode(ErrorCodes.EmailRequired)
-            .EmailAddress().WithErrorCode(ErrorCodes.EmailInvalid);
-
-        RuleFor(x => x.Password)
-            .NotEmpty().WithErrorCode(ErrorCodes.PasswordRequired)
-            .MinimumLength(PasswordPolicy.MinimumLength).WithErrorCode(ErrorCodes.PasswordTooShort);
+        RuleFor(x => x.Email).NotEmpty().EmailAddress();
+        RuleFor(x => x.Password).NotEmpty().Matches(PasswordRules.Pattern);
     }
 }
