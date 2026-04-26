@@ -47,6 +47,7 @@ public sealed class AuthController(ISender mediator, IOptions<AuthCookieOptions>
 
     [HttpPost("refresh")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Refresh)]
     public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
     {
         if (!Request.Cookies.TryGetValue(_cookieOpts.RefreshName, out var refreshToken))
