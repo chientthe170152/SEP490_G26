@@ -5,7 +5,7 @@ public interface IJwtTokenService
     (string Token, string Jti, DateTimeOffset ExpiresAt) Issue(
         Guid userId,
         string? email,
-        string? userName,
+        string? fullName,
         IEnumerable<string> roles,
         bool mustChangePassword);
 }

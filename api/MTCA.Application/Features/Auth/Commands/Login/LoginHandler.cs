@@ -58,7 +58,7 @@ public sealed class LoginHandler(
         }
 
         var (accessToken, jti, accessExpiresAt) = jwtTokenService.Issue(
-            user.Id, user.Email, user.UserName, snapshot.Roles, user.MustChangePassword);
+            user.Id, user.Email, snapshot.FullName, snapshot.Roles, user.MustChangePassword);
         var (refreshToken, refreshExpiresAt) = await refreshTokenStore.IssueAsync(
             user.Id, jti, request.Ip, request.UserAgent, cancellationToken);
 

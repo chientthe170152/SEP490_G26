@@ -18,7 +18,7 @@ public sealed class JwtTokenService(
     public (string Token, string Jti, DateTimeOffset ExpiresAt) Issue(
         Guid userId,
         string? email,
-        string? userName,
+        string? fullName,
         IEnumerable<string> roles,
         bool mustChangePassword)
     {
@@ -33,7 +33,7 @@ public sealed class JwtTokenService(
             new(JwtRegisteredClaimNames.Email, email ?? string.Empty),
             new(JwtRegisteredClaimNames.Iat, now.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
             new(ClaimTypes.NameIdentifier, userId.ToString()),
-            new(ClaimTypes.Name, userName ?? email ?? userId.ToString()),
+            new(ClaimTypes.Name, fullName ?? email ?? userId.ToString()),
             new(AuthClaims.MustChangePassword, mustChangePassword ? AuthClaims.True : AuthClaims.False)
         };
 

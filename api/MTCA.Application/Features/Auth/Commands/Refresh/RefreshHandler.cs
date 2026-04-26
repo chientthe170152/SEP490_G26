@@ -33,11 +33,10 @@ public sealed class RefreshHandler(
             {
                 u.Id,
                 u.Email,
-                u.UserName,
                 u.MustChangePassword,
-                ProfileStatus = dbContext.UserProfiles
+                Profile = dbContext.UserProfiles
                     .Where(p => p.UserId == u.Id)
-                    .Select(p => (UserProfileStatus?)p.Status)
+                    .Select(p => new { p.FullName, Status = (UserProfileStatus?)p.Status })
                     .FirstOrDefault(),
                 Roles = dbContext.UserRoles
                     .Where(ur => ur.UserId == u.Id)
@@ -51,7 +50,7 @@ public sealed class RefreshHandler(
             return AuthErrors.RefreshTokenInvalid;
         }
 
-        if (snapshot.ProfileStatus != UserProfileStatus.ACTIVE)
+        if (snapshot.Profile is null || snapshot.Profile.Status != UserProfileStatus.ACTIVE)
         {
             return AuthErrors.ProfileInactive;
         }
@@ -59,7 +58,7 @@ public sealed class RefreshHandler(
         var (accessToken, newJti, accessExpiresAt) = jwtTokenService.Issue(
             snapshot.Id,
             snapshot.Email,
-            snapshot.UserName,
+            snapshot.Profile.FullName,
             snapshot.Roles,
             snapshot.MustChangePassword);
 

@@ -25,7 +25,7 @@ public static class IdentityConfigExtensions
             opts.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(LockoutMinutes);
             opts.Lockout.AllowedForNewUsers = true;
 
-            opts.User.RequireUniqueEmail = false;
+            opts.User.RequireUniqueEmail = true;
             opts.SignIn.RequireConfirmedEmail = false;
         })
         .AddRoles<ApplicationRole>()

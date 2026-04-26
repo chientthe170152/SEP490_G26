@@ -66,6 +66,7 @@ public sealed class ChangePasswordFirstLoginHandler(
             .Select(p => new
             {
                 p.Status,
+                p.FullName,
                 Roles = dbContext.UserRoles
                     .Where(ur => ur.UserId == p.UserId)
                     .Join(dbContext.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name!)
@@ -81,7 +82,7 @@ public sealed class ChangePasswordFirstLoginHandler(
         await refreshTokenStore.RevokeAllAsync(user.Id, cancellationToken);
 
         var (accessToken, jti, accessExpiresAt) = jwtTokenService.Issue(
-            user.Id, user.Email, user.UserName, snapshot.Roles, user.MustChangePassword);
+            user.Id, user.Email, snapshot.FullName, snapshot.Roles, user.MustChangePassword);
         var (refreshToken, refreshExpiresAt) = await refreshTokenStore.IssueAsync(
             user.Id, jti, request.Ip, request.UserAgent, cancellationToken);
 
