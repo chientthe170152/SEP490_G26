@@ -12,4 +12,6 @@ public static class AuthErrors
     public static readonly Error PasswordChangeRequired = Error.Forbidden(ErrorCodes.PasswordChangeRequired);
     public static readonly Error RefreshTokenInvalid = Error.Unauthorized(ErrorCodes.RefreshTokenInvalid);
     public static readonly Error UserNotFound = Error.NotFound(ErrorCodes.UserNotFound);
+    public static readonly Error InvalidCurrentPassword = Error.Unauthorized(ErrorCodes.InvalidCurrentPassword);
+    public static readonly Error MustChangePasswordNotRequired = Error.Conflict(ErrorCodes.MustChangePasswordNotRequired);
 }

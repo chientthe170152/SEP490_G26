@@ -9,6 +9,8 @@ public static class ErrorCodes
     public const string PasswordChangeRequired = "PASSWORD_CHANGE_REQUIRED";
     public const string RefreshTokenInvalid = "REFRESH_TOKEN_INVALID";
     public const string UserNotFound = "USER_NOT_FOUND";
+    public const string InvalidCurrentPassword = "INVALID_CURRENT_PASSWORD";
+    public const string MustChangePasswordNotRequired = "MUST_CHANGE_PASSWORD_NOT_REQUIRED";
 
     public const string Validation = "VALIDATION";
     public const string Unexpected = "UNEXPECTED";

@@ -6,6 +6,7 @@ using MTCA.Api.Authorization;
 using MTCA.Api.Controllers.Auth.Dtos;
 using MTCA.Api.Extensions;
 using MTCA.Api.Options;
+using MTCA.Application.Features.Auth.ChangePasswordFirstLogin;
 using MTCA.Application.Features.Auth.Commands.Login;
 using MTCA.Application.Features.Auth.Commands.Logout;
 using MTCA.Application.Features.Auth.Commands.Refresh;
@@ -83,6 +84,27 @@ public sealed class AuthController(ISender mediator, IOptions<AuthCookieOptions>
         await mediator.Send(command, cancellationToken);
 
         CookieHelper.ClearAuthCookies(Response, _cookieOpts);
+        return NoContent();
+    }
+
+    [HttpPost("change-password-first-login")]
+    [Authorize(Policy = AuthPolicies.AllowPasswordChange)]
+    public async Task<IActionResult> ChangePasswordFirstLogin(
+        [FromBody] ChangePasswordFirstLoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = request.ToCommand(HttpContext);
+        var result = await mediator.Send(command, cancellationToken);
+
+        if (!result.IsSuccess)
+        {
+            return result.ToActionResult(this);
+        }
+
+        var changed = result.Value;
+        CookieHelper.SetAccessCookie(Response, changed.AccessToken, changed.AccessExpiresAt, _cookieOpts);
+        CookieHelper.SetRefreshCookie(Response, changed.RefreshToken, changed.RefreshExpiresAt, _cookieOpts);
+
         return NoContent();
     }
 
