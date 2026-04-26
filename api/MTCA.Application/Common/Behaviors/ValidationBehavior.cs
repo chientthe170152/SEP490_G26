@@ -1,6 +1,7 @@
 using System.Reflection;
 using FluentValidation;
 using MediatR;
+using MTCA.Application.Common.Constants;
 using MTCA.Application.Common.Models;
 
 namespace MTCA.Application.Common.Behaviors;
@@ -34,7 +35,7 @@ public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidat
         }
 
         var errors = failures
-            .Select(f => Error.Validation(f.ErrorCode ?? "VALIDATION_ERROR", f.ErrorMessage))
+            .Select(f => Error.Validation(f.ErrorCode ?? ErrorCodes.ValidationError, f.ErrorMessage))
             .ToArray();
 
         if (typeof(IResultResponse).IsAssignableFrom(typeof(TResponse)))

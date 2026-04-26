@@ -7,9 +7,8 @@ namespace MTCA.Api.Middleware;
 
 public sealed class FirstLoginPasswordMiddleware(RequestDelegate next)
 {
-    private const string ErrorCode = "PASSWORD_CHANGE_REQUIRED";
     private static readonly string ProblemBody =
-        $$"""{"type":"{{ProblemTypes.Prefix}}{{ErrorCode}}","title":"{{ErrorCode}}","status":403,"detail":"Bạn cần đổi mật khẩu trước khi tiếp tục."}""";
+        $$"""{"type":"{{ProblemTypes.Prefix}}{{ErrorCodes.PasswordChangeRequired}}","title":"{{ErrorCodes.PasswordChangeRequired}}","status":403,"detail":"{{ErrorMessages.PasswordChangeRequired}}"}""";
 
     public async Task Invoke(HttpContext context)
     {

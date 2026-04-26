@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using MTCA.Api.Common;
+using MTCA.Application.Common.Constants;
 using MTCA.Application.Common.Models;
 
 namespace MTCA.Api.Extensions;
@@ -18,7 +19,7 @@ public static class ResultExtensions
 
     private static IActionResult MapFailure(IReadOnlyList<Error> errors, ControllerBase controller)
     {
-        var primary = errors.Count > 0 ? errors[0] : Error.Unexpected("UNEXPECTED", "Unexpected error.");
+        var primary = errors.Count > 0 ? errors[0] : Error.Unexpected(ErrorCodes.Unexpected, ErrorMessages.Unexpected);
         return primary.Type switch
         {
             ErrorType.Validation => BuildValidationProblem(errors, controller),
@@ -51,8 +52,8 @@ public static class ResultExtensions
         var problem = new ValidationProblemDetails(modelState)
         {
             Status = StatusCodes.Status422UnprocessableEntity,
-            Title = "One or more validation errors occurred.",
-            Type = $"{ProblemTypes.Prefix}VALIDATION"
+            Title = ErrorMessages.ValidationOccurred,
+            Type = $"{ProblemTypes.Prefix}{ErrorCodes.Validation}"
         };
         return controller.StatusCode(StatusCodes.Status422UnprocessableEntity, problem);
     }
