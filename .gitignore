@@ -419,5 +419,6 @@ FodyWeavers.xsd
 
 # AI Agent Rules
 .agents/
+.claude/
 
 database/schema.dbml
