@@ -161,6 +161,7 @@ _TeamCity*
 coverage*.json
 coverage*.xml
 coverage*.info
+coverage/
 
 # Visual Studio code coverage results
 *.coverage
@@ -421,4 +422,5 @@ FodyWeavers.xsd
 .agents/
 .claude/
 
-database/schema.dbml
+database/
+docs/
