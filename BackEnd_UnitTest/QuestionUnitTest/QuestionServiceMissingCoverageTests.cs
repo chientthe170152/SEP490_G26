@@ -25,6 +25,32 @@ namespace Backend_UnitTest.QuestionUnitTest
             _service = new QuestionService(_repo.Object, _logger.Object, _currentUser.Object, TimeProvider.System);
         }
 
+        [Fact(DisplayName = "GetQuestionMetadataAsync - UTCID-WithChapters - Subject có chapters -> map ChapterDto")]
+        public async Task GetMetadata_WithChapters_ShouldMapChapters()
+        {
+            _repo.Setup(r => r.GetInputTypesAsync()).ReturnsAsync(new List<InputType>());
+            _repo.Setup(r => r.GetSubjectsWithChaptersAsync()).ReturnsAsync(new List<Subject>
+            {
+                new()
+                {
+                    SubjectId = 1, Name = "Toán", Code = "MATH",
+                    Chapters = new List<Chapter>
+                    {
+                        new() { ChapterId = 11, Name = "Đại số" },
+                        new() { ChapterId = 12, Name = "Hình học" }
+                    }
+                }
+            });
+
+            var result = await _service.GetQuestionMetadataAsync();
+
+            Assert.True(result.IsSuccess);
+            Assert.Single(result.Value.Subjects);
+            Assert.Equal(2, result.Value.Subjects[0].Chapters.Count);
+            Assert.Equal(11, result.Value.Subjects[0].Chapters[0].ChapterId);
+            Assert.Equal("Đại số", result.Value.Subjects[0].Chapters[0].Name);
+        }
+
         // ---------- GetQuestionsAsync ----------
 
         [Fact(DisplayName = "GetQuestionsAsync - UTCID01 - Trả về kết quả + clamp pagesize")]
