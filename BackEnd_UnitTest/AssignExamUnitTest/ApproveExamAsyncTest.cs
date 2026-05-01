@@ -2,10 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Backend.Common.Errors;
 using Backend.Constants;
+using Backend.Jobs;
 using Backend.Models;
 using Backend.Repositories.Interfaces;
 using Backend.Services.Implements;
+using Backend.Services.Interfaces;
 using Moq;
 using Xunit;
 
@@ -14,13 +17,20 @@ namespace BackEnd_UnitTest.AssignExamUnitTest
     public class ApproveExamAsync_UTCID_Tests
     {
         private readonly Mock<IAssignExamRepository> _repoMock;
+        private readonly Mock<IExamStatusScheduler> _schedulerMock;
         private readonly AssignExamService _service;
         private readonly CancellationToken _ct = CancellationToken.None;
 
         public ApproveExamAsync_UTCID_Tests()
         {
             _repoMock = new Mock<IAssignExamRepository>(MockBehavior.Strict);
-            _service = new AssignExamService(_repoMock.Object);
+            _schedulerMock = new Mock<IExamStatusScheduler>(MockBehavior.Strict);
+            var currentUserMock = new Mock<ICurrentUserService>();
+            _service = new AssignExamService(
+                _repoMock.Object,
+                currentUserMock.Object,
+                _schedulerMock.Object,
+                TimeProvider.System);
         }
 
         [Fact(DisplayName = "ApproveExamAsync - UTCID01 - Valid examId -> update status to Published")]
@@ -31,45 +41,38 @@ namespace BackEnd_UnitTest.AssignExamUnitTest
             var exam = CreateExam(examId);
             var questionIds = new List<int> { 101, 102, 103 };
 
-            _repoMock.Setup(r => r.GetExamByIdAsync(examId, _ct))
-                     .ReturnsAsync(exam);
-            _repoMock.Setup(r => r.UpdateExamStatusAsync(examId, ExamStatus.Published, _ct))
-                     .Returns(Task.CompletedTask);
-            _repoMock.Setup(r => r.GetAllQuestionIdsInExamAsync(examId, _ct))
-                     .ReturnsAsync(questionIds);
-            _repoMock.Setup(r => r.UpdateQuestionsToInprogressAsync(questionIds, _ct))
-                     .Returns(Task.CompletedTask);
-            _repoMock.Setup(r => r.UpdateBlueprintToInprogressAsync(examId, _ct))
-                     .Returns(Task.CompletedTask);
+            _repoMock.Setup(r => r.GetExamByIdAsync(examId, _ct)).ReturnsAsync(exam);
+            _repoMock.Setup(r => r.UpdateExamStatusAsync(examId, ExamStatus.Published, _ct)).Returns(Task.CompletedTask);
+            _repoMock.Setup(r => r.GetAllQuestionIdsInExamAsync(examId, _ct)).ReturnsAsync(questionIds);
+            _repoMock.Setup(r => r.UpdateQuestionsToInprogressAsync(questionIds, _ct)).Returns(Task.CompletedTask);
+            _repoMock.Setup(r => r.UpdateBlueprintToInprogressAsync(examId, _ct)).Returns(Task.CompletedTask);
+            _schedulerMock.Setup(s => s.ScheduleExamJobsAsync(examId, exam.OpenAt, exam.CloseAt, _ct))
+                          .Returns(Task.CompletedTask);
 
             // Act
-            await _service.ApproveExamAsync(examId, _ct);
+            var result = await _service.ApproveExamAsync(examId, _ct);
 
             // Assert
-            _repoMock.Verify(r => r.GetExamByIdAsync(examId, _ct), Times.Once);
+            Assert.True(result.IsSuccess);
             _repoMock.Verify(r => r.UpdateExamStatusAsync(examId, ExamStatus.Published, _ct), Times.Once);
             _repoMock.Verify(r => r.GetAllQuestionIdsInExamAsync(examId, _ct), Times.Once);
-            _repoMock.Verify(r => r.UpdateQuestionsToInprogressAsync(questionIds, _ct), Times.Once);
             _repoMock.Verify(r => r.UpdateBlueprintToInprogressAsync(examId, _ct), Times.Once);
             _repoMock.VerifyAll();
         }
 
-        [Fact(DisplayName = "ApproveExamAsync - UTCID02 - Exam not found -> propagate KeyNotFoundException")]
-        public async Task ApproveExamAsync_UTCID02_ExamNotFound_ShouldPropagateKeyNotFoundException()
+        [Fact(DisplayName = "ApproveExamAsync - UTCID02 - Exam not found -> ExamNotFound error")]
+        public async Task ApproveExamAsync_UTCID02_ExamNotFound_ShouldReturnExamNotFoundError()
         {
             // Arrange
             int examId = 999;
-
-            _repoMock.Setup(r => r.GetExamByIdAsync(examId, _ct))
-                     .ReturnsAsync((Exam?)null);
+            _repoMock.Setup(r => r.GetExamByIdAsync(examId, _ct)).ReturnsAsync((Exam?)null);
 
             // Act
-            var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-                _service.ApproveExamAsync(examId, _ct));
+            var result = await _service.ApproveExamAsync(examId, _ct);
 
             // Assert
-            Assert.Equal("Exam not found.", ex.Message);
-            _repoMock.Verify(r => r.GetExamByIdAsync(examId, _ct), Times.Once);
+            Assert.True(result.IsFailure);
+            Assert.Equal(AssignExamErrors.ExamNotFound.Code, result.Error.Code);
             _repoMock.Verify(r => r.UpdateExamStatusAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
             _repoMock.VerifyAll();
         }
@@ -82,26 +85,19 @@ namespace BackEnd_UnitTest.AssignExamUnitTest
             var exam = CreateExam(examId);
             var questionIds = new List<int>();
 
-            _repoMock.Setup(r => r.GetExamByIdAsync(examId, _ct))
-                     .ReturnsAsync(exam);
-            _repoMock.Setup(r => r.UpdateExamStatusAsync(examId, ExamStatus.Published, _ct))
-                     .Returns(Task.CompletedTask);
-            _repoMock.Setup(r => r.GetAllQuestionIdsInExamAsync(examId, _ct))
-                     .ReturnsAsync(questionIds);
-            _repoMock.Setup(r => r.UpdateQuestionsToInprogressAsync(questionIds, _ct))
-                     .Returns(Task.CompletedTask);
-            _repoMock.Setup(r => r.UpdateBlueprintToInprogressAsync(examId, _ct))
-                     .Returns(Task.CompletedTask);
+            _repoMock.Setup(r => r.GetExamByIdAsync(examId, _ct)).ReturnsAsync(exam);
+            _repoMock.Setup(r => r.UpdateExamStatusAsync(examId, ExamStatus.Published, _ct)).Returns(Task.CompletedTask);
+            _repoMock.Setup(r => r.GetAllQuestionIdsInExamAsync(examId, _ct)).ReturnsAsync(questionIds);
+            _repoMock.Setup(r => r.UpdateQuestionsToInprogressAsync(questionIds, _ct)).Returns(Task.CompletedTask);
+            _repoMock.Setup(r => r.UpdateBlueprintToInprogressAsync(examId, _ct)).Returns(Task.CompletedTask);
+            _schedulerMock.Setup(s => s.ScheduleExamJobsAsync(examId, exam.OpenAt, exam.CloseAt, _ct))
+                          .Returns(Task.CompletedTask);
 
             // Act
-            await _service.ApproveExamAsync(examId, _ct);
+            var result = await _service.ApproveExamAsync(examId, _ct);
 
             // Assert
-            _repoMock.Verify(r => r.GetExamByIdAsync(examId, _ct), Times.Once);
-            _repoMock.Verify(r => r.UpdateExamStatusAsync(examId, ExamStatus.Published, _ct), Times.Once);
-            _repoMock.Verify(r => r.GetAllQuestionIdsInExamAsync(examId, _ct), Times.Once);
-            _repoMock.Verify(r => r.UpdateQuestionsToInprogressAsync(questionIds, _ct), Times.Once);
-            _repoMock.Verify(r => r.UpdateBlueprintToInprogressAsync(examId, _ct), Times.Once);
+            Assert.True(result.IsSuccess);
             _repoMock.VerifyAll();
         }
 
@@ -112,19 +108,15 @@ namespace BackEnd_UnitTest.AssignExamUnitTest
             int examId = 2;
             var exam = CreateExam(examId);
 
-            _repoMock.Setup(r => r.GetExamByIdAsync(examId, _ct))
-                     .ReturnsAsync(exam);
+            _repoMock.Setup(r => r.GetExamByIdAsync(examId, _ct)).ReturnsAsync(exam);
             _repoMock.Setup(r => r.UpdateExamStatusAsync(examId, ExamStatus.Published, _ct))
                      .ThrowsAsync(new Exception("Database error"));
 
-            // Act
+            // Act & Assert
             var ex = await Assert.ThrowsAsync<Exception>(() =>
                 _service.ApproveExamAsync(examId, _ct));
 
-            // Assert
             Assert.Equal("Database error", ex.Message);
-            _repoMock.Verify(r => r.GetExamByIdAsync(examId, _ct), Times.Once);
-            _repoMock.Verify(r => r.UpdateExamStatusAsync(examId, ExamStatus.Published, _ct), Times.Once);
             _repoMock.VerifyAll();
         }
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Backend.Common.Errors;
 using Backend.Models;
 using Backend.Repositories.Interfaces;
 using Backend.Services.Implements;
@@ -34,25 +35,24 @@ namespace Backend_UnitTest.AnalyticsTests
 
             var result = await _service.GetStudentSubmissionAnalyticsAsync(examId, studentId);
 
-            Assert.NotNull(result);
-            Assert.Equal(examId, result.ExamId);
-            Assert.Equal(1, result.SubmissionId); // latest for student 1 in this fixture
-            Assert.Equal(1, result.ShowScore);
-            Assert.Equal(1, result.ShowAnswer);
-            Assert.Equal(2, result.TotalQuestions);
-            Assert.NotEmpty(result.AnswerReview);
-            Assert.NotNull(result.TotalPoints);
-            Assert.NotNull(result.CorrectCount);
-            Assert.NotNull(result.WrongCount);
-            Assert.NotNull(result.ChapterStats);
-            Assert.NotNull(result.DifficultyStats);
-            Assert.NotNull(result.Recommendations);
-
+            Assert.True(result.IsSuccess);
+            Assert.Equal(examId, result.Value.ExamId);
+            Assert.Equal(1, result.Value.SubmissionId);
+            Assert.Equal(1, result.Value.ShowScore);
+            Assert.Equal(1, result.Value.ShowAnswer);
+            Assert.Equal(2, result.Value.TotalQuestions);
+            Assert.NotEmpty(result.Value.AnswerReview);
+            Assert.NotNull(result.Value.TotalPoints);
+            Assert.NotNull(result.Value.CorrectCount);
+            Assert.NotNull(result.Value.WrongCount);
+            Assert.NotNull(result.Value.ChapterStats);
+            Assert.NotNull(result.Value.DifficultyStats);
+            Assert.NotNull(result.Value.Recommendations);
             _analyticsRepoMock.VerifyAll();
         }
 
-        [Fact(DisplayName = "GetStudentSubmissionAnalyticsAsync - UTCID02 - Student không có submission -> KeyNotFoundException")]
-        public async Task GetStudentSubmissionAnalyticsAsync_UTCID02_NoSubmission_ShouldThrowKeyNotFoundException()
+        [Fact(DisplayName = "GetStudentSubmissionAnalyticsAsync - UTCID02 - Student không có submission -> SubmissionNotFound error")]
+        public async Task GetStudentSubmissionAnalyticsAsync_UTCID02_NoSubmission_ShouldReturnSubmissionNotFoundError()
         {
             int examId = 1;
             int studentId = 999;
@@ -60,10 +60,10 @@ namespace Backend_UnitTest.AnalyticsTests
             var exam = BuildExamForStudentAnalytics(examId, showScore: 1, showAnswer: 1);
             _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId)).ReturnsAsync(exam);
 
-            var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-                _service.GetStudentSubmissionAnalyticsAsync(examId, studentId));
+            var result = await _service.GetStudentSubmissionAnalyticsAsync(examId, studentId);
 
-            Assert.Equal($"Không tìm thấy bài làm của học sinh {studentId} cho bài thi {examId}.", ex.Message);
+            Assert.True(result.IsFailure);
+            Assert.Equal(AnalyticsErrors.SubmissionNotFound.Code, result.Error.Code);
             _analyticsRepoMock.VerifyAll();
         }
 
@@ -78,9 +78,9 @@ namespace Backend_UnitTest.AnalyticsTests
 
             var result = await _service.GetStudentSubmissionAnalyticsAsync(examId, studentId);
 
-            Assert.Equal(1, result.SubmissionId);
-            Assert.Equal(8m, result.TotalPoints);
-
+            Assert.True(result.IsSuccess);
+            Assert.Equal(1, result.Value.SubmissionId);
+            Assert.Equal(8m, result.Value.TotalPoints);
             _analyticsRepoMock.VerifyAll();
         }
 
@@ -95,35 +95,32 @@ namespace Backend_UnitTest.AnalyticsTests
 
             var result = await _service.GetStudentSubmissionAnalyticsAsync(examId, studentId);
 
-            Assert.NotNull(result);
-            Assert.Equal(0, result.ShowScore);
-            Assert.Equal(1, result.ShowAnswer);
-            Assert.Equal(2, result.TotalQuestions);
-            Assert.NotEmpty(result.AnswerReview);
-
-            Assert.Null(result.TotalPoints);
-            Assert.Null(result.CorrectCount);
-            Assert.Null(result.WrongCount);
-            Assert.Null(result.ChapterStats);
-            Assert.Null(result.DifficultyStats);
-            Assert.Null(result.Recommendations);
-
+            Assert.True(result.IsSuccess);
+            Assert.Equal(0, result.Value.ShowScore);
+            Assert.Equal(1, result.Value.ShowAnswer);
+            Assert.Equal(2, result.Value.TotalQuestions);
+            Assert.NotEmpty(result.Value.AnswerReview);
+            Assert.Null(result.Value.TotalPoints);
+            Assert.Null(result.Value.CorrectCount);
+            Assert.Null(result.Value.WrongCount);
+            Assert.Null(result.Value.ChapterStats);
+            Assert.Null(result.Value.DifficultyStats);
+            Assert.Null(result.Value.Recommendations);
             _analyticsRepoMock.VerifyAll();
         }
 
-        [Fact(DisplayName = "GetStudentSubmissionAnalyticsAsync - UTCID05 - Exam không tồn tại -> KeyNotFoundException")]
-        public async Task GetStudentSubmissionAnalyticsAsync_UTCID05_ExamNotFound_ShouldThrowKeyNotFoundException()
+        [Fact(DisplayName = "GetStudentSubmissionAnalyticsAsync - UTCID05 - Exam không tồn tại -> ExamNotFound error")]
+        public async Task GetStudentSubmissionAnalyticsAsync_UTCID05_ExamNotFound_ShouldReturnExamNotFoundError()
         {
             int examId = 999;
             int studentId = 1;
 
-            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId))
-                .ReturnsAsync((Exam?)null);
+            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId)).ReturnsAsync((Exam?)null);
 
-            var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-                _service.GetStudentSubmissionAnalyticsAsync(examId, studentId));
+            var result = await _service.GetStudentSubmissionAnalyticsAsync(examId, studentId);
 
-            Assert.Equal($"Không tìm thấy bài thi với ID {examId}.", ex.Message);
+            Assert.True(result.IsFailure);
+            Assert.Equal(AnalyticsErrors.ExamNotFound.Code, result.Error.Code);
             _analyticsRepoMock.VerifyAll();
         }
 
@@ -139,13 +136,7 @@ namespace Backend_UnitTest.AnalyticsTests
             var mediumQuestion1 = CreateQuestion(202, "Medium Q1", new Chapter { ChapterId = 20, SubjectId = 1, Name = "Chương 2" }, 2);
             var mediumQuestion2 = CreateQuestion(203, "Medium Q2", new Chapter { ChapterId = 20, SubjectId = 1, Name = "Chương 2" }, 2);
 
-            var student = new User
-            {
-                UserId = 1,
-                Email = "s1@x.com",
-                FullName = "Student 1",
-                ConcurrencyStamp = Array.Empty<byte>()
-            };
+            var student = new User { UserId = 1, Email = "s1@x.com", FullName = "Student 1", ConcurrencyStamp = Array.Empty<byte>() };
 
             var targetSubmission = CreateSubmission(
                 submissionId: 1,
@@ -156,9 +147,8 @@ namespace Backend_UnitTest.AnalyticsTests
                 student: student,
                 answers: new List<StudentAnswer>
                 {
-                    CreateStudentAnswer(1, weakQuestion.QuestionAnswers.First(), "B"), // wrong
-                    CreateStudentAnswer(2, mediumQuestion1.QuestionAnswers.First(), "A") // correct
-                    // mediumQuestion2 intentionally unanswered
+                    CreateStudentAnswer(1, weakQuestion.QuestionAnswers.First(), "B"),
+                    CreateStudentAnswer(2, mediumQuestion1.QuestionAnswers.First(), "A")
                 });
 
             var otherSubmission = CreateSubmission(
@@ -167,17 +157,8 @@ namespace Backend_UnitTest.AnalyticsTests
                 paperId: 10,
                 updatedAtUtc: new DateTime(2026, 4, 1, 9, 0, 0, DateTimeKind.Utc),
                 totalPoints: 7m,
-                student: new User
-                {
-                    UserId = 2,
-                    Email = "s2@x.com",
-                    FullName = "Student 2",
-                    ConcurrencyStamp = Array.Empty<byte>()
-                },
-                answers: new List<StudentAnswer>
-                {
-                    CreateStudentAnswer(3, mediumQuestion1.QuestionAnswers.First(), "A")
-                });
+                student: new User { UserId = 2, Email = "s2@x.com", FullName = "Student 2", ConcurrencyStamp = Array.Empty<byte>() },
+                answers: new List<StudentAnswer> { CreateStudentAnswer(3, mediumQuestion1.QuestionAnswers.First(), "A") });
 
             var exam = new Exam
             {
@@ -208,20 +189,20 @@ namespace Backend_UnitTest.AnalyticsTests
 
             var result = await _service.GetStudentSubmissionAnalyticsAsync(examId, studentId);
 
-            Assert.Equal(0, result.ShowAnswer);
-            Assert.Equal(3, result.TotalQuestions);
-            Assert.Equal(1, result.CorrectCount);
-            Assert.Equal(2, result.WrongCount);
-            Assert.Contains(result.AnswerReview, x => x.ChapterName == "N/A");
-            Assert.All(result.AnswerReview.SelectMany(x => x.Options), option =>
+            Assert.True(result.IsSuccess);
+            Assert.Equal(0, result.Value.ShowAnswer);
+            Assert.Equal(3, result.Value.TotalQuestions);
+            Assert.Equal(1, result.Value.CorrectCount);
+            Assert.Equal(2, result.Value.WrongCount);
+            Assert.Contains(result.Value.AnswerReview, x => x.ChapterName == "N/A");
+            Assert.All(result.Value.AnswerReview.SelectMany(x => x.Options), option =>
             {
                 Assert.Null(option.IsCorrect);
                 Assert.Null(option.CorrectAnswer);
             });
-            Assert.NotNull(result.Recommendations);
-            Assert.Contains(result.Recommendations!, r => r.Contains("Cần ôn lại chương"));
-            Assert.Contains(result.Recommendations!, r => r.Contains("cần luyện thêm"));
-
+            Assert.NotNull(result.Value.Recommendations);
+            Assert.Contains(result.Value.Recommendations!, r => r.Contains("Cần ôn lại chương"));
+            Assert.Contains(result.Value.Recommendations!, r => r.Contains("cần luyện thêm"));
             _analyticsRepoMock.VerifyAll();
         }
 
@@ -237,13 +218,7 @@ namespace Backend_UnitTest.AnalyticsTests
                 paperId: 10,
                 updatedAtUtc: new DateTime(2026, 4, 1, 10, 0, 0, DateTimeKind.Utc),
                 totalPoints: 6m,
-                student: new User
-                {
-                    UserId = 1,
-                    Email = "s1@x.com",
-                    FullName = "Student 1",
-                    ConcurrencyStamp = Array.Empty<byte>()
-                },
+                student: new User { UserId = 1, Email = "s1@x.com", FullName = "Student 1", ConcurrencyStamp = Array.Empty<byte>() },
                 answers: new List<StudentAnswer>());
 
             var exam = new Exam
@@ -275,11 +250,11 @@ namespace Backend_UnitTest.AnalyticsTests
 
             var result = await _service.GetStudentSubmissionAnalyticsAsync(examId, studentId);
 
-            Assert.Equal(0, result.TotalQuestions);
-            Assert.Empty(result.AnswerReview);
-            Assert.Equal(0, result.CorrectCount);
-            Assert.Equal(0, result.WrongCount);
-
+            Assert.True(result.IsSuccess);
+            Assert.Equal(0, result.Value.TotalQuestions);
+            Assert.Empty(result.Value.AnswerReview);
+            Assert.Equal(0, result.Value.CorrectCount);
+            Assert.Equal(0, result.Value.WrongCount);
             _analyticsRepoMock.VerifyAll();
         }
 
@@ -287,27 +262,12 @@ namespace Backend_UnitTest.AnalyticsTests
         {
             var chapter1 = new Chapter { ChapterId = 10, SubjectId = 1, Name = "Chương 1" };
             var chapter2 = new Chapter { ChapterId = 20, SubjectId = 1, Name = "Chương 2" };
-
             var q1 = CreateQuestion(101, "Q1", chapter1, 1);
             var q2 = CreateQuestion(102, "Q2", chapter2, 2);
 
-            var student1 = new User
-            {
-                UserId = 1,
-                Email = "s1@x.com",
-                FullName = "Student 1",
-                ConcurrencyStamp = Array.Empty<byte>()
-            };
+            var student1 = new User { UserId = 1, Email = "s1@x.com", FullName = "Student 1", ConcurrencyStamp = Array.Empty<byte>() };
+            var student2 = new User { UserId = 2, Email = "s2@x.com", FullName = "Student 2", ConcurrencyStamp = Array.Empty<byte>() };
 
-            var student2 = new User
-            {
-                UserId = 2,
-                Email = "s2@x.com",
-                FullName = "Student 2",
-                ConcurrencyStamp = Array.Empty<byte>()
-            };
-
-            // latest submission for student 1
             var subLatest = CreateSubmission(
                 submissionId: 1,
                 studentId: 1,
@@ -328,10 +288,7 @@ namespace Backend_UnitTest.AnalyticsTests
                 updatedAtUtc: new DateTime(2026, 4, 1, 9, 0, 0, DateTimeKind.Utc),
                 totalPoints: 5m,
                 student: student1,
-                answers: new List<StudentAnswer>
-                {
-                    CreateStudentAnswer(3, q1.QuestionAnswers.First(), "A")
-                });
+                answers: new List<StudentAnswer> { CreateStudentAnswer(3, q1.QuestionAnswers.First(), "A") });
 
             var subStudent2 = CreateSubmission(
                 submissionId: 3,
@@ -340,10 +297,7 @@ namespace Backend_UnitTest.AnalyticsTests
                 updatedAtUtc: new DateTime(2026, 4, 1, 9, 30, 0, DateTimeKind.Utc),
                 totalPoints: 7m,
                 student: student2,
-                answers: new List<StudentAnswer>
-                {
-                    CreateStudentAnswer(4, q1.QuestionAnswers.First(), "A")
-                });
+                answers: new List<StudentAnswer> { CreateStudentAnswer(4, q1.QuestionAnswers.First(), "A") });
 
             return new Exam
             {
@@ -433,9 +387,7 @@ namespace Backend_UnitTest.AnalyticsTests
             };
 
             foreach (var answer in answers)
-            {
                 answer.Submission = submission;
-            }
 
             return submission;
         }

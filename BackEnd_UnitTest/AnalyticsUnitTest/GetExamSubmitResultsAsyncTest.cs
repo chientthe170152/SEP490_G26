@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Backend.Common.Errors;
 using Backend.Constants;
 using Backend.Models;
 using Backend.Repositories.Interfaces;
@@ -40,23 +41,23 @@ namespace Backend_UnitTest.AnalyticsTests
 
             var result = await _service.GetExamSubmitResultsAsync(examId);
 
-            Assert.NotNull(result);
-            Assert.Equal(examId, result.ExamId);
-            Assert.Equal("Submit Results Exam", result.ExamTitle);
-            Assert.Equal("SEP490", result.ClassName);
-            Assert.Equal(2, result.MaxAttempts);
-            Assert.Equal(3, result.TotalStudents);
-            Assert.Equal(1, result.SubmittedCount);
+            Assert.True(result.IsSuccess);
+            Assert.Equal(examId, result.Value.ExamId);
+            Assert.Equal("Submit Results Exam", result.Value.ExamTitle);
+            Assert.Equal("SEP490", result.Value.ClassName);
+            Assert.Equal(2, result.Value.MaxAttempts);
+            Assert.Equal(3, result.Value.TotalStudents);
+            Assert.Equal(1, result.Value.SubmittedCount);
 
-            var submitted = result.Students.Single(x => x.StudentId == 1);
+            var submitted = result.Value.Students.Single(x => x.StudentId == 1);
             Assert.Equal("Đã nộp", submitted.Status);
             Assert.Equal(2, submitted.AttemptCount);
             Assert.NotEmpty(submitted.History);
 
-            var inProgress = result.Students.Single(x => x.StudentId == 2);
+            var inProgress = result.Value.Students.Single(x => x.StudentId == 2);
             Assert.Equal("Đang làm", inProgress.Status);
 
-            var absent = result.Students.Single(x => x.StudentId == 3);
+            var absent = result.Value.Students.Single(x => x.StudentId == 3);
             Assert.Equal("Vắng thi", absent.Status);
 
             _studentExamRepoMock.VerifyAll();
@@ -76,10 +77,10 @@ namespace Backend_UnitTest.AnalyticsTests
 
             var result = await _service.GetExamSubmitResultsAsync(examId);
 
-            Assert.NotNull(result);
-            Assert.Equal(2, result.TotalStudents);
-            Assert.Equal(1, result.SubmittedCount);
-            Assert.Null(result.ClassName);
+            Assert.True(result.IsSuccess);
+            Assert.Equal(2, result.Value.TotalStudents);
+            Assert.Equal(1, result.Value.SubmittedCount);
+            Assert.Null(result.Value.ClassName);
 
             _studentExamRepoMock.VerifyAll();
             _analyticsRepoMock.VerifyAll();
@@ -101,14 +102,15 @@ namespace Backend_UnitTest.AnalyticsTests
 
             var result = await _service.GetExamSubmitResultsAsync(examId);
 
-            Assert.Equal(999, result.MaxAttempts);
+            Assert.True(result.IsSuccess);
+            Assert.Equal(999, result.Value.MaxAttempts);
 
             _studentExamRepoMock.VerifyAll();
             _analyticsRepoMock.VerifyAll();
         }
 
-        [Fact(DisplayName = "GetExamSubmitResultsAsync - UTCID04 - Exam không tồn tại -> KeyNotFoundException")]
-        public async Task GetExamSubmitResultsAsync_UTCID04_ExamNotFound_ShouldThrowKeyNotFoundException()
+        [Fact(DisplayName = "GetExamSubmitResultsAsync - UTCID04 - Exam không tồn tại -> ExamNotFound error")]
+        public async Task GetExamSubmitResultsAsync_UTCID04_ExamNotFound_ShouldReturnExamNotFoundError()
         {
             int examId = 999;
 
@@ -117,11 +119,10 @@ namespace Backend_UnitTest.AnalyticsTests
             _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId))
                 .ReturnsAsync((Exam?)null);
 
-            var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-                _service.GetExamSubmitResultsAsync(examId));
+            var result = await _service.GetExamSubmitResultsAsync(examId);
 
-            Assert.Equal($"Không tìm thấy bài thi với ID {examId}.", ex.Message);
-
+            Assert.True(result.IsFailure);
+            Assert.Equal(AnalyticsErrors.ExamNotFound.Code, result.Error.Code);
             _studentExamRepoMock.VerifyAll();
             _analyticsRepoMock.VerifyAll();
         }
@@ -220,17 +221,18 @@ namespace Backend_UnitTest.AnalyticsTests
 
             var result = await _service.GetExamSubmitResultsAsync(examId);
 
-            Assert.Null(result.ClassName);
-            Assert.Equal(3, result.TotalStudents);
+            Assert.True(result.IsSuccess);
+            Assert.Null(result.Value.ClassName);
+            Assert.Equal(3, result.Value.TotalStudents);
 
-            var inProgress = result.Students.Single(x => x.StudentId == 1);
+            var inProgress = result.Value.Students.Single(x => x.StudentId == 1);
             Assert.Equal("#1", inProgress.StudentCode);
             Assert.Equal("fallback@email.com", inProgress.FullName);
             Assert.Null(inProgress.LastSubmitAt);
             Assert.NotNull(inProgress.DurationFormatted);
             Assert.Null(inProgress.LastScore);
 
-            var absent = result.Students.Single(x => x.StudentId == 3);
+            var absent = result.Value.Students.Single(x => x.StudentId == 3);
             Assert.Equal("#3", absent.StudentCode);
             Assert.Equal("Học sinh #3", absent.FullName);
             Assert.Null(absent.LastSubmitAt);

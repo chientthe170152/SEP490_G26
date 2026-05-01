@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Backend.Common.Errors;
 using Backend.Models;
 using Backend.Repositories.Interfaces;
 using Backend.Services.Implements;
@@ -30,37 +31,29 @@ namespace Backend_UnitTest.AnalyticsTests
             int examId = 1;
             var exam = BuildExamWithValidAnalyticsData(examId);
 
-            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId))
-                              .ReturnsAsync(exam);
+            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId)).ReturnsAsync(exam);
 
             // Act
             var result = await _service.GetExamAnalyticsDetailAsync(examId);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(examId, result.ExamId);
-            Assert.Equal("Midterm Math", result.ExamTitle);
-
-            // rawSubmissions = 2
-            Assert.Equal(2, result.TotalSubmissions);
-
-            // scores = [6, 8]
-            Assert.Equal(7.00m, result.AverageScore);
-            Assert.Equal(8m, result.MaxScore);
-            Assert.Equal(6m, result.MinScore);
-            Assert.Equal(7.00m, result.MedianScore);
-
-            Assert.NotEmpty(result.ScoreDistribution);
-            Assert.Equal(1, result.ScoreDistribution["6-7"]);
-            Assert.Equal(1, result.ScoreDistribution["8-9"]);
-
-            Assert.Equal(2, result.ChapterStats.Count);
-            Assert.Equal(2, result.DifficultyStats.Count);
-            Assert.NotEmpty(result.HardestQuestions);
-            Assert.Equal(2, result.StudentResults.Count);
-            Assert.NotEmpty(result.Recommendations);
-            Assert.NotNull(result.DebugInfo);
-
+            Assert.True(result.IsSuccess);
+            Assert.Equal(examId, result.Value.ExamId);
+            Assert.Equal("Midterm Math", result.Value.ExamTitle);
+            Assert.Equal(2, result.Value.TotalSubmissions);
+            Assert.Equal(7.00m, result.Value.AverageScore);
+            Assert.Equal(8m, result.Value.MaxScore);
+            Assert.Equal(6m, result.Value.MinScore);
+            Assert.Equal(7.00m, result.Value.MedianScore);
+            Assert.NotEmpty(result.Value.ScoreDistribution);
+            Assert.Equal(1, result.Value.ScoreDistribution["6-7"]);
+            Assert.Equal(1, result.Value.ScoreDistribution["8-9"]);
+            Assert.Equal(2, result.Value.ChapterStats.Count);
+            Assert.Equal(2, result.Value.DifficultyStats.Count);
+            Assert.NotEmpty(result.Value.HardestQuestions);
+            Assert.Equal(2, result.Value.StudentResults.Count);
+            Assert.NotEmpty(result.Value.Recommendations);
+            Assert.NotNull(result.Value.DebugInfo);
             _analyticsRepoMock.VerifyAll();
         }
 
@@ -88,24 +81,21 @@ namespace Backend_UnitTest.AnalyticsTests
                 UpdatedAtUtc = DateTime.UtcNow
             };
 
-            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId))
-                              .ReturnsAsync(exam);
+            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId)).ReturnsAsync(exam);
 
             // Act
             var result = await _service.GetExamAnalyticsDetailAsync(examId);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(examId, result.ExamId);
-            Assert.Equal("No Submission Exam", result.ExamTitle);
-            Assert.Equal(0, result.TotalSubmissions);
-            Assert.Contains("Chưa có học sinh nào nộp bài thi này để phân tích.", result.Recommendations);
-
-            Assert.Empty(result.ChapterStats);
-            Assert.Empty(result.DifficultyStats);
-            Assert.Empty(result.HardestQuestions);
-            Assert.Empty(result.StudentResults);
-
+            Assert.True(result.IsSuccess);
+            Assert.Equal(examId, result.Value.ExamId);
+            Assert.Equal("No Submission Exam", result.Value.ExamTitle);
+            Assert.Equal(0, result.Value.TotalSubmissions);
+            Assert.Contains("Chưa có học sinh nào nộp bài thi này để phân tích.", result.Value.Recommendations);
+            Assert.Empty(result.Value.ChapterStats);
+            Assert.Empty(result.Value.DifficultyStats);
+            Assert.Empty(result.Value.HardestQuestions);
+            Assert.Empty(result.Value.StudentResults);
             _analyticsRepoMock.VerifyAll();
         }
 
@@ -123,43 +113,20 @@ namespace Backend_UnitTest.AnalyticsTests
                 ConcurrencyStamp = Array.Empty<byte>()
             };
 
-            var chapter = new Chapter
-            {
-                ChapterId = 10,
-                SubjectId = 1,
-                Name = "Chương 1"
-            };
-
+            var chapter = new Chapter { ChapterId = 10, SubjectId = 1, Name = "Chương 1" };
             var q1 = CreateQuestion(101, "Q1", chapter, 1);
             var q2 = CreateQuestion(102, "Q2", chapter, 1);
 
-            var student1 = new User
-            {
-                UserId = 1,
-                Email = "s1@x.com",
-                FullName = "Student 1",
-                ConcurrencyStamp = Array.Empty<byte>()
-            };
+            var student1 = new User { UserId = 1, Email = "s1@x.com", FullName = "Student 1", ConcurrencyStamp = Array.Empty<byte>() };
+            var student2 = new User { UserId = 2, Email = "s2@x.com", FullName = "Student 2", ConcurrencyStamp = Array.Empty<byte>() };
 
-            var student2 = new User
-            {
-                UserId = 2,
-                Email = "s2@x.com",
-                FullName = "Student 2",
-                ConcurrencyStamp = Array.Empty<byte>()
-            };
-
-            // student1 có 2 submissions, service phải lấy submission mới nhất
             var subOld = CreateSubmission(
                 submissionId: 1,
                 studentId: 1,
                 updatedAtUtc: new DateTime(2026, 4, 1, 9, 0, 0, DateTimeKind.Utc),
                 totalPoints: 4m,
                 student: student1,
-                answers: new List<StudentAnswer>
-                {
-                    CreateStudentAnswer(1, q1.QuestionAnswers.First(), "A")
-                });
+                answers: new List<StudentAnswer> { CreateStudentAnswer(1, q1.QuestionAnswers.First(), "A") });
 
             var subNew = CreateSubmission(
                 submissionId: 2,
@@ -179,10 +146,7 @@ namespace Backend_UnitTest.AnalyticsTests
                 updatedAtUtc: new DateTime(2026, 4, 1, 10, 30, 0, DateTimeKind.Utc),
                 totalPoints: 7m,
                 student: student2,
-                answers: new List<StudentAnswer>
-                {
-                    CreateStudentAnswer(4, q1.QuestionAnswers.First(), "A")
-                });
+                answers: new List<StudentAnswer> { CreateStudentAnswer(4, q1.QuestionAnswers.First(), "A") });
 
             var exam = new Exam
             {
@@ -203,22 +167,17 @@ namespace Backend_UnitTest.AnalyticsTests
                 UpdatedAtUtc = DateTime.UtcNow
             };
 
-            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId))
-                              .ReturnsAsync(exam);
+            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId)).ReturnsAsync(exam);
 
             // Act
             var result = await _service.GetExamAnalyticsDetailAsync(examId);
 
             // Assert
-            // raw submissions vẫn là 3
-            Assert.Equal(3, result.TotalSubmissions);
-
-            // nhưng StudentResults chỉ còn 2 học sinh
-            Assert.Equal(2, result.StudentResults.Count);
-
-            var student1Result = result.StudentResults.Single(x => x.StudentId == 1);
+            Assert.True(result.IsSuccess);
+            Assert.Equal(3, result.Value.TotalSubmissions);
+            Assert.Equal(2, result.Value.StudentResults.Count);
+            var student1Result = result.Value.StudentResults.Single(x => x.StudentId == 1);
             Assert.Equal(9m, student1Result.TotalPoints);
-
             _analyticsRepoMock.VerifyAll();
         }
 
@@ -228,29 +187,9 @@ namespace Backend_UnitTest.AnalyticsTests
             // Arrange
             int examId = 4;
 
-            var student1 = new User
-            {
-                UserId = 1,
-                Email = "s1@x.com",
-                FullName = "Student 1",
-                ConcurrencyStamp = Array.Empty<byte>()
-            };
-
-            var student2 = new User
-            {
-                UserId = 2,
-                Email = "s2@x.com",
-                FullName = "Student 2",
-                ConcurrencyStamp = Array.Empty<byte>()
-            };
-
-            var chapter = new Chapter
-            {
-                ChapterId = 10,
-                SubjectId = 1,
-                Name = "Chương 1"
-            };
-
+            var student1 = new User { UserId = 1, Email = "s1@x.com", FullName = "Student 1", ConcurrencyStamp = Array.Empty<byte>() };
+            var student2 = new User { UserId = 2, Email = "s2@x.com", FullName = "Student 2", ConcurrencyStamp = Array.Empty<byte>() };
+            var chapter = new Chapter { ChapterId = 10, SubjectId = 1, Name = "Chương 1" };
             var q1 = CreateQuestion(101, "Q1", chapter, 1);
 
             var emptySubmission = CreateSubmission(
@@ -259,7 +198,7 @@ namespace Backend_UnitTest.AnalyticsTests
                 updatedAtUtc: DateTime.UtcNow.AddMinutes(-10),
                 totalPoints: 0m,
                 student: student1,
-                answers: new List<StudentAnswer>()); // empty
+                answers: new List<StudentAnswer>());
 
             var validSubmission = CreateSubmission(
                 submissionId: 2,
@@ -267,10 +206,7 @@ namespace Backend_UnitTest.AnalyticsTests
                 updatedAtUtc: DateTime.UtcNow,
                 totalPoints: 8m,
                 student: student2,
-                answers: new List<StudentAnswer>
-                {
-                    CreateStudentAnswer(1, q1.QuestionAnswers.First(), "A")
-                });
+                answers: new List<StudentAnswer> { CreateStudentAnswer(1, q1.QuestionAnswers.First(), "A") });
 
             var exam = new Exam
             {
@@ -291,20 +227,16 @@ namespace Backend_UnitTest.AnalyticsTests
                 UpdatedAtUtc = DateTime.UtcNow
             };
 
-            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId))
-                              .ReturnsAsync(exam);
+            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId)).ReturnsAsync(exam);
 
             // Act
             var result = await _service.GetExamAnalyticsDetailAsync(examId);
 
             // Assert
-            // raw submissions vẫn là 2
-            Assert.Equal(2, result.TotalSubmissions);
-
-            // allSubmissions chỉ còn 1 học sinh hợp lệ
-            Assert.Single(result.StudentResults);
-            Assert.Equal(2, result.StudentResults[0].StudentId);
-
+            Assert.True(result.IsSuccess);
+            Assert.Equal(2, result.Value.TotalSubmissions);
+            Assert.Single(result.Value.StudentResults);
+            Assert.Equal(2, result.Value.StudentResults[0].StudentId);
             _analyticsRepoMock.VerifyAll();
         }
 
@@ -313,14 +245,7 @@ namespace Backend_UnitTest.AnalyticsTests
         {
             // Arrange
             int examId = 5;
-
-            var chapter = new Chapter
-            {
-                ChapterId = 10,
-                SubjectId = 1,
-                Name = "Chương 1"
-            };
-
+            var chapter = new Chapter { ChapterId = 10, SubjectId = 1, Name = "Chương 1" };
             var q1 = CreateQuestion(101, "Q1", chapter, 1);
 
             var studentNoFullName = new User
@@ -337,10 +262,7 @@ namespace Backend_UnitTest.AnalyticsTests
                 updatedAtUtc: DateTime.UtcNow,
                 totalPoints: 7m,
                 student: studentNoFullName,
-                answers: new List<StudentAnswer>
-                {
-                    CreateStudentAnswer(1, q1.QuestionAnswers.First(), "A")
-                });
+                answers: new List<StudentAnswer> { CreateStudentAnswer(1, q1.QuestionAnswers.First(), "A") });
 
             var exam = new Exam
             {
@@ -361,34 +283,31 @@ namespace Backend_UnitTest.AnalyticsTests
                 UpdatedAtUtc = DateTime.UtcNow
             };
 
-            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId))
-                              .ReturnsAsync(exam);
+            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId)).ReturnsAsync(exam);
 
             // Act
             var result = await _service.GetExamAnalyticsDetailAsync(examId);
 
             // Assert
-            Assert.Single(result.StudentResults);
-            Assert.Equal("fallback@email.com", result.StudentResults[0].StudentName);
-
+            Assert.True(result.IsSuccess);
+            Assert.Single(result.Value.StudentResults);
+            Assert.Equal("fallback@email.com", result.Value.StudentResults[0].StudentName);
             _analyticsRepoMock.VerifyAll();
         }
 
-        [Fact(DisplayName = "GetExamAnalyticsDetailAsync - UTCID06 - Exam không tồn tại -> KeyNotFoundException")]
-        public async Task GetExamAnalyticsDetailAsync_UTCID06_ExamNotFound_ShouldThrowKeyNotFoundException()
+        [Fact(DisplayName = "GetExamAnalyticsDetailAsync - UTCID06 - Exam không tồn tại -> ExamNotFound error")]
+        public async Task GetExamAnalyticsDetailAsync_UTCID06_ExamNotFound_ShouldReturnExamNotFoundError()
         {
             // Arrange
             int examId = 999;
-
-            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId))
-                              .ReturnsAsync((Exam?)null);
+            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId)).ReturnsAsync((Exam?)null);
 
             // Act
-            var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-                _service.GetExamAnalyticsDetailAsync(examId));
+            var result = await _service.GetExamAnalyticsDetailAsync(examId);
 
             // Assert
-            Assert.Equal($"Không tìm thấy bài thi với ID {examId}.", ex.Message);
+            Assert.True(result.IsFailure);
+            Assert.Equal(AnalyticsErrors.ExamNotFound.Code, result.Error.Code);
             _analyticsRepoMock.VerifyAll();
         }
 
@@ -396,24 +315,11 @@ namespace Backend_UnitTest.AnalyticsTests
         public async Task GetExamAnalyticsDetailAsync_UTCID07_NullAnswersAndNullQuestionNavigation_ShouldFallbackCorrectly()
         {
             int examId = 7;
-
-            var chapter = new Chapter
-            {
-                ChapterId = 10,
-                SubjectId = 1,
-                Name = "Chương 1"
-            };
-
+            var chapter = new Chapter { ChapterId = 10, SubjectId = 1, Name = "Chương 1" };
             var q1 = CreateQuestion(101, "Q1", chapter, 1);
             q1.QuestionAnswers.First().Question = null!;
 
-            var studentNoInfo = new User
-            {
-                UserId = 1,
-                Email = null!,
-                FullName = null,
-                ConcurrencyStamp = Array.Empty<byte>()
-            };
+            var studentNoInfo = new User { UserId = 1, Email = null!, FullName = null, ConcurrencyStamp = Array.Empty<byte>() };
 
             var nullAnswersSubmission = new Submission
             {
@@ -425,13 +331,7 @@ namespace Backend_UnitTest.AnalyticsTests
                 TotalPoints = 0m,
                 Status = 1,
                 ConcurrencyStamp = Array.Empty<byte>(),
-                Student = new User
-                {
-                    UserId = 99,
-                    Email = "ignored@x.com",
-                    FullName = "Ignored",
-                    ConcurrencyStamp = Array.Empty<byte>()
-                },
+                Student = new User { UserId = 99, Email = "ignored@x.com", FullName = "Ignored", ConcurrencyStamp = Array.Empty<byte>() },
                 StudentAnswers = null!
             };
 
@@ -441,10 +341,7 @@ namespace Backend_UnitTest.AnalyticsTests
                 updatedAtUtc: DateTime.UtcNow,
                 totalPoints: 5m,
                 student: studentNoInfo,
-                answers: new List<StudentAnswer>
-                {
-                    CreateStudentAnswer(1, q1.QuestionAnswers.First(), "A")
-                });
+                answers: new List<StudentAnswer> { CreateStudentAnswer(1, q1.QuestionAnswers.First(), "A") });
 
             var exam = new Exam
             {
@@ -465,16 +362,15 @@ namespace Backend_UnitTest.AnalyticsTests
                 UpdatedAtUtc = DateTime.UtcNow
             };
 
-            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId))
-                              .ReturnsAsync(exam);
+            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId)).ReturnsAsync(exam);
 
             var result = await _service.GetExamAnalyticsDetailAsync(examId);
 
-            Assert.Equal(2, result.TotalSubmissions);
-            Assert.Single(result.StudentResults);
-            Assert.Equal("HS #1", result.StudentResults[0].StudentName);
-            Assert.NotEmpty(result.HardestQuestions);
-
+            Assert.True(result.IsSuccess);
+            Assert.Equal(2, result.Value.TotalSubmissions);
+            Assert.Single(result.Value.StudentResults);
+            Assert.Equal("HS #1", result.Value.StudentResults[0].StudentName);
+            Assert.NotEmpty(result.Value.HardestQuestions);
             _analyticsRepoMock.VerifyAll();
         }
 
@@ -482,14 +378,7 @@ namespace Backend_UnitTest.AnalyticsTests
         public async Task GetExamAnalyticsDetailAsync_UTCID08_NullStudentAndNullQuestionAnswer_ShouldCoverRemainingBranches()
         {
             int examId = 8;
-
-            var chapter = new Chapter
-            {
-                ChapterId = 10,
-                SubjectId = 1,
-                Name = "Chương 1"
-            };
-
+            var chapter = new Chapter { ChapterId = 10, SubjectId = 1, Name = "Chương 1" };
             var q1 = CreateQuestion(101, "Q1", chapter, 1);
 
             var submission = new Submission
@@ -537,52 +426,26 @@ namespace Backend_UnitTest.AnalyticsTests
                 UpdatedAtUtc = DateTime.UtcNow
             };
 
-            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId))
-                              .ReturnsAsync(exam);
+            _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(examId)).ReturnsAsync(exam);
 
             var result = await _service.GetExamAnalyticsDetailAsync(examId);
 
-            Assert.Single(result.StudentResults);
-            Assert.Equal("HS #1", result.StudentResults[0].StudentName);
-            Assert.NotEmpty(result.HardestQuestions);
-
+            Assert.True(result.IsSuccess);
+            Assert.Single(result.Value.StudentResults);
+            Assert.Equal("HS #1", result.Value.StudentResults[0].StudentName);
+            Assert.NotEmpty(result.Value.HardestQuestions);
             _analyticsRepoMock.VerifyAll();
         }
 
         private static Exam BuildExamWithValidAnalyticsData(int examId)
         {
-            var chapter1 = new Chapter
-            {
-                ChapterId = 10,
-                SubjectId = 1,
-                Name = "Chương 1"
-            };
-
-            var chapter2 = new Chapter
-            {
-                ChapterId = 20,
-                SubjectId = 1,
-                Name = "Chương 2"
-            };
-
+            var chapter1 = new Chapter { ChapterId = 10, SubjectId = 1, Name = "Chương 1" };
+            var chapter2 = new Chapter { ChapterId = 20, SubjectId = 1, Name = "Chương 2" };
             var q1 = CreateQuestion(101, "Q1", chapter1, 1);
             var q2 = CreateQuestion(102, "Q2", chapter2, 3);
 
-            var student1 = new User
-            {
-                UserId = 1,
-                Email = "s1@x.com",
-                FullName = "Student 1",
-                ConcurrencyStamp = Array.Empty<byte>()
-            };
-
-            var student2 = new User
-            {
-                UserId = 2,
-                Email = "s2@x.com",
-                FullName = "Student 2",
-                ConcurrencyStamp = Array.Empty<byte>()
-            };
+            var student1 = new User { UserId = 1, Email = "s1@x.com", FullName = "Student 1", ConcurrencyStamp = Array.Empty<byte>() };
+            var student2 = new User { UserId = 2, Email = "s2@x.com", FullName = "Student 2", ConcurrencyStamp = Array.Empty<byte>() };
 
             var submission1 = CreateSubmission(
                 submissionId: 1,
@@ -592,8 +455,8 @@ namespace Backend_UnitTest.AnalyticsTests
                 student: student1,
                 answers: new List<StudentAnswer>
                 {
-                    CreateStudentAnswer(1, q1.QuestionAnswers.First(), "A"), // correct
-                    CreateStudentAnswer(2, q2.QuestionAnswers.First(), "B")  // wrong
+                    CreateStudentAnswer(1, q1.QuestionAnswers.First(), "A"),
+                    CreateStudentAnswer(2, q2.QuestionAnswers.First(), "B")
                 });
 
             var submission2 = CreateSubmission(
@@ -604,8 +467,8 @@ namespace Backend_UnitTest.AnalyticsTests
                 student: student2,
                 answers: new List<StudentAnswer>
                 {
-                    CreateStudentAnswer(3, q1.QuestionAnswers.First(), "A"), // correct
-                    CreateStudentAnswer(4, q2.QuestionAnswers.First(), "A")  // correct
+                    CreateStudentAnswer(3, q1.QuestionAnswers.First(), "A"),
+                    CreateStudentAnswer(4, q2.QuestionAnswers.First(), "A")
                 });
 
             return new Exam
@@ -689,9 +552,7 @@ namespace Backend_UnitTest.AnalyticsTests
             };
 
             foreach (var answer in answers)
-            {
                 answer.Submission = submission;
-            }
 
             return submission;
         }

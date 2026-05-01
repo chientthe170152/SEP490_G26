@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Backend.Common.Errors;
 using Backend.Models;
 using Backend.Repositories.Interfaces;
 using Backend.Services.Implements;
@@ -44,33 +45,33 @@ namespace Backend_UnitTest.AnalyticsTests
 
             var result = await _service.GetSubmissionBySubmissionIdAsync(submissionId);
 
-            Assert.NotNull(result);
-            Assert.Equal(1, result.ShowScore);
-            Assert.Equal(2, result.ShowAnswer);
-            Assert.Equal(submissionId, result.SubmissionId);
-            Assert.NotEmpty(result.AnswerReview);
-            Assert.NotNull(result.TotalPoints);
+            Assert.True(result.IsSuccess);
+            Assert.Equal(1, result.Value.ShowScore);
+            Assert.Equal(2, result.Value.ShowAnswer);
+            Assert.Equal(submissionId, result.Value.SubmissionId);
+            Assert.NotEmpty(result.Value.AnswerReview);
+            Assert.NotNull(result.Value.TotalPoints);
 
             _analyticsRepoMock.VerifyAll();
         }
 
-        [Fact(DisplayName = "GetSubmissionBySubmissionIdAsync - UTCID02 - Submission không tồn tại -> KeyNotFoundException")]
-        public async Task GetSubmissionBySubmissionIdAsync_UTCID02_SubmissionNotFound_ShouldThrowKeyNotFoundException()
+        [Fact(DisplayName = "GetSubmissionBySubmissionIdAsync - UTCID02 - Submission không tồn tại -> SubmissionNotFound error")]
+        public async Task GetSubmissionBySubmissionIdAsync_UTCID02_SubmissionNotFound_ShouldReturnSubmissionNotFoundError()
         {
             int submissionId = 999;
 
             _analyticsRepoMock.Setup(r => r.GetSubmissionByIdWithPaperAsync(submissionId))
                 .ReturnsAsync((Submission?)null);
 
-            var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-                _service.GetSubmissionBySubmissionIdAsync(submissionId));
+            var result = await _service.GetSubmissionBySubmissionIdAsync(submissionId);
 
-            Assert.Equal($"Không tìm thấy bài làm với ID {submissionId}.", ex.Message);
+            Assert.True(result.IsFailure);
+            Assert.Equal(AnalyticsErrors.SubmissionNotFound.Code, result.Error.Code);
             _analyticsRepoMock.VerifyAll();
         }
 
-        [Fact(DisplayName = "GetSubmissionBySubmissionIdAsync - UTCID03 - Exam không tồn tại -> KeyNotFoundException")]
-        public async Task GetSubmissionBySubmissionIdAsync_UTCID03_ExamNotFound_ShouldThrowKeyNotFoundException()
+        [Fact(DisplayName = "GetSubmissionBySubmissionIdAsync - UTCID03 - Exam không tồn tại -> ExamNotFound error")]
+        public async Task GetSubmissionBySubmissionIdAsync_UTCID03_ExamNotFound_ShouldReturnExamNotFoundError()
         {
             int submissionId = 1;
 
@@ -87,15 +88,15 @@ namespace Backend_UnitTest.AnalyticsTests
             _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(1))
                 .ReturnsAsync((Exam?)null);
 
-            var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-                _service.GetSubmissionBySubmissionIdAsync(submissionId));
+            var result = await _service.GetSubmissionBySubmissionIdAsync(submissionId);
 
-            Assert.Equal("Không tìm thấy bài thi.", ex.Message);
+            Assert.True(result.IsFailure);
+            Assert.Equal(AnalyticsErrors.ExamNotFound.Code, result.Error.Code);
             _analyticsRepoMock.VerifyAll();
         }
 
-        [Fact(DisplayName = "GetSubmissionBySubmissionIdAsync - UTCID04 - Submission không nằm trong graph exam -> KeyNotFoundException")]
-        public async Task GetSubmissionBySubmissionIdAsync_UTCID04_SubmissionMissingInExamGraph_ShouldThrowKeyNotFoundException()
+        [Fact(DisplayName = "GetSubmissionBySubmissionIdAsync - UTCID04 - Submission không nằm trong graph exam -> SubmissionNotFound error")]
+        public async Task GetSubmissionBySubmissionIdAsync_UTCID04_SubmissionMissingInExamGraph_ShouldReturnSubmissionNotFoundError()
         {
             int submissionId = 1;
 
@@ -137,10 +138,10 @@ namespace Backend_UnitTest.AnalyticsTests
             _analyticsRepoMock.Setup(r => r.GetExamWithFullGraphAsync(1))
                 .ReturnsAsync(exam);
 
-            var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-                _service.GetSubmissionBySubmissionIdAsync(submissionId));
+            var result = await _service.GetSubmissionBySubmissionIdAsync(submissionId);
 
-            Assert.Equal("Không tìm thấy bài làm trong dữ liệu bài thi.", ex.Message);
+            Assert.True(result.IsFailure);
+            Assert.Equal(AnalyticsErrors.SubmissionNotFound.Code, result.Error.Code);
             _analyticsRepoMock.VerifyAll();
         }
 
@@ -209,11 +210,12 @@ namespace Backend_UnitTest.AnalyticsTests
 
             var result = await _service.GetSubmissionBySubmissionIdAsync(submissionId);
 
-            Assert.Equal(submissionId, result.SubmissionId);
-            Assert.Equal(0, result.TotalQuestions);
-            Assert.Empty(result.AnswerReview);
-            Assert.Equal(0, result.CorrectCount);
-            Assert.Equal(0, result.WrongCount);
+            Assert.True(result.IsSuccess);
+            Assert.Equal(submissionId, result.Value.SubmissionId);
+            Assert.Equal(0, result.Value.TotalQuestions);
+            Assert.Empty(result.Value.AnswerReview);
+            Assert.Equal(0, result.Value.CorrectCount);
+            Assert.Equal(0, result.Value.WrongCount);
 
             _analyticsRepoMock.VerifyAll();
         }

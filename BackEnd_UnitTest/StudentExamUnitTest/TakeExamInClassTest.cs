@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Backend.Common.Errors;
 using Backend.Constants;
 using Backend.DTOs.StudentExam;
 using Backend.Models;
 using Backend.Repositories.Interfaces;
 using Backend.Services.Implements;
-using Microsoft.Extensions.Logging;
+using Backend.Services.Interfaces;
 using Moq;
 using Xunit;
 
@@ -15,87 +16,88 @@ namespace Backend_UnitTest.StudentExamTests;
 public class TakeExamInClass_UTCID_Tests
 {
     private readonly Mock<IStudentExamRepository> _repoMock;
+    private readonly Mock<ICurrentUserService> _currentUserMock;
     private readonly StudentExamService _service;
+
+    private const int StudentId = 1001;
 
     public TakeExamInClass_UTCID_Tests()
     {
         _repoMock = new Mock<IStudentExamRepository>(MockBehavior.Strict);
-        var loggerMock = new Mock<ILogger<StudentExamService>>();
-        var currentUserMock = new Mock<Backend.Services.Interfaces.ICurrentUserService>();
-        _service = new StudentExamService(_repoMock.Object, currentUserMock.Object, loggerMock.Object, TimeProvider.System);
+        _currentUserMock = new Mock<ICurrentUserService>();
+        _currentUserMock.Setup(u => u.UserId).Returns(StudentId);
+        _service = new StudentExamService(_repoMock.Object, _currentUserMock.Object, TimeProvider.System);
     }
 
     [Fact(DisplayName = "TakeExamInClass - UTCID01 - Có active submission cùng exam -> tiếp tục làm bài")]
     public async Task TakeExamInClass_UTCID01_HasActiveSubmissionSameExam_ShouldReturnTakeExamDto()
     {
         const int examId = 1;
-        const int studentId = 1001;
 
         var examInfo = BuildExamInfo(examId, new List<int> { 10 }, attempts: 1, maxAttempts: 3, shuffleQuestion: false);
-        var activeSubmission = BuildSubmission(500, studentId, 10, examId);
+        var activeSubmission = BuildSubmission(500, StudentId, 10, examId);
         var paper = BuildPaper(examId, 10, shuffleQuestion: false);
 
         _repoMock.Setup(r => r.ForceSubmitOverdueExamsAsync(examId)).Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, studentId)).ReturnsAsync(examInfo);
-        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(studentId)).ReturnsAsync(activeSubmission);
+        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, StudentId)).ReturnsAsync(examInfo);
+        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(StudentId)).ReturnsAsync(activeSubmission);
         _repoMock.Setup(r => r.GetPaperWithQuestionsAsync(examId, 10)).ReturnsAsync(paper);
 
-        var result = await _service.TakeExamInClass(examId, studentId);
+        var result = await _service.TakeExamInClass(examId);
 
-        Assert.NotNull(result);
-        Assert.Equal("500", result!.SubmissionId);
-        Assert.Equal("1", result.ExamId);
-        Assert.Equal(2, result.Questions.Count);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("500", result.Value.SubmissionId);
+        Assert.Equal("1", result.Value.ExamId);
+        Assert.Equal(2, result.Value.Questions.Count);
         _repoMock.Verify(r => r.CreateSubmissionAsync(It.IsAny<Submission>()), Times.Never);
         _repoMock.VerifyAll();
     }
 
-    [Fact(DisplayName = "TakeExamInClass - UTCID02 - ExamInfo null -> return null")]
-    public async Task TakeExamInClass_UTCID02_ExamInfoNull_ShouldReturnNull()
+    [Fact(DisplayName = "TakeExamInClass - UTCID02 - ExamInfo null -> NotFound error")]
+    public async Task TakeExamInClass_UTCID02_ExamInfoNull_ShouldReturnNotFoundError()
     {
         const int examId = 1;
-        const int studentId = 1001;
 
         _repoMock.Setup(r => r.ForceSubmitOverdueExamsAsync(examId)).Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, studentId)).ReturnsAsync((ExamInfoForStudentDto?)null);
+        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, StudentId)).ReturnsAsync((ExamInfoForStudentDto?)null);
 
-        var result = await _service.TakeExamInClass(examId, studentId);
+        var result = await _service.TakeExamInClass(examId);
 
-        Assert.Null(result);
+        Assert.True(result.IsFailure);
+        Assert.Equal(StudentExamErrors.NotFound.Code, result.Error.Code);
         _repoMock.Verify(r => r.GetAnyActiveSubmissionAsync(It.IsAny<int>()), Times.Never);
         _repoMock.VerifyAll();
     }
 
-    [Fact(DisplayName = "TakeExamInClass - UTCID03 - Active submission exam khác -> throw")]
-    public async Task TakeExamInClass_UTCID03_ActiveSubmissionOtherExam_ShouldThrow()
+    [Fact(DisplayName = "TakeExamInClass - UTCID03 - Active submission exam khác -> AnotherActiveSubmission error")]
+    public async Task TakeExamInClass_UTCID03_ActiveSubmissionOtherExam_ShouldReturnAnotherActiveSubmissionError()
     {
         const int examId = 1;
-        const int studentId = 1001;
 
         var examInfo = BuildExamInfo(examId, new List<int> { 10 }, attempts: 1, maxAttempts: 3, shuffleQuestion: false);
-        var activeSubmission = BuildSubmission(501, studentId, 99, otherExamId: 999);
+        var activeSubmission = BuildSubmission(501, StudentId, 99, otherExamId: 999);
 
         _repoMock.Setup(r => r.ForceSubmitOverdueExamsAsync(examId)).Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, studentId)).ReturnsAsync(examInfo);
-        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(studentId)).ReturnsAsync(activeSubmission);
+        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, StudentId)).ReturnsAsync(examInfo);
+        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(StudentId)).ReturnsAsync(activeSubmission);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.TakeExamInClass(examId, studentId));
+        var result = await _service.TakeExamInClass(examId);
 
-        Assert.Equal("Bạn đang có bài thi khác chưa nộp. Vui lòng hoàn thành hoặc nộp bài đó trước khi bắt đầu bài thi mới.", ex.Message);
+        Assert.True(result.IsFailure);
+        Assert.Equal(StudentExamErrors.AnotherActiveSubmission.Code, result.Error.Code);
         _repoMock.VerifyAll();
     }
 
-    [Fact(DisplayName = "TakeExamInClass - UTCID09 - Active submission nhưng Paper = null -> throw")]
-    public async Task TakeExamInClass_UTCID09_ActiveSubmissionWithoutPaper_ShouldThrow()
+    [Fact(DisplayName = "TakeExamInClass - UTCID09 - Active submission nhưng Paper = null -> AnotherActiveSubmission error")]
+    public async Task TakeExamInClass_UTCID09_ActiveSubmissionWithoutPaper_ShouldReturnAnotherActiveSubmissionError()
     {
         const int examId = 1;
-        const int studentId = 1001;
 
         var examInfo = BuildExamInfo(examId, new List<int> { 10 }, attempts: 1, maxAttempts: 3, shuffleQuestion: false);
         var activeSubmission = new Submission
         {
             SubmissionId = 502,
-            StudentId = studentId,
+            StudentId = StudentId,
             PaperId = 99,
             Status = SubmissionStatus.InProgress,
             CreatedAtUtc = DateTime.UtcNow.AddMinutes(-5),
@@ -105,66 +107,67 @@ public class TakeExamInClass_UTCID_Tests
         };
 
         _repoMock.Setup(r => r.ForceSubmitOverdueExamsAsync(examId)).Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, studentId)).ReturnsAsync(examInfo);
-        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(studentId)).ReturnsAsync(activeSubmission);
+        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, StudentId)).ReturnsAsync(examInfo);
+        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(StudentId)).ReturnsAsync(activeSubmission);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.TakeExamInClass(examId, studentId));
+        var result = await _service.TakeExamInClass(examId);
 
-        Assert.Equal("Bạn đang có bài thi khác chưa nộp. Vui lòng hoàn thành hoặc nộp bài đó trước khi bắt đầu bài thi mới.", ex.Message);
+        Assert.True(result.IsFailure);
+        Assert.Equal(StudentExamErrors.AnotherActiveSubmission.Code, result.Error.Code);
         _repoMock.VerifyAll();
     }
 
-    [Fact(DisplayName = "TakeExamInClass - UTCID04 - Hết lượt làm bài -> throw")]
-    public async Task TakeExamInClass_UTCID04_ExceedMaxAttempts_ShouldThrow()
+    [Fact(DisplayName = "TakeExamInClass - UTCID04 - Hết lượt làm bài -> MaxAttemptsReached error")]
+    public async Task TakeExamInClass_UTCID04_ExceedMaxAttempts_ShouldReturnMaxAttemptsReachedError()
     {
         const int examId = 1;
-        const int studentId = 1001;
 
         var examInfo = BuildExamInfo(examId, new List<int> { 10 }, attempts: 1, maxAttempts: 1, shuffleQuestion: false);
 
         _repoMock.Setup(r => r.ForceSubmitOverdueExamsAsync(examId)).Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, studentId)).ReturnsAsync(examInfo);
-        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(studentId)).ReturnsAsync((Submission?)null);
+        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, StudentId)).ReturnsAsync(examInfo);
+        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(StudentId)).ReturnsAsync((Submission?)null);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.TakeExamInClass(examId, studentId));
+        var result = await _service.TakeExamInClass(examId);
 
-        Assert.Equal("Bạn đã hết lượt làm bài cho bài thi này.", ex.Message);
+        Assert.True(result.IsFailure);
+        Assert.Equal(StudentExamErrors.MaxAttemptsReached.Code, result.Error.Code);
         _repoMock.VerifyAll();
     }
 
-    [Fact(DisplayName = "TakeExamInClass - UTCID05 - Không có paperIds -> throw")]
-    public async Task TakeExamInClass_UTCID05_NoPaperIds_ShouldThrow()
+    [Fact(DisplayName = "TakeExamInClass - UTCID05 - Không có paperIds -> NoPapers error")]
+    public async Task TakeExamInClass_UTCID05_NoPaperIds_ShouldReturnNoPapersError()
     {
         const int examId = 1;
-        const int studentId = 1001;
 
         var examInfo = BuildExamInfo(examId, new List<int>(), attempts: 0, maxAttempts: 3, shuffleQuestion: false);
 
         _repoMock.Setup(r => r.ForceSubmitOverdueExamsAsync(examId)).Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, studentId)).ReturnsAsync(examInfo);
-        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(studentId)).ReturnsAsync((Submission?)null);
+        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, StudentId)).ReturnsAsync(examInfo);
+        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(StudentId)).ReturnsAsync((Submission?)null);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.TakeExamInClass(examId, studentId));
+        var result = await _service.TakeExamInClass(examId);
 
-        Assert.Equal("Không tìm thấy đề thi nào cho bài kiểm tra này.", ex.Message);
+        Assert.True(result.IsFailure);
+        Assert.Equal(StudentExamErrors.NoPapers.Code, result.Error.Code);
         _repoMock.VerifyAll();
     }
 
-    [Fact(DisplayName = "TakeExamInClass - UTCID10 - MaxAttempts <= 0 và PaperIds null -> throw")]
-    public async Task TakeExamInClass_UTCID10_NullPaperIdsAndUnlimitedAttempts_ShouldThrow()
+    [Fact(DisplayName = "TakeExamInClass - UTCID10 - MaxAttempts <= 0 và PaperIds null -> NoPapers error")]
+    public async Task TakeExamInClass_UTCID10_NullPaperIdsAndUnlimitedAttempts_ShouldReturnNoPapersError()
     {
         const int examId = 1;
-        const int studentId = 1001;
 
         var examInfo = BuildExamInfo(examId, null!, attempts: 999, maxAttempts: 0, shuffleQuestion: false);
 
         _repoMock.Setup(r => r.ForceSubmitOverdueExamsAsync(examId)).Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, studentId)).ReturnsAsync(examInfo);
-        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(studentId)).ReturnsAsync((Submission?)null);
+        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, StudentId)).ReturnsAsync(examInfo);
+        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(StudentId)).ReturnsAsync((Submission?)null);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.TakeExamInClass(examId, studentId));
+        var result = await _service.TakeExamInClass(examId);
 
-        Assert.Equal("Không tìm thấy đề thi nào cho bài kiểm tra này.", ex.Message);
+        Assert.True(result.IsFailure);
+        Assert.Equal(StudentExamErrors.NoPapers.Code, result.Error.Code);
         _repoMock.Verify(r => r.CreateSubmissionAsync(It.IsAny<Submission>()), Times.Never);
         _repoMock.VerifyAll();
     }
@@ -173,47 +176,46 @@ public class TakeExamInClass_UTCID_Tests
     public async Task TakeExamInClass_UTCID06_CreateSubmission_ShouldReturnTakeExamDto()
     {
         const int examId = 1;
-        const int studentId = 1001;
 
         var examInfo = BuildExamInfo(examId, new List<int> { 10 }, attempts: 0, maxAttempts: 3, shuffleQuestion: false);
-        var createdSubmission = BuildSubmission(600, studentId, 10, examId);
+        var createdSubmission = BuildSubmission(600, StudentId, 10, examId);
         var paper = BuildPaper(examId, 10, shuffleQuestion: false);
 
         _repoMock.Setup(r => r.ForceSubmitOverdueExamsAsync(examId)).Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, studentId)).ReturnsAsync(examInfo);
-        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(studentId)).ReturnsAsync((Submission?)null);
+        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, StudentId)).ReturnsAsync(examInfo);
+        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(StudentId)).ReturnsAsync((Submission?)null);
         _repoMock.Setup(r => r.CreateSubmissionAsync(It.Is<Submission>(s =>
-            s.StudentId == studentId && s.PaperId == 10 && s.Status == SubmissionStatus.InProgress)))
+            s.StudentId == StudentId && s.PaperId == 10 && s.Status == SubmissionStatus.InProgress)))
             .ReturnsAsync(createdSubmission);
         _repoMock.Setup(r => r.GetPaperWithQuestionsAsync(examId, 10)).ReturnsAsync(paper);
 
-        var result = await _service.TakeExamInClass(examId, studentId);
+        var result = await _service.TakeExamInClass(examId);
 
-        Assert.NotNull(result);
-        Assert.Equal("600", result!.SubmissionId);
-        Assert.Equal(2, result.Questions.Count);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("600", result.Value.SubmissionId);
+        Assert.Equal(2, result.Value.Questions.Count);
         _repoMock.Verify(r => r.CreateSubmissionAsync(It.IsAny<Submission>()), Times.Once);
         _repoMock.VerifyAll();
     }
 
-    [Fact(DisplayName = "TakeExamInClass - UTCID07 - Paper null -> return null")]
-    public async Task TakeExamInClass_UTCID07_PaperNull_ShouldReturnNull()
+    [Fact(DisplayName = "TakeExamInClass - UTCID07 - Paper null -> NotFound error")]
+    public async Task TakeExamInClass_UTCID07_PaperNull_ShouldReturnNotFoundError()
     {
         const int examId = 1;
-        const int studentId = 1001;
 
         var examInfo = BuildExamInfo(examId, new List<int> { 10 }, attempts: 0, maxAttempts: 3, shuffleQuestion: false);
-        var createdSubmission = BuildSubmission(601, studentId, 10, examId);
+        var createdSubmission = BuildSubmission(601, StudentId, 10, examId);
 
         _repoMock.Setup(r => r.ForceSubmitOverdueExamsAsync(examId)).Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, studentId)).ReturnsAsync(examInfo);
-        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(studentId)).ReturnsAsync((Submission?)null);
+        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, StudentId)).ReturnsAsync(examInfo);
+        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(StudentId)).ReturnsAsync((Submission?)null);
         _repoMock.Setup(r => r.CreateSubmissionAsync(It.IsAny<Submission>())).ReturnsAsync(createdSubmission);
         _repoMock.Setup(r => r.GetPaperWithQuestionsAsync(examId, 10)).ReturnsAsync((Paper?)null);
 
-        var result = await _service.TakeExamInClass(examId, studentId);
+        var result = await _service.TakeExamInClass(examId);
 
-        Assert.Null(result);
+        Assert.True(result.IsFailure);
+        Assert.Equal(StudentExamErrors.NotFound.Code, result.Error.Code);
         _repoMock.VerifyAll();
     }
 
@@ -221,24 +223,23 @@ public class TakeExamInClass_UTCID_Tests
     public async Task TakeExamInClass_UTCID08_ShuffleQuestionTrue_ShouldReturnQuestions()
     {
         const int examId = 1;
-        const int studentId = 1001;
 
         var examInfo = BuildExamInfo(examId, new List<int> { 10 }, attempts: 0, maxAttempts: 3, shuffleQuestion: true);
-        var createdSubmission = BuildSubmission(700, studentId, 10, examId);
+        var createdSubmission = BuildSubmission(700, StudentId, 10, examId);
         var paper = BuildPaper(examId, 10, shuffleQuestion: true);
 
         _repoMock.Setup(r => r.ForceSubmitOverdueExamsAsync(examId)).Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, studentId)).ReturnsAsync(examInfo);
-        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(studentId)).ReturnsAsync((Submission?)null);
+        _repoMock.Setup(r => r.GetExamInfoForStudentAsync(examId, StudentId)).ReturnsAsync(examInfo);
+        _repoMock.Setup(r => r.GetAnyActiveSubmissionAsync(StudentId)).ReturnsAsync((Submission?)null);
         _repoMock.Setup(r => r.CreateSubmissionAsync(It.IsAny<Submission>())).ReturnsAsync(createdSubmission);
         _repoMock.Setup(r => r.GetPaperWithQuestionsAsync(examId, 10)).ReturnsAsync(paper);
 
-        var result = await _service.TakeExamInClass(examId, studentId);
+        var result = await _service.TakeExamInClass(examId);
 
-        Assert.NotNull(result);
-        Assert.Equal(2, result!.Questions.Count);
-        Assert.Contains(result.Questions, q => q.QuestionId == "101");
-        Assert.Contains(result.Questions, q => q.QuestionId == "102");
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Questions.Count);
+        Assert.Contains(result.Value.Questions, q => q.QuestionId == "101");
+        Assert.Contains(result.Value.Questions, q => q.QuestionId == "102");
         _repoMock.VerifyAll();
     }
 
