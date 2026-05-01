@@ -9,63 +9,65 @@ namespace Backend.Repositories.Implements
     public class QuestionRepository : IQuestionRepository
     {
         private readonly MtcaSep490G26Context _dbContext;
+        private readonly TimeProvider _timeProvider;
 
-        public QuestionRepository(MtcaSep490G26Context dbContext)
+        public QuestionRepository(MtcaSep490G26Context dbContext, TimeProvider timeProvider)
         {
             _dbContext = dbContext;
+            _timeProvider = timeProvider;
         }
 
-        public async Task<(List<QuestionSummaryDto> Items, int TotalCount)> GetQuestionsAsync(QuestionListQueryDto query, int userId)
+        public async Task<(List<QuestionSummaryDto> Items, int TotalCount)> GetQuestionsAsync(QuestionListQueryDto queryDto, int userId)
         {
-            var q = _dbContext.Questions
+            var query = _dbContext.Questions
                 .Include(x => x.Chapter)
                     .ThenInclude(c => c.Subject)
                 .Include(x => x.QuestionAnswers)
                 .Where(x => x.CreatedByUserId == userId)
                 .AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(query.Keyword))
+            if (!string.IsNullOrWhiteSpace(queryDto.Keyword))
             {
-                var kw = query.Keyword.Trim();
-                q = q.Where(x => x.QuestionContent.Contains(kw));
+                var kw = queryDto.Keyword.Trim();
+                query = query.Where(x => x.QuestionContent.Contains(kw));
             }
 
-            if (!string.IsNullOrWhiteSpace(query.QuestionType))
+            if (!string.IsNullOrWhiteSpace(queryDto.QuestionType))
             {
-                q = q.Where(x => x.QuestionType == query.QuestionType);
+                query = query.Where(x => x.QuestionType == queryDto.QuestionType);
             }
 
-            if (query.Difficulty.HasValue)
+            if (queryDto.Difficulty.HasValue)
             {
-                q = q.Where(x => x.Difficulty == query.Difficulty.Value);
+                query = query.Where(x => x.Difficulty == queryDto.Difficulty.Value);
             }
 
-            if (query.ChapterId.HasValue)
+            if (queryDto.ChapterId.HasValue)
             {
-                q = q.Where(x => x.ChapterId == query.ChapterId.Value);
+                query = query.Where(x => x.ChapterId == queryDto.ChapterId.Value);
             }
 
-            if (query.SubjectId.HasValue)
+            if (queryDto.SubjectId.HasValue)
             {
-                q = q.Where(x => x.Chapter.SubjectId == query.SubjectId.Value);
+                query = query.Where(x => x.Chapter.SubjectId == queryDto.SubjectId.Value);
             }
 
-            if (!string.IsNullOrWhiteSpace(query.Status))
+            if (!string.IsNullOrWhiteSpace(queryDto.Status))
             {
-                q = q.Where(x => x.Status == query.Status);
+                query = query.Where(x => x.Status == queryDto.Status);
             }
 
-            if (query.QuestionPurpose.HasValue)
+            if (queryDto.QuestionPurpose.HasValue)
             {
-                q = q.Where(x => x.QuestionPurpose == query.QuestionPurpose.Value);
+                query = query.Where(x => x.QuestionPurpose == queryDto.QuestionPurpose.Value);
             }
 
-            var totalCount = await q.CountAsync();
+            var totalCount = await query.CountAsync();
 
             var pageSize = 10;
-            var page = Math.Max(query.Page, 1);
+            var page = Math.Max(queryDto.Page, 1);
 
-            var items = await q
+            var items = await query
                 .OrderByDescending(x => x.UpdatedAtUtc)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -168,7 +170,7 @@ namespace Backend.Repositories.Implements
 
         public async Task<bool> IsQuestionUsedAsync(int questionId)
         {
-            var now = DateTime.UtcNow;
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
 
             // 1. Any actual student answers? (Highest priority)
             var hasAnswered = await _dbContext.QuestionAnswers

@@ -1,4 +1,6 @@
-$(document).ready(function () {
+$(document).ready(async function () {
+    await window.userReady;
+
     const state = {
         chapterOptions: [],
         editId: typeof window.ExamBlueprintEditId === 'number' && window.ExamBlueprintEditId > 0 ? window.ExamBlueprintEditId : 0,
@@ -6,8 +8,7 @@ $(document).ready(function () {
         lastTargetStatus: null
     };
 
-    const role = getUserRole();
-    if (!(role === 'Teacher' || role === 'Giáo viên' || role === 'Admin' || role === 'Quản trị viên' || role === 'Administrator')) {
+    if (getUserRole() !== RoleIds.Teacher) {
         showError(['Bạn không có quyền truy cập màn hình tạo ma trận đề.']);
         $('#btnSaveDraft, #btnPublish, #btnAddRow').prop('disabled', true);
         return;

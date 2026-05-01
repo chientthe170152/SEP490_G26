@@ -6,37 +6,37 @@ namespace Backend.DTOs.Question
 
     public class QuestionDto
     {
-        public string QuestionType { get; set; } = null!;
-        public string Stem { get; set; } = null!;
+        public string? QuestionType { get; set; }
+        public string? Stem { get; set; }
         public string? Frame { get; set; }
         public string? Explanation { get; set; }
-        public int ChapterId { get; set; }
-        public int Difficulty { get; set; }
-        public byte QuestionPurpose { get; set; } = 1;
-        public string Status { get; set; } = "Draft";
-        public List<AnswerDto> Answers { get; set; } = new();
+        public int? ChapterId { get; set; }
+        public int? Difficulty { get; set; }
+        public byte? QuestionPurpose { get; set; }
+        public string? Status { get; set; }
+        public List<AnswerDto>? Answers { get; set; }
         public List<GroupAnswerDto>? BlankGroups { get; set; }
     }
 
     public class AnswerDto
     {
         public int? AnswerId { get; set; }
-        public string Content { get; set; } = null!;
-        public string CorrectAnswer { get; set; } = null!;
+        public string? Content { get; set; }
+        public string? CorrectAnswer { get; set; }
         public bool? IsCorrect { get; set; }
         public int? InputTypeId { get; set; }
         public int? BlankIndex { get; set; }
-        public int Point { get; set; }
+        public int? Point { get; set; }
     }
 
     public class GroupAnswerDto
     {
         public int? GroupAnswerId { get; set; }
-        public string Name { get; set; } = null!;
+        public string? Name { get; set; }
         public int? DependsOnGroupId { get; set; }
         public int? DependsOnGroupIndex { get; set; }
-        public List<int> SegmentIndices { get; set; } = new();
-        public List<int> BlankIndices { get; set; } = new();
+        public List<int>? SegmentIndices { get; set; }
+        public List<int>? BlankIndices { get; set; }
     }
 
     public class QuestionSummaryDto
@@ -61,8 +61,8 @@ namespace Backend.DTOs.Question
 
     public class QuestionStatusUpdateDto
     {
-        public List<int> QuestionIds { get; set; } = new();
-        public string Status { get; set; } = string.Empty;
+        public List<int>? QuestionIds { get; set; }
+        public string? Status { get; set; }
     }
 
     public class QuestionListQueryDto

@@ -1,588 +1,381 @@
+using Backend.Common;
+using Backend.Common.Errors;
+using Backend.Common.Models;
+using Backend.Common.Options;
 using Backend.DTOs;
 using Backend.DTOs.Auth;
 using Backend.Models;
 using Backend.Repositories.Interfaces;
 using Backend.Services.Interfaces;
 using Google.Apis.Auth;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using Microsoft.Extensions.Caching.Memory;
-using Backend.Constants;
+using Microsoft.Extensions.Options;
+using System.Security.Cryptography;
 
-namespace Backend.Services.Implements
+namespace Backend.Services.Implements;
+
+public class AuthService(
+    IAuthRepository authRepository,
+    IConfiguration configuration,
+    IEmailService emailService,
+    IOtpStore otpStore,
+    IJwtTokenService jwtTokenService,
+    IRefreshTokenStore refreshTokenStore,
+    IHttpContextAccessor httpContextAccessor,
+    IOptions<AuthCookieOptions> cookieOptions,
+    TimeProvider timeProvider) : IAuthService
 {
-    public class AuthService : IAuthService
+    private readonly AuthCookieOptions _cookie = cookieOptions.Value;
+
+    public async Task<Result<LoginResponse>> LoginAsync(LoginRequest request)
     {
-        private readonly IAuthRepository _authRepository;
-        private readonly IConfiguration _configuration;
-        private readonly IEmailService _emailService;
-        private readonly Microsoft.Extensions.Caching.Memory.IMemoryCache _cache;
+        var user = await authRepository.GetUserByEmailAsync(request.Email!);
 
-        public AuthService(IAuthRepository authRepository, IConfiguration configuration, IEmailService emailService, Microsoft.Extensions.Caching.Memory.IMemoryCache cache)
+        if (user == null || string.IsNullOrEmpty(user.PasswordHash))
+            return AuthErrors.InvalidCredentials;
+
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            return AuthErrors.InvalidCredentials;
+
+        return await BuildLoginResponseAsync(user);
+    }
+
+    public async Task<Result<LoginResponse>> GoogleLoginAsync(GoogleLoginRequest request)
+    {
+        var payloadResult = await ValidateGoogleTokenAsync(request.IdToken!);
+        if (payloadResult.IsFailure)
+            return payloadResult.Error;
+
+        var userEmail = payloadResult.Value.Email;
+        var user = await authRepository.GetUserByEmailAsync(userEmail);
+
+        if (user == null)
+            return new LoginResponse { NeedsRegistration = true, Email = userEmail };
+
+        var missing = GetMissingProfileFields(user);
+        if (missing.Count > 0)
+            return new LoginResponse { NeedsProfileCompletion = true, Email = userEmail, MissingFields = missing };
+
+        return await BuildLoginResponseAsync(user);
+    }
+
+    public async Task<Result<LoginResponse>> GoogleRegisterAsync(GoogleRegisterRequest request)
+    {
+        var payloadResult = await ValidateGoogleTokenAsync(request.IdToken!);
+        if (payloadResult.IsFailure)
+            return payloadResult.Error;
+
+        var userEmail = payloadResult.Value.Email;
+        var existingUser = await authRepository.GetUserByEmailAsync(userEmail);
+        if (existingUser != null)
+            return AuthErrors.EmailAlreadyRegistered;
+
+        var user = new User
         {
-            _authRepository = authRepository;
-            _configuration = configuration;
-            _emailService = emailService;
-            _cache = cache;
+            PasswordHash = null,
+            RoleId = request.RoleId ?? 0,
+            Email = userEmail,
+            SecurityStamp = timeProvider.GetUtcNow().UtcDateTime,
+            FullName = (request.FullName ?? string.Empty).Trim(),
+            PhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber) ? null : request.PhoneNumber.Trim(),
+            StudentId = string.IsNullOrWhiteSpace(request.StudentId) ? null : request.StudentId.Trim()
+        };
+
+        await authRepository.AddUserAsync(user);
+        return await BuildLoginResponseAsync(user);
+    }
+
+    public async Task<Result<LoginResponse>> GoogleCompleteProfileAsync(GoogleCompleteProfileRequest request)
+    {
+        var payloadResult = await ValidateGoogleTokenAsync(request.IdToken!);
+        if (payloadResult.IsFailure)
+            return payloadResult.Error;
+
+        var userEmail = payloadResult.Value.Email;
+        var user = await authRepository.GetUserByEmailAsync(userEmail);
+        if (user == null)
+            return AuthErrors.UserNotFound;
+
+        user.FullName = (request.FullName ?? string.Empty).Trim();
+        user.PhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber) ? null : request.PhoneNumber.Trim();
+        if (user.RoleId == 2 && !string.IsNullOrWhiteSpace(request.StudentId))
+            user.StudentId = request.StudentId.Trim();
+
+        await authRepository.UpdateUserAsync(user);
+        return await BuildLoginResponseAsync(user);
+    }
+
+    public async Task<Result> SendOtpAsync(RegisterRequest request)
+    {
+        var existingUser = await authRepository.GetUserByEmailAsync(request.Email!);
+        if (existingUser != null)
+            return AuthErrors.EmailAlreadyRegistered;
+
+        var otp = GenerateOtp();
+        await otpStore.SetRegistrationOtpAsync(request.Email!, request, otp);
+
+        var html = BuildOtpEmail(
+            heading: "Xác thực Email đăng ký",
+            intro: "Mã OTP để hoàn tất đăng ký tài khoản của bạn là:",
+            otp: otp);
+        await emailService.SendEmailAsync(request.Email!, "Mã Xác Thực OTP - Math Test Creator", html);
+        return Result.Success();
+    }
+
+    public async Task<Result> ResendOtpAsync(string email)
+    {
+        var entry = await otpStore.GetRegistrationOtpAsync(email);
+        if (entry == null)
+            return AuthErrors.OtpExpired;
+
+        var newOtp = GenerateOtp();
+        await otpStore.SetRegistrationOtpAsync(email, entry.Request, newOtp);
+
+        var html = BuildOtpEmail(
+            heading: "Xác thực Email đăng ký",
+            intro: "Mã OTP mới để hoàn tất đăng ký tài khoản của bạn là:",
+            otp: newOtp);
+        await emailService.SendEmailAsync(email, "Mã Xác Thực OTP - Math Test Creator", html);
+        return Result.Success();
+    }
+
+    public async Task<Result<LoginResponse>> VerifyOtpAndRegisterAsync(VerifyOtpRequest request)
+    {
+        var entry = await otpStore.GetRegistrationOtpAsync(request.Email!);
+        if (entry == null)
+            return AuthErrors.OtpExpired;
+
+        if (entry.Otp != request.OtpCode)
+            return AuthErrors.OtpInvalid;
+
+        await otpStore.RemoveRegistrationOtpAsync(request.Email!);
+
+        var regRequest = entry.Request;
+        var existingUser = await authRepository.GetUserByEmailAsync(regRequest.Email!);
+        if (existingUser != null)
+            return AuthErrors.EmailAlreadyRegistered;
+
+        var user = new User
+        {
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(regRequest.Password),
+            RoleId = regRequest.RoleId ?? 0,
+            Email = regRequest.Email!,
+            SecurityStamp = timeProvider.GetUtcNow().UtcDateTime,
+            FullName = (regRequest.FullName ?? string.Empty).Trim(),
+            PhoneNumber = string.IsNullOrWhiteSpace(regRequest.PhoneNumber) ? null : regRequest.PhoneNumber.Trim(),
+            StudentId = string.IsNullOrWhiteSpace(regRequest.StudentId) ? null : regRequest.StudentId.Trim()
+        };
+
+        await authRepository.AddUserAsync(user);
+        return await BuildLoginResponseAsync(user);
+    }
+
+    public async Task<Result> RefreshTokenAsync()
+    {
+        var ctx = httpContextAccessor.HttpContext
+            ?? throw new InvalidOperationException("RefreshTokenAsync requires HttpContext.");
+
+        var rawToken = ctx.Request.Cookies[AuthCookieDefaults.RefreshName];
+        if (string.IsNullOrEmpty(rawToken))
+            return AuthErrors.RefreshTokenNotFound;
+
+        var validation = await refreshTokenStore.ConsumeAsync(rawToken);
+        if (validation == null)
+            return AuthErrors.InvalidRefreshToken;
+
+        var user = await authRepository.GetUserByIdAsync(validation.UserId);
+        if (user == null)
+            return AuthErrors.UserNotFound;
+
+        var loginResult = await BuildLoginResponseAsync(user);
+        return loginResult.IsFailure ? loginResult.Error : Result.Success();
+    }
+
+    public async Task<Result> ForgotPasswordAsync(ForgotPasswordRequest request)
+    {
+        var user = await authRepository.GetUserByEmailAsync(request.Email!);
+        if (user == null)
+            return Result.Success();
+
+        var otp = GenerateOtp();
+        await otpStore.SetResetOtpAsync(request.Email!, otp);
+
+        var html = BuildOtpEmail(
+            heading: "Đặt lại mật khẩu",
+            intro: "Mã OTP để đặt lại mật khẩu của bạn là:",
+            otp: otp,
+            extraNote: "Nếu bạn không yêu cầu đổi mật khẩu, vui lòng bỏ qua email này.");
+
+        await emailService.SendEmailAsync(request.Email!, "Mã Xác Thực Đặt Lại Mật Khẩu - Math Test Creator", html);
+        return Result.Success();
+    }
+
+    public async Task<Result> ResetPasswordAsync(ResetPasswordRequest request)
+    {
+        var cachedOtp = await otpStore.GetResetOtpAsync(request.Email!);
+        if (string.IsNullOrEmpty(cachedOtp))
+            return AuthErrors.OtpExpired;
+
+        if (cachedOtp != request.OtpCode)
+            return AuthErrors.OtpInvalid;
+
+        await otpStore.RemoveResetOtpAsync(request.Email!);
+
+        var user = await authRepository.GetUserByEmailAsync(request.Email!);
+        if (user == null)
+            return AuthErrors.UserNotFound;
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        await authRepository.UpdateUserAsync(user);
+
+        await refreshTokenStore.RevokeAllAsync(user.UserId);
+        ClearAuthCookies();
+
+        return Result.Success();
+    }
+
+    public async Task<Result> LogoutAsync(int userId, string jti)
+    {
+        await refreshTokenStore.RevokeAsync(userId, jti);
+        ClearAuthCookies();
+        return Result.Success();
+    }
+
+    public async Task<Result> ChangePasswordFirstLoginAsync(int userId, ChangePasswordFirstLoginRequest request)
+    {
+        var user = await authRepository.GetUserByIdAsync(userId);
+        if (user == null || string.IsNullOrEmpty(user.PasswordHash))
+            return AuthErrors.UserNotFound;
+
+        if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+            return AuthErrors.CurrentPasswordWrong;
+
+        if (BCrypt.Net.BCrypt.Verify(request.NewPassword, user.PasswordHash))
+            return AuthErrors.NewPasswordSameAsOld;
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.MustChangePassword = false;
+        await authRepository.UpdateUserAsync(user);
+
+        await refreshTokenStore.RevokeAllAsync(user.UserId);
+
+        var loginResult = await BuildLoginResponseAsync(user);
+        return loginResult.IsFailure ? loginResult.Error : Result.Success();
+    }
+
+    private async Task<Result<LoginResponse>> BuildLoginResponseAsync(User user)
+    {
+        if (user.RoleId != 1 && user.RoleId != 2)
+            return AuthErrors.UnknownRole;
+
+        var ctx = httpContextAccessor.HttpContext
+            ?? throw new InvalidOperationException("BuildLoginResponseAsync requires HttpContext.");
+
+        var authProvider = string.IsNullOrEmpty(user.PasswordHash) ? "google" : "password";
+        var (accessToken, jti, accessExpiresAt) = jwtTokenService.Issue(
+            user.UserId,
+            user.Email,
+            user.RoleId.ToString(),
+            authProvider,
+            user.MustChangePassword);
+
+        var ip = GetClientIp(ctx);
+        var ua = ctx.Request.Headers.UserAgent.ToString();
+        var (refreshToken, refreshExpiresAt) = await refreshTokenStore.IssueAsync(user.UserId, jti, ip, ua);
+
+        CookieHelper.SetAccessCookie(ctx.Response, accessToken, accessExpiresAt, _cookie);
+        CookieHelper.SetRefreshCookie(ctx.Response, refreshToken, refreshExpiresAt, _cookie);
+
+        var roleName = user.Role?.Name ?? (user.RoleId == 1 ? "Teacher" : user.RoleId == 2 ? "Student" : "Unknown");
+
+        return new LoginResponse
+        {
+            RoleName = roleName,
+            Email = user.Email
+        };
+    }
+
+    private void ClearAuthCookies()
+    {
+        var ctx = httpContextAccessor.HttpContext;
+        if (ctx == null) return;
+        CookieHelper.ClearAuthCookies(ctx.Response, _cookie);
+    }
+
+    private static string? GetClientIp(HttpContext ctx)
+    {
+        var cf = ctx.Request.Headers["CF-Connecting-IP"].ToString();
+        if (!string.IsNullOrEmpty(cf)) return cf;
+
+        var fwd = ctx.Request.Headers["X-Forwarded-For"].ToString();
+        if (!string.IsNullOrEmpty(fwd))
+        {
+            var first = fwd.Split(',')[0].Trim();
+            if (!string.IsNullOrEmpty(first)) return first;
         }
 
-        public async Task<LoginResponse> LoginAsync(LoginRequest request)
+        return ctx.Connection.RemoteIpAddress?.ToString();
+    }
+
+    private static string GenerateOtp() =>
+        RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+
+    private async Task<Result<GoogleJsonWebSignature.Payload>> ValidateGoogleTokenAsync(string idToken)
+    {
+        var clientId = configuration["Google:ClientId"];
+        var settings = new GoogleJsonWebSignature.ValidationSettings();
+        if (!string.IsNullOrEmpty(clientId) && clientId != "YOUR_GOOGLE_CLIENT_ID_HERE")
+            settings.Audience = new[] { clientId };
+
+        try
         {
-            var user = await _authRepository.GetUserByEmailAsync(request.Email);
+            var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
+            if (payload == null)
+                return AuthErrors.InvalidGoogleToken;
 
-            if (user == null)
-            {
-                throw new UnauthorizedAccessException(ErrorMessages.InvalidEmailOrPassword);
-            }
-            if (string.IsNullOrEmpty(user.PasswordHash))
-            {
-                throw new UnauthorizedAccessException("Tài khoản này đăng nhập bằng Google. Vui lòng sử dụng Đăng nhập bằng Google.");
-            }
-            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            {
-                throw new UnauthorizedAccessException(ErrorMessages.InvalidEmailOrPassword);
-            }
+            return payload;
+        }
+        catch (InvalidJwtException)
+        {
+            return AuthErrors.InvalidGoogleToken;
+        }
+    }
 
-            var token = GenerateJwtToken(user);
-            var refreshToken = GenerateRefreshTokenAsJwt(user);
-
-            return new LoginResponse
-            {
-                Token = token,
-                RefreshToken = refreshToken,
-                RoleName = user.Role?.Name ?? "User",
-                Email = user.Email
-            };
+    private static List<string> GetMissingProfileFields(User user)
+    {
+        var missing = new List<string>();
+        var fullName = (user.FullName ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(fullName) ||
+            !System.Text.RegularExpressions.Regex.IsMatch(fullName, @"^[\p{L}\p{M}]+(?:\s+[\p{L}\p{M}]+)*$"))
+        {
+            missing.Add("FullName");
         }
 
-        public async Task<LoginResponse> GoogleLoginAsync(GoogleLoginRequest request)
+        if (user.RoleId == 2)
         {
-            var payload = await ValidateGoogleTokenAsync(request.IdToken);
-            var userEmail = payload.Email;
-
-            var user = await _authRepository.GetUserByEmailAsync(userEmail);
-
-            if (user == null)
+            var studentId = (user.StudentId ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(studentId) ||
+                !System.Text.RegularExpressions.Regex.IsMatch(studentId, @"^[A-Za-z]{2}\d{6}$"))
             {
-                return new LoginResponse
-                {
-                    NeedsRegistration = true,
-                    Email = userEmail
-                };
-            }
-            // If user exists but is missing required profile fields, require completion before issuing token
-            var missing = new List<string>();
-            var fullName = (user.FullName ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(fullName) ||
-                !System.Text.RegularExpressions.Regex.IsMatch(fullName, @"^[\p{L}\p{M}]+(?:\s+[\p{L}\p{M}]+)*$"))
-            {
-                missing.Add("FullName");
-            }
-            if (user.RoleId == 2)
-            {
-                var studentId = (user.StudentId ?? string.Empty).Trim();
-                if (string.IsNullOrWhiteSpace(studentId) ||
-                    !System.Text.RegularExpressions.Regex.IsMatch(studentId, @"^[A-Za-z]{2}\d{6}$"))
-                {
-                    missing.Add("StudentId");
-                }
-            }
-            if (missing.Count > 0)
-            {
-                return new LoginResponse
-                {
-                    NeedsProfileCompletion = true,
-                    Email = userEmail,
-                    MissingFields = missing
-                };
-            }
-            var token = GenerateJwtToken(user);
-            var refreshToken = GenerateRefreshTokenAsJwt(user);
-
-            return new LoginResponse
-            {
-                Token = token,
-                RefreshToken = refreshToken,
-                RoleName = user.Role?.Name ?? "User",
-                Email = user.Email
-            };
-        }
-
-        public async Task<LoginResponse> GoogleCompleteProfileAsync(GoogleCompleteProfileRequest request)
-        {
-            var payload = await ValidateGoogleTokenAsync(request.IdToken);
-            var userEmail = payload.Email;
-
-            var user = await _authRepository.GetUserByEmailAsync(userEmail);
-            if (user == null)
-            {
-                throw new InvalidOperationException("Tài khoản chưa tồn tại để cập nhật thông tin.");
-            }
-
-            var fullName = (request.FullName ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(fullName))
-                throw new InvalidOperationException(ValidationMessages.FullNameRequired);
-            if (!System.Text.RegularExpressions.Regex.IsMatch(fullName, @"^[\p{L}\p{M}]+(?:\s+[\p{L}\p{M}]+)*$"))
-                throw new InvalidOperationException(ValidationMessages.FullNameInvalid);
-
-            if (!string.IsNullOrWhiteSpace(request.PhoneNumber) &&
-                !System.Text.RegularExpressions.Regex.IsMatch(request.PhoneNumber.Trim(), @"^0\d{9}$"))
-                throw new InvalidOperationException(ValidationMessages.PhoneNumberInvalid);
-
-            if (user.RoleId == 2)
-            {
-                var studentId = (request.StudentId ?? string.Empty).Trim();
-                if (string.IsNullOrWhiteSpace(studentId))
-                    throw new InvalidOperationException(ValidationMessages.StudentIdRequiredForStudent);
-                if (!System.Text.RegularExpressions.Regex.IsMatch(studentId, @"^[A-Za-z]{2}\d{6}$"))
-                    throw new InvalidOperationException(ValidationMessages.StudentIdInvalid);
-                user.StudentId = studentId;
-            }
-
-            user.FullName = fullName;
-            user.PhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber) ? null : request.PhoneNumber.Trim();
-            await _authRepository.UpdateUserAsync(user);
-
-            var token = GenerateJwtToken(user);
-            var refreshToken = GenerateRefreshTokenAsJwt(user);
-            return new LoginResponse
-            {
-                Token = token,
-                RefreshToken = refreshToken,
-                RoleName = user.Role?.Name ?? "User",
-                Email = user.Email
-            };
-        }
-
-        public async Task<LoginResponse> GoogleRegisterAsync(GoogleRegisterRequest request)
-        {
-            var payload = await ValidateGoogleTokenAsync(request.IdToken);
-            var userEmail = payload.Email;
-
-            var existingUser = await _authRepository.GetUserByEmailAsync(userEmail);
-            if (existingUser != null)
-            {
-                throw new InvalidOperationException(ErrorMessages.UserAlreadyExists);
-            }
-
-            var fullName = (request.FullName ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(fullName))
-            {
-                throw new InvalidOperationException(ValidationMessages.FullNameRequired);
-            }
-            if (!System.Text.RegularExpressions.Regex.IsMatch(fullName, @"^[\p{L}\p{M}]+(?:\s+[\p{L}\p{M}]+)*$"))
-            {
-                throw new InvalidOperationException(ValidationMessages.FullNameInvalid);
-            }
-            if (!string.IsNullOrWhiteSpace(request.PhoneNumber) &&
-                !System.Text.RegularExpressions.Regex.IsMatch(request.PhoneNumber.Trim(), @"^0\d{9}$"))
-            {
-                throw new InvalidOperationException(ValidationMessages.PhoneNumberInvalid);
-            }
-            if (request.RoleId == 2)
-            {
-                var studentId = (request.StudentId ?? string.Empty).Trim();
-                if (string.IsNullOrWhiteSpace(studentId))
-                {
-                    throw new InvalidOperationException(ValidationMessages.StudentIdRequiredForStudent);
-                }
-                if (!System.Text.RegularExpressions.Regex.IsMatch(studentId, @"^[A-Za-z]{2}\d{6}$"))
-                {
-                    throw new InvalidOperationException(ValidationMessages.StudentIdInvalid);
-                }
-            }
-
-            var user = new User
-            {
-                PasswordHash = null,
-                RoleId = request.RoleId,
-                Email = userEmail,
-                SecurityStamp = DateTime.UtcNow,
-                FullName = fullName,
-                PhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber) ? null : request.PhoneNumber.Trim(),
-                StudentId = string.IsNullOrWhiteSpace(request.StudentId) ? null : request.StudentId.Trim()
-            };
-
-            await _authRepository.AddUserAsync(user);
-            // đảm bảo auth_provider = google
-            user.PasswordHash = null;
-            var token = GenerateJwtToken(user);
-            var refreshToken = GenerateRefreshTokenAsJwt(user);
-
-            return new LoginResponse
-            {
-                Token = token,
-                RefreshToken = refreshToken,
-                RoleName = user.Role?.Name ?? "User",
-                Email = user.Email
-            };
-        }
-
-        public async Task SendOtpAsync(RegisterRequest request)
-        {
-            // 1. Check if email already exists
-            var existingUserByEmail = await _authRepository.GetUserByEmailAsync(request.Email);
-            if (existingUserByEmail != null && existingUserByEmail.Email == request.Email)
-                throw new InvalidOperationException(ErrorMessages.EmailAlreadyRegistered);
-
-            var fullName = (request.FullName ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(fullName))
-            {
-                throw new InvalidOperationException(ValidationMessages.FullNameRequired);
-            }
-            if (!System.Text.RegularExpressions.Regex.IsMatch(fullName, @"^[\p{L}\p{M}]+(?:\s+[\p{L}\p{M}]+)*$"))
-            {
-                throw new InvalidOperationException(ValidationMessages.FullNameInvalid);
-            }
-            if (!string.IsNullOrWhiteSpace(request.PhoneNumber) &&
-                !System.Text.RegularExpressions.Regex.IsMatch(request.PhoneNumber.Trim(), @"^0\d{9}$"))
-            {
-                throw new InvalidOperationException(ValidationMessages.PhoneNumberInvalid);
-            }
-            if (request.RoleId == 2)
-            {
-                var studentId = (request.StudentId ?? string.Empty).Trim();
-                if (string.IsNullOrWhiteSpace(studentId))
-                {
-                    throw new InvalidOperationException(ValidationMessages.StudentIdRequiredForStudent);
-                }
-                if (!System.Text.RegularExpressions.Regex.IsMatch(studentId, @"^[A-Za-z]{2}\d{6}$"))
-                {
-                    throw new InvalidOperationException(ValidationMessages.StudentIdInvalid);
-                }
-            }
-
-            // 2. Generate 6-digit OTP
-            var otp = new Random().Next(100000, 999999).ToString();
-
-            // 3. Save Registration Info and OTP to Cache (expires in 10 minutes)
-            var cacheKey = $"OTP_{request.Email}";
-            var cacheData = new { Request = request, Otp = otp };
-            _cache.Set(cacheKey, cacheData, TimeSpan.FromMinutes(10));
-
-            // 4. Send Email
-            var htmlMessage = $@"
-                <div style='font-family: Arial, sans-serif; padding: 20px;'>
-                    <h2>Xác thực Email đăng ký</h2>
-                    <p>Chào bạn,</p>
-                    <p>Mã OTP để hoàn tất đăng ký tài khoản của bạn là:</p>
-                    <h1 style='color: #2b6cb0; letter-spacing: 5px;'>{otp}</h1>
-                    <p>Mã này chỉ được sử dụng một lần và sẽ hết hạn sau 10 phút.</p>
-                </div>";
-
-            await _emailService.SendEmailAsync(request.Email, "Mã Xác Thực OTP - Math Test Creator", htmlMessage);
-        }
-
-        public async Task ResendOtpAsync(string email)
-        {
-            var cacheKey = $"OTP_{email}";
-            if (!_cache.TryGetValue(cacheKey, out dynamic? cacheData) || cacheData == null)
-            {
-                throw new UnauthorizedAccessException(ErrorMessages.OtpExpiredOrNotExists);
-            }
-
-            var regRequest = (RegisterRequest)cacheData!.Request;
-            var newOtp = new Random().Next(100000, 999999).ToString();
-            var newCacheData = new { Request = regRequest, Otp = newOtp };
-            _cache.Set(cacheKey, newCacheData, TimeSpan.FromMinutes(10));
-
-            var htmlMessage = $@"
-                <div style='font-family: Arial, sans-serif; padding: 20px;'>
-                    <h2>Xác thực Email đăng ký</h2>
-                    <p>Chào bạn,</p>
-                    <p>Mã OTP mới để hoàn tất đăng ký tài khoản của bạn là:</p>
-                    <h1 style='color: #2b6cb0; letter-spacing: 5px;'>{newOtp}</h1>
-                    <p>Mã này chỉ được sử dụng một lần và sẽ hết hạn sau 10 phút.</p>
-                </div>";
-
-            await _emailService.SendEmailAsync(email, "Mã Xác Thực OTP - Math Test Creator", htmlMessage);
-        }
-
-        public async Task<LoginResponse> VerifyOtpAndRegisterAsync(VerifyOtpRequest request)
-        {
-            var cacheKey = $"OTP_{request.Email}";
-
-            if (!_cache.TryGetValue(cacheKey, out dynamic? cacheData) || cacheData == null)
-            {
-                throw new UnauthorizedAccessException(ErrorMessages.OtpExpiredOrNotExists);
-            }
-
-            if (cacheData!.Otp != request.OtpCode)
-            {
-                throw new UnauthorizedAccessException(ErrorMessages.InvalidOtp);
-            }
-
-            // ONE-TIME USE: Remove OTP from cache IMMEDIATELY upon verification
-            _cache.Remove(cacheKey);
-
-            // OTP valid, proceed to register
-            RegisterRequest regRequest = cacheData.Request;
-
-            var existingUser = await _authRepository.GetUserByEmailAsync(regRequest.Email);
-            if (existingUser != null)
-            {
-                _cache.Remove(cacheKey); // Cleanup
-                throw new InvalidOperationException(ErrorMessages.UserAlreadyExists);
-            }
-
-            var user = new User
-            {
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(regRequest.Password),
-                RoleId = regRequest.RoleId,
-                Email = regRequest.Email,
-                SecurityStamp = DateTime.UtcNow,
-                FullName = (regRequest.FullName ?? string.Empty).Trim(),
-                PhoneNumber = string.IsNullOrWhiteSpace(regRequest.PhoneNumber) ? null : regRequest.PhoneNumber.Trim(),
-                StudentId = string.IsNullOrWhiteSpace(regRequest.StudentId) ? null : regRequest.StudentId.Trim()
-            };
-
-            await _authRepository.AddUserAsync(user);
-
-            var token = GenerateJwtToken(user);
-            var refreshToken = GenerateRefreshTokenAsJwt(user);
-
-            return new LoginResponse
-            {
-                Token = token,
-                RefreshToken = refreshToken,
-                RoleName = user.Role?.Name ?? "User",
-                Email = user.Email
-            };
-        }
-
-        public async Task<TokenModel> RefreshTokenAsync(TokenModel request)
-        {
-            if (request == null || string.IsNullOrEmpty(request.RefreshToken))
-            {
-                throw new ArgumentNullException(nameof(request));
-            }
-
-            // Parse existing Refresh Token
-            var principal = CreatePrincipalFromExpiredToken(request.RefreshToken, isRefreshToken: true);
-            if (principal == null)
-            {
-                throw new UnauthorizedAccessException("Invalid refresh token.");
-            }
-
-            // Get Email and SecurityStamp from token claims
-            string userEmail = principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value ?? "";
-            string tokenSecurityStamp = principal.Claims.FirstOrDefault(c => c.Type == "AspNet.Identity.SecurityStamp")?.Value ?? "";
-
-            var user = await _authRepository.GetUserByEmailAsync(userEmail);
-
-            // Validate User & check if SecurityStamp hasn't been changed
-            if (user == null || user.SecurityStamp.ToString("o") != tokenSecurityStamp)
-            {
-                // SecurityStamp mismatch means the token was invalidated (e.g. by password change)
-                throw new UnauthorizedAccessException("Refresh token is invalid or has been revoked.");
-            }
-
-            // Issue new tokens
-            var newAccessToken = GenerateJwtToken(user);
-            var newRefreshToken = GenerateRefreshTokenAsJwt(user);
-
-            return new TokenModel
-            {
-                AccessToken = newAccessToken,
-                RefreshToken = newRefreshToken
-            };
-        }
-
-        public async Task ForgotPasswordAsync(ForgotPasswordRequest request)
-        {
-            var user = await _authRepository.GetUserByEmailAsync(request.Email);
-            if (user == null)
-            {
-                // To prevent email enumeration, we do not throw an error here but silently return.
-                return;
-            }
-
-            var otp = new Random().Next(100000, 999999).ToString();
-            var cacheKey = $"RESET_OTP_{request.Email}";
-            _cache.Set(cacheKey, otp, TimeSpan.FromMinutes(10));
-
-            var htmlMessage = $@"
-                <div style='font-family: Arial, sans-serif; padding: 20px;'>
-                    <h2>Đặt lại mật khẩu</h2>
-                    <p>Chào bạn,</p>
-                    <p>Mã OTP để đặt lại mật khẩu của bạn là:</p>
-                    <h1 style='color: #2b6cb0; letter-spacing: 5px;'>{otp}</h1>
-                    <p>Mã này chỉ được sử dụng một lần và sẽ hết hạn sau 10 phút. Nếu bạn không yêu cầu đổi mật khẩu, vui lòng bỏ qua email này.</p>
-                </div>";
-
-            await _emailService.SendEmailAsync(request.Email, "Mã Xác Thực Đặt Lại Mật Khẩu - Math Test Creator", htmlMessage);
-        }
-
-        public async Task ResetPasswordAsync(ResetPasswordRequest request)
-        {
-            var cacheKey = $"RESET_OTP_{request.Email}";
-
-            if (!_cache.TryGetValue(cacheKey, out string? cachedOtp) || string.IsNullOrEmpty(cachedOtp))
-            {
-                throw new UnauthorizedAccessException("Mã OTP đã hết hạn hoặc không tồn tại.");
-            }
-
-            if (cachedOtp != request.OtpCode)
-            {
-                throw new UnauthorizedAccessException("Mã OTP không chính xác.");
-            }
-
-            _cache.Remove(cacheKey); // OTP is valid, remove it
-
-            var user = await _authRepository.GetUserByEmailAsync(request.Email);
-            if (user == null)
-            {
-                throw new InvalidOperationException(ErrorMessages.UserNotFound);
-            }
-
-            // Update user password and invalidate previous tokens
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-            user.SecurityStamp = DateTime.UtcNow;
-
-            await _authRepository.UpdateUserAsync(user);
-        }
-
-        public async Task ChangePasswordAsync(int userId, ChangePasswordRequest request)
-        {
-            var user = await _authRepository.GetUserByIdAsync(userId);
-            if (user == null)
-            {
-                throw new InvalidOperationException(ErrorMessages.UserNotFound);
-            }
-
-            if (string.IsNullOrEmpty(user.PasswordHash))
-            {
-                throw new InvalidOperationException("Tài khoản của bạn được liên kết với Google. Vui lòng thiết lập mật khẩu bằng tính năng Quên mật khẩu hoặc Đăng nhập qua Google.");
-            }
-
-            if (!BCrypt.Net.BCrypt.Verify(request.OldPassword, user.PasswordHash))
-            {
-                throw new UnauthorizedAccessException("Mật khẩu cũ không chính xác.");
-            }
-
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-            user.SecurityStamp = DateTime.UtcNow;
-
-            await _authRepository.UpdateUserAsync(user);
-        }
-
-        public async Task LogoutAsync(int userId)
-        {
-            var user = await _authRepository.GetUserByIdAsync(userId);
-            if (user != null)
-            {
-                // Changing the SecurityStamp invalidates all existing refresh tokens
-                user.SecurityStamp = DateTime.UtcNow;
-                await _authRepository.UpdateUserAsync(user);
+                missing.Add("StudentId");
             }
         }
 
-        private ClaimsPrincipal? CreatePrincipalFromExpiredToken(string? token, bool isRefreshToken = false)
-        {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? ""));
-            var audience = isRefreshToken ? _configuration["Jwt:Audience"] + "_Refresh" : _configuration["Jwt:Audience"];
+        return missing;
+    }
 
-            var tokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateAudience = true,
-                ValidAudience = audience,
-                ValidateIssuer = true,
-                ValidIssuer = _configuration["Jwt:Issuer"],
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = key,
-                ValidateLifetime = isRefreshToken // Validate expiry ONLY for refresh tokens
-            };
+    private static string BuildOtpEmail(string heading, string intro, string otp, string? extraNote = null)
+    {
+        var note = "Mã này chỉ được sử dụng một lần và sẽ hết hạn sau 10 phút.";
+        if (!string.IsNullOrEmpty(extraNote))
+            note += " " + extraNote;
 
-            try 
-            {
-                var tokenHandler = new JwtSecurityTokenHandler();
-                var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
-                if (securityToken is not JwtSecurityToken jwtSecurityToken || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
-                    throw new SecurityTokenException("Invalid token signature.");
-
-                return principal;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private string GenerateRefreshTokenAsJwt(User user)
-        {
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim("AspNet.Identity.SecurityStamp", user.SecurityStamp.ToString("o")) // Embed SecurityStamp
-            };
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? ""));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            
-            // Refresh Token lives much longer, e.g., 7 days
-            var expires = DateTime.UtcNow.AddDays(7); 
-            var audience = _configuration["Jwt:Audience"] + "_Refresh"; // Distinguish visually from access tokens
-
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: audience, 
-                claims: claims,
-                expires: expires,
-                signingCredentials: creds
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-
-        private async Task<GoogleJsonWebSignature.Payload> ValidateGoogleTokenAsync(string idToken)
-        {
-            var clientId = _configuration["Google:ClientId"];
-            var settings = new GoogleJsonWebSignature.ValidationSettings();
-            if (!string.IsNullOrEmpty(clientId) && clientId != "YOUR_GOOGLE_CLIENT_ID_HERE")
-            {
-                settings.Audience = new[] { clientId };
-            }
-
-            try
-            {
-                var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
-                if (payload == null)
-                    throw new UnauthorizedAccessException(ErrorMessages.InvalidGoogleToken);
-
-                return payload;
-            }
-            catch (InvalidJwtException)
-            {
-                throw new UnauthorizedAccessException(ErrorMessages.InvalidGoogleTokenSignature);
-            }
-        }
-
-        private string GenerateJwtToken(User user)
-        {
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role?.Name ?? "User"),
-                new Claim("auth_provider", string.IsNullOrEmpty(user.PasswordHash) ? "google" : "password")
-            };
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? ""));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var expires = DateTime.UtcNow.AddMinutes(15); // Adjust access token lifetime appropriately, usually shorter when using Refresh Tokens. 
-
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
-                claims: claims,
-                expires: expires,
-                signingCredentials: creds
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
+        return $@"
+            <div style='font-family: Arial, sans-serif; padding: 20px;'>
+                <h2>{heading}</h2>
+                <p>Chào bạn,</p>
+                <p>{intro}</p>
+                <h1 style='color: #2b6cb0; letter-spacing: 5px;'>{otp}</h1>
+                <p>{note}</p>
+            </div>";
     }
 }

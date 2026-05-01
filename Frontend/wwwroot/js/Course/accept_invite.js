@@ -1,11 +1,10 @@
-
 async function acceptInvite() {
     const tokenDataEl = document.getElementById("courseData");
     const tokenQuery = tokenDataEl ? tokenDataEl.dataset.tokenQuery : "";
-    const currentToken = getToken();
 
-    if (!currentToken) {
-        // Save redirect URL and go to login
+    await window.userReady;
+
+    if (!isAuthenticated()) {
         sessionStorage.setItem("redirectAfterLogin", window.location.href);
         window.location.href = "/Auth/Login";
         return;
@@ -17,29 +16,18 @@ async function acceptInvite() {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/Course/accept-invite`, {
-            method: 'POST',
-            headers: {
-                "Authorization": "Bearer " + currentToken,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ token: tokenQuery })
-        });
+        await apiClient.post('/api/Course/accept-invite', { token: tokenQuery });
 
-        if (response.ok) {
-            document.getElementById("loadingStatus").classList.add("d-none");
-            document.getElementById("successStatus").classList.remove("d-none");
-            
-            setTimeout(() => {
-                window.location.href = "/Course/CourseList";
-            }, 2000);
-        } else {
-            const err = await response.text();
-            showError(err || "Link không hợp lệ hoặc đã hết hạn");
-        }
+        document.getElementById("loadingStatus").classList.add("d-none");
+        document.getElementById("successStatus").classList.remove("d-none");
+
+        setTimeout(() => {
+            window.location.href = "/Course/CourseList";
+        }, 2000);
+
     } catch (error) {
         console.error(error);
-        showError("Đã xảy ra lỗi mạng.");
+        showError(error.message || "Link không hợp lệ hoặc đã hết hạn");
     }
 }
 

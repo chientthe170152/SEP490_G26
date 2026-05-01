@@ -1,122 +1,175 @@
 const API_BASE_URL = window.API_BASE_URL;
 
-try {
-    if (typeof window.$ !== 'undefined' && window.$.ajaxSetup) {
-        window.$.ajaxSetup({
-            beforeSend: function (xhr) {
-                const token = localStorage.getItem('jwtToken');
-                if (token) {
-                    xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-                }
-            }
+// Mirror Backend/Common/Roles.cs: BE issue JWT role claim dạng numeric ("1" = Teacher, "2" = Student),
+// và Authorize attribute dùng RoleIds.Teacher/Student. FE compare trực tiếp với 2 const này.
+const RoleIds = Object.freeze({
+    Teacher: '1',
+    Student: '2'
+});
+
+// Bootstrap qua /me. Nếu 401 + có refresh cookie → tự refresh + retry /me, tránh logout oan khi reload sau access expiry.
+// Nếu /me trả 403 + code AUTH_PASSWORD_CHANGE_REQUIRED → redirect trang đổi password lần đầu.
+const PASSWORD_CHANGE_PATH = '/Auth/ChangePasswordFirstLogin';
+window.currentUser = null;
+window.userReady = (function () {
+    const meUrl = API_BASE_URL.replace(/\/+$/, '') + '/api/auth/me';
+    const refreshUrl = API_BASE_URL.replace(/\/+$/, '') + '/api/auth/refresh-token';
+
+    function fetchMe() {
+        return new Promise(function (resolve, reject) {
+            $.ajax({
+                url: meUrl, type: 'GET',
+                xhrFields: { withCredentials: true },
+                success: function (resp) { resolve(resp || null); },
+                error: function (xhr) { reject({ status: xhr.status || 0, code: xhr.responseJSON?.code }); }
+            });
         });
     }
-} catch (_) { }
 
-function setToken(token) {
-    localStorage.setItem('jwtToken', token);
-    const decoded = parseJwt(token);
-    if (decoded) {
-        const roleClaim = decoded['role'] || decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
-        if (roleClaim) {
-            localStorage.setItem('userRole', roleClaim);
+    function tryRefresh() {
+        return new Promise(function (resolve) {
+            $.ajax({
+                url: refreshUrl, type: 'POST',
+                xhrFields: { withCredentials: true },
+                success: function () { resolve(true); },
+                error: function () { resolve(false); }
+            });
+        });
+    }
+
+    function redirectToPasswordChange() {
+        window.currentUser = null;
+        if (window.location.pathname !== PASSWORD_CHANGE_PATH) {
+            window.location.href = PASSWORD_CHANGE_PATH;
         }
     }
-}
 
-function getToken() {
-    return localStorage.getItem('jwtToken');
-}
-
-function removeToken() {
-    localStorage.removeItem('jwtToken');
-}
-
-function parseJwt(token) {
-    try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-
-        return JSON.parse(jsonPayload);
-    } catch (e) {
-        return null;
-    }
-}
+    return (async function () {
+        try {
+            window.currentUser = await fetchMe();
+            return window.currentUser;
+        } catch (err) {
+            if (err && err.status === 403 && err.code === 'AUTH_PASSWORD_CHANGE_REQUIRED') {
+                redirectToPasswordChange();
+                return null;
+            }
+            if (err && err.status === 401 && await tryRefresh()) {
+                try {
+                    window.currentUser = await fetchMe();
+                    return window.currentUser;
+                } catch (err2) {
+                    if (err2 && err2.status === 403 && err2.code === 'AUTH_PASSWORD_CHANGE_REQUIRED') {
+                        redirectToPasswordChange();
+                        return null;
+                    }
+                }
+            }
+            window.currentUser = null;
+            return null;
+        }
+    })();
+})();
 
 function getUserIdFromToken() {
-    const token = getToken();
-    if (!token) return null;
-
-    const decoded = parseJwt(token);
-    if (!decoded) return null;
-
-    const userId = decoded['sub']
-        || decoded['nameid']
-        || decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier']
-        || decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/nameidentifier'];
-    if (!userId) return null;
-
-    return parseInt(userId, 10) || null;
+    return window.currentUser ? window.currentUser.userId : null;
 }
 
 function getUserRole() {
-    const token = getToken();
-    if (!token) return null;
-
-    const decoded = parseJwt(token);
-    return decoded['role'] || decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || null;
+    return window.currentUser ? window.currentUser.role : null;
 }
 
 function getUserEmail() {
-    const token = getToken();
-    if (!token) return null;
-
-    const decoded = parseJwt(token);
-    if (!decoded) return null;
-
-    return decoded['email']
-        || decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'];
+    return window.currentUser ? window.currentUser.email : null;
 }
 
-// Xác định tài khoản đăng nhập bằng Google hay mật khẩu thường từ JWT
 function getAuthProvider() {
-    const token = getToken();
-    if (!token) return null;
-
-    const decoded = parseJwt(token);
-    if (!decoded) return null;
-
-    return decoded['auth_provider'] || null;
+    return window.currentUser ? window.currentUser.authProvider : null;
 }
 
 function isGoogleUser() {
-    const provider = getAuthProvider();
-    return provider === 'google';
+    return getAuthProvider() === 'google';
 }
 
 function isAuthenticated() {
-    return getToken() !== null;
+    return window.currentUser !== null;
 }
 
 function logout() {
-    removeToken();
-    window.location.href = '/Auth/Login';
+    apiClient.post('/api/auth/logout', {})
+        .catch(function () { /* ignore — vẫn redirect */ })
+        .finally(function () {
+            window.currentUser = null;
+            window.location.href = '/Auth/Login';
+        });
+}
+
+// Dedup parallel refresh: nhiều API call song song hết hạn cùng lúc → chỉ gọi /refresh-token 1 lần.
+let _refreshPromise = null;
+function refreshAccessToken() {
+    if (_refreshPromise) return _refreshPromise;
+
+    const url = API_BASE_URL.replace(/\/+$/, '') + '/api/auth/refresh-token';
+
+    _refreshPromise = new Promise(function (resolve, reject) {
+        $.ajax({
+            url: url,
+            type: 'POST',
+            contentType: 'application/json',
+            xhrFields: { withCredentials: true },
+            success: function () {
+                resolve(true);
+            },
+            error: function (xhr) {
+                reject(new Error('Refresh failed: ' + xhr.status));
+            }
+        });
+    }).finally(function () {
+        _refreshPromise = null;
+    });
+
+    return _refreshPromise;
 }
 
 const apiClient = {
-    request: function (method, endpoint, data = null) {
+    request: function (method, endpoint, data = null, isRetry = false) {
+        const self = this;
         return new Promise((resolve, reject) => {
             const ajaxOptions = {
                 url: API_BASE_URL.replace(/\/+$/, '') + (endpoint.startsWith('/') ? endpoint : '/' + endpoint),
                 type: method,
                 contentType: "application/json",
+                xhrFields: { withCredentials: true },
                 success: function (response) {
                     resolve(response);
                 },
                 error: function (xhr, status, error) {
+                    const isRefreshEndpoint = endpoint.indexOf('/api/auth/refresh-token') !== -1;
+                    const isMeEndpoint = endpoint.indexOf('/api/auth/me') !== -1;
+                    if (xhr.status === 403 && xhr.responseJSON?.code === 'AUTH_PASSWORD_CHANGE_REQUIRED') {
+                        window.currentUser = null;
+                        if (window.location.pathname !== PASSWORD_CHANGE_PATH) {
+                            window.location.href = PASSWORD_CHANGE_PATH;
+                        }
+                        reject({ xhr: xhr, status: status, error: error, message: 'Yêu cầu đổi mật khẩu trước khi tiếp tục.' });
+                        return;
+                    }
+                    if (xhr.status === 401 && !isRetry && !isRefreshEndpoint && !isMeEndpoint) {
+                        refreshAccessToken()
+                            .then(function () {
+                                self.request(method, endpoint, data, true).then(resolve, reject);
+                            })
+                            .catch(function () {
+                                window.currentUser = null;
+                                if (window.location.pathname.indexOf('/Auth/') !== 0) {
+                                    window.location.href = '/Auth/Login';
+                                }
+                                reject({
+                                    xhr: xhr, status: status, error: error,
+                                    message: 'Phiên đăng nhập đã hết hạn.'
+                                });
+                            });
+                        return;
+                    }
                     reject({
                         xhr: xhr,
                         status: status,

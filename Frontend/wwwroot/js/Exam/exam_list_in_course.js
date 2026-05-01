@@ -32,16 +32,14 @@ async function ensureClassNameAndBreadcrumb() {
 
 async function loadExams() {
 
-    const token = getToken();
-
-    if (!token) {
+    if (!isAuthenticated()) {
         showToast("Bạn chưa đăng nhập", "error");
         window.location.href = "/Auth/Login";
         return;
     }
 
     const role = getUserRole();
-    if (role === "Student") {
+    if (role === RoleIds.Student) {
         const settingsMenu = document.getElementById("settingsMenuItem");
         if (settingsMenu) settingsMenu.style.display = 'none';
         const pendingMenu = document.getElementById("pendingMenuItem");
@@ -52,7 +50,7 @@ async function loadExams() {
             if (practiceMenu) practiceMenu.style.display = 'none';
         }
     }
-    if (role === "Teacher") {
+    if (role === RoleIds.Teacher) {
         const btnCreate = document.getElementById("btnCreateExam");
         if (btnCreate && currentClassStatus !== 0) btnCreate.classList.remove("d-none");
         
@@ -71,7 +69,6 @@ async function loadExams() {
         const httpStatus = err.xhr ? err.xhr.status : null;
         if (httpStatus === 401) {
             showToast("Phiên đăng nhập hết hạn", "error");
-            removeToken();
             window.location.href = "/Auth/Login";
             return;
         }
@@ -83,8 +80,7 @@ async function loadExams() {
 
 async function loadChapters() {
 
-    const token = getToken();
-    if (!token) return;
+    if (!isAuthenticated()) return;
 
     let chapters;
     try {
@@ -199,8 +195,8 @@ function renderExams(exams) {
     }
 
     const role = getUserRole();
-    const isStudent = role === "Student";
-    const isTeacher = role === "Teacher";
+    const isStudent = role === RoleIds.Student;
+    const isTeacher = role === RoleIds.Teacher;
 
     const rowTemplate = document.getElementById("exam-row-template");
     const teacherActionTemplate = document.getElementById("teacher-action-template");
@@ -299,6 +295,7 @@ function bypassContainer() {
 }
 
 document.addEventListener("DOMContentLoaded", async function () {
+    await window.userReady;
     const dataEl = document.getElementById("courseData");
     classId = dataEl ? dataEl.dataset.classId : null;
     classNameFromServer = dataEl ? dataEl.dataset.className : null;

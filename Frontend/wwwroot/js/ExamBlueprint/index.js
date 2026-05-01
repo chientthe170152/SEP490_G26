@@ -1,12 +1,13 @@
-$(document).ready(function () {
+$(document).ready(async function () {
+    await window.userReady;
+
     const state = {
         page: 1,
         pageSize: 10,
         totalCount: 0
     };
 
-    const role = getUserRole();
-    if (!(role === 'Teacher' || role === 'Giáo viên' || role === 'Admin' || role === 'Quản trị viên' || role === 'Administrator')) {
+    if (getUserRole() !== RoleIds.Teacher) {
         showPageError('Bạn không có quyền truy cập màn hình ma trận đề.');
         return;
     }

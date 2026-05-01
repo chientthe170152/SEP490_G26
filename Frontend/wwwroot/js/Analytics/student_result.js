@@ -4,7 +4,7 @@
 
 var DOM = {};
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
     // ── Cache DOM 1 lần duy nhất ──
     DOM = {
         root:       document.getElementById("analyticsRoot"),
@@ -22,10 +22,11 @@ document.addEventListener("DOMContentLoaded", function () {
         tplOption:  document.getElementById("tpl-review-option")
     };
 
+    await window.userReady;
+
     // ── Kiểm tra đăng nhập & role ──
     if (!isAuthenticated()) { window.location.href = '/Auth/Login'; return; }
-    var role = getUserRole();
-    if (role !== 'Student' && role !== 'Học sinh') {
+    if (getUserRole() !== RoleIds.Student) {
         showError("Bạn không có quyền truy cập. Chỉ Học sinh mới được xem kết quả bài làm.");
         return;
     }

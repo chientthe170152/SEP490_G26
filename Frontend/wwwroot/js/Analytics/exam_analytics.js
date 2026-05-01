@@ -4,7 +4,7 @@
 
 var DOM = {};
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
     // ── Cache DOM 1 lần duy nhất ──
     DOM = {
         root:       document.getElementById("analyticsRoot"),
@@ -20,9 +20,11 @@ document.addEventListener("DOMContentLoaded", function () {
         tplRec:     document.getElementById("tpl-rec-item")
     };
 
+    await window.userReady;
+
     // ── Kiểm tra đăng nhập & role ──
     if (!isAuthenticated()) { window.location.href = '/Auth/Login'; return; }
-    if (getUserRole() !== 'Teacher') { showError("Bạn không có quyền truy cập. Chỉ Giáo viên mới được xem phân tích bài thi."); return; }
+    if (getUserRole() !== RoleIds.Teacher) { showError("Bạn không có quyền truy cập. Chỉ Giáo viên mới được xem phân tích bài thi."); return; }
 
     var examId = DOM.root.dataset.examId;
     if (!examId) { showError("Không tìm thấy mã bài thi."); return; }

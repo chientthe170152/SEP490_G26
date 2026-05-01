@@ -4,7 +4,7 @@
 
 var DOM = {};
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
     DOM = {
         root: document.getElementById("analyticsRoot"),
         loading: document.getElementById("analyticsLoading"),
@@ -20,9 +20,10 @@ document.addEventListener("DOMContentLoaded", function () {
         tplOption: document.getElementById("tpl-review-option")
     };
 
+    await window.userReady;
+
     if (!isAuthenticated()) { window.location.href = '/Auth/Login'; return; }
-    var role = getUserRole();
-    if (role !== 'Teacher' && role !== 'Giáo viên') {
+    if (getUserRole() !== RoleIds.Teacher) {
         showError("Bạn không có quyền truy cập. Chỉ Giáo viên mới được xem bài làm.");
         return;
     }

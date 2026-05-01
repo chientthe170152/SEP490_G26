@@ -1,4 +1,4 @@
-﻿using Backend.DTOs.Course;
+using Backend.DTOs.Course;
 using Backend.Repositories.Interfaces;
 using Backend.Services.Interfaces;
 using System.Collections.Generic;
@@ -9,14 +9,9 @@ namespace Backend.Services.Implements
     /// <summary>
     /// Minimal service implementation that delegates to repository.
     /// </summary>
-    public class ChapterService : IChapterService
+    public class ChapterService(IChapterRepository repo) : IChapterService
     {
-        private readonly IChapterRepo _repo;
-
-        public ChapterService(IChapterRepo repo)
-        {
-            _repo = repo;
-        }
+        private readonly IChapterRepository _repo = repo;
 
         public Task<List<ChapterDTO>> GetAllAsync() => _repo.GetAllAsync();
 

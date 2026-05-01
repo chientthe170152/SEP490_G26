@@ -7,7 +7,7 @@
     var currentPage = 1;
     var PAGE_SIZE = 15;
 
-    function init() {
+    async function init() {
         root = document.getElementById("submitResultsRoot");
         if (!root) return;
 
@@ -19,11 +19,13 @@
             return;
         }
 
+        await window.userReady;
+
         if (!isAuthenticated()) {
             window.location.href = "/Auth/Login";
             return;
         }
-        if (getUserRole() !== "Teacher" && getUserRole() !== "Giáo viên") {
+        if (getUserRole() !== RoleIds.Teacher) {
             showError("Bạn không có quyền truy cập. Chỉ Giáo viên mới được xem thống kê nộp bài.");
             return;
         }
