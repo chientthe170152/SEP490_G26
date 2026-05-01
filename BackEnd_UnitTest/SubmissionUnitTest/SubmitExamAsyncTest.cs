@@ -213,6 +213,83 @@ namespace Backend_UnitTest.SubmissionUnitTest
             _mockRepo.VerifyAll();
         }
 
+        [Fact(DisplayName = "SubmitExamAsync - UTCID09 - Update existing FillInBlank answer (Response thay đổi)")]
+        public async Task SubmitExamAsync_UTCID09_UpdateExistingAnswer_ShouldUpdateResponse()
+        {
+            int studentId = 1;
+            var now = DateTime.UtcNow;
+            var exam = new Exam { ExamId = 1, Duration = 60, CloseAt = null };
+            var existingAnswer = new StudentAnswer { StudentAnswerId = 100, QuestionAnswerId = 1, Response = "OldValue", SubmissionId = 5 };
+            var submission = new Submission
+            {
+                SubmissionId = 5,
+                Status = SubmissionStatus.InProgress,
+                PaperId = 10,
+                CreatedAtUtc = now.AddMinutes(-10),
+                UpdatedAtUtc = now.AddMinutes(-10),
+                Paper = new Paper { PaperId = 10, ExamId = 1, Exam = exam },
+                StudentAnswers = new List<StudentAnswer> { existingAnswer }
+            };
+            var request = new SubmitExamRequest
+            {
+                ExamId = 1,
+                StudentAnswers = new List<StudentAnswerDto>
+                {
+                    new StudentAnswerDto { QuestionAnswerId = 1, Response = "NewValue" }
+                },
+                Submit = false
+            };
+            _mockCurrentUser.Setup(u => u.UserId).Returns(studentId);
+            _mockRepo.Setup(r => r.GetActiveSubmissionAsync(1, studentId, default)).ReturnsAsync(submission);
+            _mockRepo.Setup(r => r.GetValidQuestionAnswerIdsAsync(10, default)).ReturnsAsync(new HashSet<int> { 1, 2, 3 });
+            _mockRepo.Setup(r => r.SaveChangesAsync(default)).Returns(Task.CompletedTask);
+
+            var result = await _service.SubmitExamAsync(request);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal("NewValue", existingAnswer.Response);
+            _mockRepo.Verify(r => r.AddStudentAnswers(It.IsAny<IEnumerable<StudentAnswer>>()), Times.Never);
+        }
+
+        [Fact(DisplayName = "SubmitExamAsync - UTCID10 - Existing answer không có trong request -> remove")]
+        public async Task SubmitExamAsync_UTCID10_RemoveStaleAnswer_ShouldCallRemove()
+        {
+            int studentId = 1;
+            var now = DateTime.UtcNow;
+            var exam = new Exam { ExamId = 1, Duration = 60, CloseAt = null };
+            var existingStale = new StudentAnswer { StudentAnswerId = 100, QuestionAnswerId = 99, Response = "Stale" };
+            var submission = new Submission
+            {
+                SubmissionId = 5,
+                Status = SubmissionStatus.InProgress,
+                PaperId = 10,
+                CreatedAtUtc = now.AddMinutes(-10),
+                UpdatedAtUtc = now.AddMinutes(-10),
+                Paper = new Paper { PaperId = 10, ExamId = 1, Exam = exam },
+                StudentAnswers = new List<StudentAnswer> { existingStale }
+            };
+            var request = new SubmitExamRequest
+            {
+                ExamId = 1,
+                StudentAnswers = new List<StudentAnswerDto>
+                {
+                    new StudentAnswerDto { QuestionAnswerId = 1, Response = "A" }
+                },
+                Submit = false
+            };
+            _mockCurrentUser.Setup(u => u.UserId).Returns(studentId);
+            _mockRepo.Setup(r => r.GetActiveSubmissionAsync(1, studentId, default)).ReturnsAsync(submission);
+            _mockRepo.Setup(r => r.GetValidQuestionAnswerIdsAsync(10, default)).ReturnsAsync(new HashSet<int> { 1, 2, 3, 99 });
+            _mockRepo.Setup(r => r.RemoveStudentAnswers(It.IsAny<IEnumerable<StudentAnswer>>()));
+            _mockRepo.Setup(r => r.AddStudentAnswers(It.IsAny<IEnumerable<StudentAnswer>>()));
+            _mockRepo.Setup(r => r.SaveChangesAsync(default)).Returns(Task.CompletedTask);
+
+            var result = await _service.SubmitExamAsync(request);
+
+            Assert.True(result.IsSuccess);
+            _mockRepo.Verify(r => r.RemoveStudentAnswers(It.IsAny<IEnumerable<StudentAnswer>>()), Times.Once);
+        }
+
         [Fact(DisplayName = "SubmitExamAsync - UTCID08 - CloseAt validation")]
         public async Task SubmitExamAsync_UTCID08_CloseAtPassed_ShouldReturnLate()
         {
