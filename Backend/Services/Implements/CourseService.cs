@@ -1,9 +1,12 @@
+using Backend.Common;
+using Backend.Common.Errors;
+using Backend.Common.Models;
+using Backend.Constants;
 using Backend.DTOs.Course;
 using Backend.DTOs.ExamBlueprint;
 using Backend.Models;
 using Backend.Repositories.Interfaces;
 using Backend.Services.Interfaces;
-using Backend.Constants;
 
 namespace Backend.Services.Implements
 {
@@ -53,176 +56,212 @@ namespace Backend.Services.Implements
                 throw new System.Exception(duplicateError); // Throw an exception to be caught by the controller
             }
 
-            // Create new Class entity
-            var newClass = new Class
-            {
-                Name = dto.ClassName,
-                Semester = normalizedSemester,
-                SubjectId = dto.SubjectId,
-                TeacherId = teacherId,
-                Status = 1, // Mặc định là đang mở/hoạt động
-                InvitationCodeStatus = 1, // Mặc định cho phép dùng mã mời
-                CreatedAtUtc = System.DateTime.UtcNow
-            };
-
-            return await _repo.CreateCourseAsync(newClass);
-        }
-
-        public async Task JoinCourseAsync(int studentId, string inviteCode)
+        var newClass = new Class
         {
-            if (string.IsNullOrWhiteSpace(inviteCode)) 
-            {
-                throw new Exception("Mã mời không thể trống.");
-            }
+            Name = dto.ClassName,
+            Semester = normalizedSemester,
+            SubjectId = subjectId,
+            TeacherId = teacherId,
+            Status = 1,
+            InvitationCodeStatus = 1,
+            CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime
+        };
 
-            var course = await _repo.GetClassByInviteCodeAsync(inviteCode);
-            if (course == null)
-            {
-                throw new Exception("Mã mời không chính xác hoặc lớp học đã bị đóng.");
-            }
+        var created = await repo.CreateCourseAsync(newClass);
+        return Result<CourseDTO>.Success(created);
+    }
 
-            bool alreadyJoined = await _repo.IsUserInClassAsync(course.ClassId, studentId);
-            if (alreadyJoined)
-            {
-                throw new Exception("Bạn đã ở trong lớp học này rồi.");
-            }
+    public async Task<Result> JoinCourseAsync(int studentId, string? inviteCode)
+    {
+        if (string.IsNullOrWhiteSpace(inviteCode))
+            return CourseErrors.InviteCodeInvalid;
 
-            await _repo.JoinClassAsync(course.ClassId, studentId);
-        }
+        var course = await repo.GetClassByInviteCodeAsync(inviteCode);
+        if (course == null)
+            return CourseErrors.InviteCodeInvalid;
 
-        public async Task<List<StudentInClassDTO>> GetStudentsInClassAsync(int classId)
+        if (await repo.IsUserInClassAsync(course.ClassId, studentId))
+            return CourseErrors.AlreadyMember;
+
+        await repo.JoinClassAsync(course.ClassId, studentId);
+        return Result.Success();
+    }
+
+    public async Task<Result> LeaveCourseAsync(int classId, int userId)
+    {
+        var course = await repo.GetByIdAsync(classId);
+        if (course == null)
+            return CourseErrors.NotFound;
+        if (course.Status == ClassStatus.Closed)
+            return CourseErrors.Closed;
+
+        await repo.LeaveClassAsync(classId, userId);
+        return Result.Success();
+    }
+
+    public async Task<Result> UpdateClassSettingsAsync(int classId, string? newName, int? invitationStatus)
+    {
+        var course = await repo.GetByIdAsync(classId);
+        if (course == null)
+            return CourseErrors.NotFound;
+        if (course.Status == ClassStatus.Closed)
+            return CourseErrors.Closed;
+
+        var success = await repo.UpdateClassSettingsAsync(classId, newName!, invitationStatus!.Value);
+        return success ? Result.Success() : CourseErrors.NotFound;
+    }
+
+    public async Task<Result<InviteStudentResultDTO>> InviteStudentByEmailAsync(int teacherId, int classId, string? studentEmail)
+    {
+        var frontendBase = config["FrontendSettings:BaseUrl"];
+        if (string.IsNullOrWhiteSpace(frontendBase))
+            return CourseErrors.ConfigError;
+
+        var user = await repo.GetUserWithRoleByEmailAsync(studentEmail!);
+        if (user == null)
+            return CourseErrors.StudentNotFound;
+
+        if (user.RoleId.ToString() != RoleIds.Student)
+            return CourseErrors.UserNotStudent;
+
+        var course = await repo.GetByIdAsync(classId);
+        if (course == null)
+            return CourseErrors.NotFound;
+
+        if (course.Status == ClassStatus.Closed)
+            return CourseErrors.Closed;
+
+        var existing = await repo.GetClassMemberAsync(classId, user.UserId);
+        if (existing != null)
         {
-            return await _repo.GetStudentsInClassAsync(classId);
-        }
+            if (existing.MemberStatus == MemberStatus.Active)
+                return CourseErrors.AlreadyMember;
 
-        public async Task UpdateClassSettingsAsync(int classId, string newName, int invitationStatus)
-        {
-            if (string.IsNullOrWhiteSpace(newName)) 
-                throw new Exception("Tên lớp không được để trống.");
+            if (existing.MemberStatus == MemberStatus.Invited)
+                return CourseErrors.AlreadyInvited;
 
-            var success = await _repo.UpdateClassSettingsAsync(classId, newName, invitationStatus);
-            if (!success) throw new Exception("Không tìm thấy lớp học.");
-        }
-
-        public async Task LeaveCourseAsync(int classId, int userId)
-        {
-            await _repo.LeaveClassAsync(classId, userId);
-        }
-
-        public async Task<string> InviteStudentByEmailAsync(int teacherId, int classId, string studentEmail)
-        {
-            var trustedFrontendBase = _config["FrontendSettings:BaseUrl"];
-            if (string.IsNullOrWhiteSpace(trustedFrontendBase))
+            if (existing.MemberStatus == MemberStatus.Pending)
             {
-                throw new Exception("Lỗi khi thêm học sinh vào lớp.");
-            }
-
-            var user = await _repo.GetUserWithRoleByEmailAsync(studentEmail);
-            if (user == null)
-            {
-                throw new Exception("Học sinh chưa có tài khoản trong hệ thống.");
-            }
-
-            if (user.Role?.Name != UserRoles.Student)
-            {
-                throw new Exception("Chỉ có thể mời người dùng có vai trò là học sinh tham gia lớp học.");
-            }
-
-            var course = await _repo.GetByIdAsync(classId);
-            if (course == null) throw new Exception("Không tìm thấy lớp học.");
-
-            var existingMembership = await _repo.GetClassMemberAsync(classId, user.UserId);
-            if (existingMembership != null)
-            {
-                if (existingMembership.MemberStatus == MemberStatus.Active)
-                {
-                    throw new Exception("Học sinh này đã tham gia lớp học.");
-                }
-                else if (existingMembership.MemberStatus == MemberStatus.Invited)
-                {
-                    throw new Exception("Học sinh này đã được gửi lời mời trước đó.");
-                }
-                else if (existingMembership.MemberStatus == MemberStatus.Pending)
-                {
-                    // Action becomes auto-approval
-                    await _repo.UpdateClassMemberStatusAsync(classId, user.UserId, MemberStatus.Active);
-                    throw new Backend.Exceptions.AutoApprovePendingException("Học sinh đang ở trạng thái chờ duyệt và đã được phê duyệt thành công.");
-                }
-            }
-
-            var membership = await _repo.InviteStudentAsync(classId, user.UserId);
-            if (membership == null)
-            {
-                throw new Exception("Không thể tạo lời mời.");
-            }
-
-            // Generate token: {classId}:{concurrencyStamp_base64}
-            var stampBase64 = Convert.ToBase64String(membership.ConcurrencyStamp);
-            // URL safe base64
-            stampBase64 = stampBase64.Replace("+", "-").Replace("/", "_").TrimEnd('=');
-            var plainToken = $"{classId}:{stampBase64}";
-            var tokenBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(plainToken));
-            var tokenUrlSafe = tokenBase64.Replace("+", "-").Replace("/", "_").TrimEnd('=');
-
-            // Optionally call IEmailService
-            var inviteLink = $"{trustedFrontendBase}/Course/AcceptInvite?token={tokenUrlSafe}"; // Fallback dynamic base
-            var emailContent = $"<p>Bạn được mời tham gia lớp học <strong>{course.ClassName}</strong>.</p><p><a href=\"{inviteLink}\">Nhấn vào đây để tham gia</a></p>";
-            await _emailService.SendEmailAsync(studentEmail, "Thư mời tham gia lớp học", emailContent);
-
-            return tokenUrlSafe;
-        }
-
-        public async Task AcceptInvitationAsync(int studentId, string token)
-        {
-            // Decode URL safe base64
-            string base64 = token.Replace("-", "+").Replace("_", "/");
-            switch (base64.Length % 4)
-            {
-                case 2: base64 += "=="; break;
-                case 3: base64 += "="; break;
-            }
-
-            var plainToken = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(base64));
-            var parts = plainToken.Split(':');
-            if (parts.Length != 2) throw new Exception("Token không hợp lệ.");
-
-            if (!int.TryParse(parts[0], out int classId)) throw new Exception("Token không hợp lệ.");
-
-            string stampBase64 = parts[1].Replace("-", "+").Replace("_", "/");
-            switch (stampBase64.Length % 4)
-            {
-                case 2: stampBase64 += "=="; break;
-                case 3: stampBase64 += "="; break;
-            }
-            var concurrencyStamp = Convert.FromBase64String(stampBase64);
-
-            var rows = await _repo.AcceptEmailInvitationAsync(classId, studentId, concurrencyStamp);
-            if (rows == 0)
-            {
-                throw new Exception("Link mời không hợp lệ hoặc đã hết hạn.");
+                await repo.UpdateClassMemberStatusAsync(classId, user.UserId, MemberStatus.Active);
+                return new InviteStudentResultDTO { AutoApproved = true };
             }
         }
 
-        public async Task<List<StudentInClassDTO>> GetPendingStudentsAsync(int classId)
-        {
-            return await _repo.GetPendingStudentsAsync(classId);
-        }
+        var membership = await repo.InviteStudentAsync(classId, user.UserId);
+        if (membership == null)
+            return CourseErrors.NotFound;
 
-        public async Task ApproveStudentAsync(int classId, int studentId)
-        {
-            var success = await _repo.ApproveStudentAsync(classId, studentId);
-            if (!success) throw new Exception("Học sinh không tồn tại hoặc không ở trạng thái chờ duyệt.");
-        }
+        var token = BuildInviteToken(classId, membership.ConcurrencyStamp);
+        var inviteLink = $"{frontendBase}/Course/AcceptInvite?token={token}";
+        var body = $"<p>Bạn được mời tham gia lớp học <strong>{course.ClassName}</strong>.</p>" +
+                   $"<p><a href=\"{inviteLink}\">Nhấn vào đây để tham gia</a></p>";
+        await emailService.SendEmailAsync(studentEmail!, "Thư mời tham gia lớp học", body);
 
-        public async Task RejectStudentAsync(int classId, int studentId)
-        {
-            var success = await _repo.RejectStudentAsync(classId, studentId);
-            if (!success) throw new Exception("Học sinh không tồn tại hoặc không ở trạng thái chờ duyệt.");
-        }
+        return new InviteStudentResultDTO { Token = token, AutoApproved = false };
+    }
 
-        public async Task<List<SubjectOptionDto>> GetSubjectsAsync()
+    public async Task<Result> AcceptInvitationAsync(int studentId, string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return CourseErrors.InviteTokenInvalid;
+
+        if (!TryDecodeInviteToken(token, out int classId, out byte[]? stamp) || stamp is null)
+            return CourseErrors.InviteTokenInvalid;
+
+        var course = await repo.GetByIdAsync(classId);
+        if (course == null)
+            return CourseErrors.NotFound;
+        if (course.Status == ClassStatus.Closed)
+            return CourseErrors.Closed;
+
+        var rows = await repo.AcceptEmailInvitationAsync(classId, studentId, stamp);
+        return rows == 0 ? CourseErrors.InviteTokenInvalid : Result.Success();
+    }
+
+    public async Task<Result> ApproveStudentAsync(int classId, int studentId)
+    {
+        var course = await repo.GetByIdAsync(classId);
+        if (course == null)
+            return CourseErrors.NotFound;
+        if (course.Status == ClassStatus.Closed)
+            return CourseErrors.Closed;
+
+        var success = await repo.ApproveStudentAsync(classId, studentId);
+        return success ? Result.Success() : CourseErrors.NotMember;
+    }
+
+    public async Task<Result> RejectStudentAsync(int classId, int studentId)
+    {
+        var course = await repo.GetByIdAsync(classId);
+        if (course == null)
+            return CourseErrors.NotFound;
+        if (course.Status == ClassStatus.Closed)
+            return CourseErrors.Closed;
+
+        var success = await repo.RejectStudentAsync(classId, studentId);
+        return success ? Result.Success() : CourseErrors.NotMember;
+    }
+
+    public async Task<Result> RemoveStudentAsync(int classId, int studentId)
+    {
+        var course = await repo.GetByIdAsync(classId);
+        if (course == null)
+            return CourseErrors.NotFound;
+        if (course.Status == ClassStatus.Closed)
+            return CourseErrors.Closed;
+
+        var success = await repo.RemoveStudentAsync(classId, studentId);
+        return success ? Result.Success() : CourseErrors.NotMember;
+    }
+
+    public async Task<Result> CloseClassAsync(int classId)
+    {
+        var success = await repo.CloseClassAsync(classId);
+        return success ? Result.Success() : CourseErrors.NotFound;
+    }
+
+    public async Task<Result> ReopenClassAsync(int classId)
+    {
+        var success = await repo.ReopenClassAsync(classId);
+        return success ? Result.Success() : CourseErrors.NotFound;
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+
+    private static string BuildInviteToken(int classId, byte[] concurrencyStamp)
+    {
+        var stampBase64 = ToUrlSafeBase64(concurrencyStamp);
+        var plain = $"{classId}:{stampBase64}";
+        return ToUrlSafeBase64(System.Text.Encoding.UTF8.GetBytes(plain));
+    }
+
+    private static bool TryDecodeInviteToken(string token, out int classId, out byte[]? stamp)
+    {
+        classId = 0;
+        stamp = null;
+        try
         {
-            return await _repo.GetSubjectsAsync();
+            var plain = System.Text.Encoding.UTF8.GetString(FromUrlSafeBase64(token));
+            var parts = plain.Split(':');
+            if (parts.Length != 2 || !int.TryParse(parts[0], out classId))
+                return false;
+
+            stamp = FromUrlSafeBase64(parts[1]);
+            return true;
         }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string ToUrlSafeBase64(byte[] data) =>
+        Convert.ToBase64String(data).Replace("+", "-").Replace("/", "_").TrimEnd('=');
+
+    private static byte[] FromUrlSafeBase64(string s)
+    {
+        var base64 = s.Replace("-", "+").Replace("_", "/");
+        base64 += (base64.Length % 4) switch { 2 => "==", 3 => "=", _ => "" };
+        return Convert.FromBase64String(base64);
     }
 }

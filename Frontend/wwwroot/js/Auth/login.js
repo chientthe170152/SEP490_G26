@@ -29,11 +29,8 @@ $(document).ready(function () {
 
         apiClient.post("/api/auth/login", requestData)
             .then(function (response) {
-                if (response.token) {
-                    setToken(response.token);
-                    const returnUrl = $('#returnUrl').val();
-                    window.location.href = returnUrl ? returnUrl : '/';
-                }
+                const returnUrl = $('#returnUrl').val();
+                window.location.href = returnUrl ? returnUrl : '/';
             })
             .catch(function (err) {
                 $('#formError').text("Email hoặc mật khẩu không chính xác.");
@@ -53,12 +50,14 @@ function handleCredentialResponse(response) {
                 localStorage.setItem('tempGoogleToken', requestData.IdToken);
                 localStorage.setItem('tempGoogleEmail', data.email);
                 window.location.href = '/Auth/GoogleRegister';
-            } else if (data.token) {
-                setToken(data.token);
+            } else if (data.needsProfileCompletion) {
+                localStorage.setItem('tempGoogleToken', requestData.IdToken);
+                localStorage.setItem('tempGoogleEmail', data.email);
+                localStorage.setItem('tempGoogleNeedsCompletion', '1');
+                window.location.href = '/Auth/GoogleRegister';
+            } else {
                 const returnUrl = $('#returnUrl').val();
                 window.location.href = returnUrl ? returnUrl : '/';
-            } else {
-                showToast('Đăng nhập Google thất bại', 'error');
             }
         })
         .catch(function (err) {

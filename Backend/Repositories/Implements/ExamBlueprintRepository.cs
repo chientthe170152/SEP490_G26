@@ -9,10 +9,12 @@ namespace Backend.Repositories.Implements
     public class ExamBlueprintRepository : IExamBlueprintRepository
     {
         private readonly MtcaSep490G26Context _context;
+        private readonly TimeProvider _timeProvider;
 
-        public ExamBlueprintRepository(MtcaSep490G26Context context)
+        public ExamBlueprintRepository(MtcaSep490G26Context context, TimeProvider timeProvider)
         {
             _context = context;
+            _timeProvider = timeProvider;
         }
 
         public async Task<List<SubjectOptionDto>> GetSubjectsAsync()
@@ -86,8 +88,10 @@ namespace Backend.Repositories.Implements
 
         public async Task<(List<BlueprintListItemDto> Items, int TotalCount)> GetBlueprintsAsync(BlueprintListQueryDto query, int currentUserId)
         {
-            var page = query.Page < 1 ? 1 : query.Page;
-            var pageSize = query.PageSize <= 0 ? 10 : Math.Min(query.PageSize, 100);
+            var page = query.Page ?? 1;
+            page = page < 1 ? 1 : page;
+            var pageSize = query.PageSize ?? 10;
+            pageSize = pageSize <= 0 ? 10 : Math.Min(pageSize, 100);
 
             var blueprints = _context.ExamBlueprints
                 .AsNoTracking()
@@ -210,6 +214,11 @@ namespace Backend.Repositories.Implements
             return blueprint;
         }
 
+        public async Task<bool> IsBlueprintUsedAsync(int blueprintId)
+        {
+            return await _context.Exams.AnyAsync(e => e.ExamBlueprintId == blueprintId);
+        }
+
         public async Task<ExamBlueprint?> UpdateBlueprintAsync(int id, int currentUserId, ExamBlueprint blueprint, IEnumerable<ExamBlueprintChapter> rows)
         {
             var entity = await _context.ExamBlueprints
@@ -218,11 +227,6 @@ namespace Backend.Repositories.Implements
 
             if (entity == null) return null;
 
-            if (entity.Status == ExamBlueprintStatus.Archived)
-            {
-                throw new InvalidOperationException("Không thể sửa ma trận đề đã lưu trữ.");
-            }
-
             await using var transaction = await _context.Database.BeginTransactionAsync();
 
             entity.Name = blueprint.Name;
@@ -230,7 +234,7 @@ namespace Backend.Repositories.Implements
             entity.SubjectId = blueprint.SubjectId;
             entity.TotalQuestions = blueprint.TotalQuestions;
             entity.Status = blueprint.Status;
-            entity.UpdatedAtUtc = DateTime.UtcNow;
+            entity.UpdatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
 
             _context.ExamBlueprintChapters.RemoveRange(entity.ExamBlueprintChapters);
 
@@ -262,14 +266,29 @@ namespace Backend.Repositories.Implements
                 .Where(b => ids.Contains(b.ExamBlueprintId) && b.TeacherId == currentUserId)
                 .ToListAsync();
 
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
             foreach (var e in entities)
             {
                 e.Status = status;
-                e.UpdatedAtUtc = DateTime.UtcNow;
+                e.UpdatedAtUtc = now;
             }
 
             await _context.SaveChangesAsync();
             return entities.Count;
+        }
+
+        public async Task DeleteBlueprintAsync(int blueprintId, int currentUserId)
+        {
+            var entity = await _context.ExamBlueprints
+                .Include(b => b.ExamBlueprintChapters)
+                .FirstOrDefaultAsync(b => b.ExamBlueprintId == blueprintId && b.TeacherId == currentUserId);
+
+            if (entity != null)
+            {
+                _context.ExamBlueprintChapters.RemoveRange(entity.ExamBlueprintChapters);
+                _context.ExamBlueprints.Remove(entity);
+                await _context.SaveChangesAsync();
+            }
         }
 
         private static string GetDifficultyLabel(int difficulty)

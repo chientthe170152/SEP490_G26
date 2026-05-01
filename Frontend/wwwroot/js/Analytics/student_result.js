@@ -4,7 +4,7 @@
 
 var DOM = {};
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
     // ── Cache DOM 1 lần duy nhất ──
     DOM = {
         root:       document.getElementById("analyticsRoot"),
@@ -22,10 +22,11 @@ document.addEventListener("DOMContentLoaded", function () {
         tplOption:  document.getElementById("tpl-review-option")
     };
 
+    await window.userReady;
+
     // ── Kiểm tra đăng nhập & role ──
     if (!isAuthenticated()) { window.location.href = '/Auth/Login'; return; }
-    var role = getUserRole();
-    if (role !== 'Student' && role !== 'Học sinh') {
+    if (getUserRole() !== RoleIds.Student) {
         showError("Bạn không có quyền truy cập. Chỉ Học sinh mới được xem kết quả bài làm.");
         return;
     }
@@ -182,7 +183,10 @@ function renderRadar(canvasId, stats, labelKey, valueKey, colorVar) {
 function renderRecList(recs) {
     DOM.recBox.innerHTML = "";
     if (!recs || recs.length === 0) {
-        DOM.recBox.innerHTML = '<div class="text-center py-4 text-muted small">Cần thêm dữ liệu để hệ thống đưa ra lời khuyên cá nhân hóa.</div>';
+        var emptyDiv = document.createElement("div");
+        emptyDiv.className = "text-center py-4 text-muted small";
+        emptyDiv.textContent = "Cần thêm dữ liệu để hệ thống đưa ra lời khuyên cá nhân hóa.";
+        DOM.recBox.appendChild(emptyDiv);
         return;
     }
     recs.forEach(function (rec) {
@@ -193,7 +197,14 @@ function renderRecList(recs) {
         var iconStr = rec.includes("🚨") ? "bi-patch-exclamation-fill" :
                       (rec.includes("⚠️") ? "bi-exclamation-triangle-fill" : "bi-stars");
 
-        div.innerHTML = '<i class="bi ' + iconStr + '"></i><span>' + rec + '</span>';
+        var icon = document.createElement("i");
+        icon.className = "bi " + iconStr;
+        var span = document.createElement("span");
+        span.textContent = rec;
+        
+        div.innerHTML = "";
+        div.appendChild(icon);
+        div.appendChild(span);
         div.classList.add(getRecClass(rec));
         DOM.recBox.appendChild(item);
     });

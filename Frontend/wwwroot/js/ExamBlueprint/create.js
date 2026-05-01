@@ -1,4 +1,6 @@
-$(document).ready(function () {
+$(document).ready(async function () {
+    await window.userReady;
+
     const state = {
         chapterOptions: [],
         editId: typeof window.ExamBlueprintEditId === 'number' && window.ExamBlueprintEditId > 0 ? window.ExamBlueprintEditId : 0,
@@ -6,8 +8,7 @@ $(document).ready(function () {
         lastTargetStatus: null
     };
 
-    const role = getUserRole();
-    if (!(role === 'Teacher' || role === 'Giáo viên' || role === 'Admin' || role === 'Quản trị viên' || role === 'Administrator')) {
+    if (getUserRole() !== RoleIds.Teacher) {
         showError(['Bạn không có quyền truy cập màn hình tạo ma trận đề.']);
         $('#btnSaveDraft, #btnPublish, #btnAddRow').prop('disabled', true);
         return;
@@ -101,9 +102,15 @@ $(document).ready(function () {
                     $('#matrixRowList').empty();
                     refreshEmptyHint();
                 });
-                if (detail.status === 3) {
-                    showError(['Ma trận đề đã lưu trữ, không thể sửa.']);
-                    $('#btnSaveDraft, #btnPublish, #btnAddRow').prop('disabled', true);
+                // Cho phép sửa (clone) đối với Archived
+                if (detail.status === 3 || detail.status === 2) {
+                    const noticeText = detail.status === 3 ? "Ma trận đề đã được lưu trữ." : "Ma trận đề đang được sử dụng.";
+                    const theElement = document.getElementById('pageNotice') || $('#createSuccess')[0];
+                    if (theElement) {
+                        $(theElement).removeClass('d-none alert-success').addClass('alert-info').text(`${noticeText} Việc chỉnh sửa sẽ tạo ra một phiên bản mới.`);
+                    } else {
+                        $('#blueprintName').parent().before(`<div class="alert alert-info mb-3">${noticeText} Việc chỉnh sửa sẽ tạo ra một phiên bản mới.</div>`);
+                    }
                 }
             })
             .catch(function (error) {

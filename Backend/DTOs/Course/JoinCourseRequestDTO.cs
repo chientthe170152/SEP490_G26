@@ -1,7 +1,6 @@
-namespace Backend.DTOs.Course
+namespace Backend.DTOs.Course;
+
+public class JoinCourseRequestDTO
 {
-    public class JoinCourseRequestDTO
-    {
-        public string InvitationCode { get; set; } = null!;
-    }
+    public string? InvitationCode { get; set; }
 }

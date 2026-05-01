@@ -4,7 +4,7 @@
 
 var DOM = {};
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
     DOM = {
         root: document.getElementById("analyticsRoot"),
         loading: document.getElementById("analyticsLoading"),
@@ -20,9 +20,10 @@ document.addEventListener("DOMContentLoaded", function () {
         tplOption: document.getElementById("tpl-review-option")
     };
 
+    await window.userReady;
+
     if (!isAuthenticated()) { window.location.href = '/Auth/Login'; return; }
-    var role = getUserRole();
-    if (role !== 'Teacher' && role !== 'Giáo viên') {
+    if (getUserRole() !== RoleIds.Teacher) {
         showError("Bạn không có quyền truy cập. Chỉ Giáo viên mới được xem bài làm.");
         return;
     }
@@ -170,14 +171,27 @@ function renderRadar(canvasId, stats, labelKey, valueKey, colorVar) {
 function renderRecList(recs) {
     DOM.recBox.innerHTML = "";
     if (!recs || recs.length === 0) {
-        DOM.recBox.innerHTML = '<div class="text-center py-4 text-muted small">Không có đề xuất.</div>';
+        var emptyDiv = document.createElement("div");
+        emptyDiv.className = "text-center py-4 text-muted small";
+        emptyDiv.textContent = "Không có đề xuất.";
+        DOM.recBox.appendChild(emptyDiv);
         return;
     }
     recs.forEach(function (rec) {
         var item = DOM.tplRec.content.cloneNode(true);
         var div = item.querySelector(".rec-item");
+        
         var iconStr = (rec + "").includes("🚨") ? "bi-patch-exclamation-fill" : ((rec + "").includes("⚠️") ? "bi-exclamation-triangle-fill" : "bi-stars");
-        div.innerHTML = '<i class="bi ' + iconStr + '"></i><span>' + rec + '</span>';
+        var icon = document.createElement("i");
+        icon.className = "bi " + iconStr;
+        
+        var span = document.createElement("span");
+        span.textContent = rec;
+        
+        div.innerHTML = "";
+        div.appendChild(icon);
+        div.appendChild(span);
+        
         div.classList.add((rec + "").includes("🚨") ? "rec-danger" : ((rec + "").includes("⚠️") ? "rec-warning" : ((rec + "").includes("🌟") ? "rec-success" : "rec-info")));
         DOM.recBox.appendChild(item);
     });

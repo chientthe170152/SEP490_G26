@@ -20,22 +20,22 @@ namespace Backend.DTOs.Question
     public class AnswerDto
     {
         public int? AnswerId { get; set; }
-        public string Content { get; set; } = null!;
-        public string CorrectAnswer { get; set; } = null!;
+        public string? Content { get; set; }
+        public string? CorrectAnswer { get; set; }
         public bool? IsCorrect { get; set; }
         public int? InputTypeId { get; set; }
         public int? BlankIndex { get; set; }
-        public int Point { get; set; }
+        public int? Point { get; set; }
     }
 
     public class GroupAnswerDto
     {
         public int? GroupAnswerId { get; set; }
-        public string Name { get; set; } = null!;
+        public string? Name { get; set; }
         public int? DependsOnGroupId { get; set; }
         public int? DependsOnGroupIndex { get; set; }
-        public List<int> SegmentIndices { get; set; } = new();
-        public List<int> BlankIndices { get; set; } = new();
+        public List<int>? SegmentIndices { get; set; }
+        public List<int>? BlankIndices { get; set; }
     }
 
     public class QuestionSummaryDto
@@ -49,6 +49,8 @@ namespace Backend.DTOs.Question
         public string ChapterName { get; set; } = null!;
         public DateTime UpdatedAt { get; set; }
         public string Status { get; set; } = null!;
+        public byte QuestionPurpose { get; set; }
+        public string QuestionPurposeLabel { get; set; } = null!;
         public int AnswerCount { get; set; }
     }
 
@@ -58,8 +60,8 @@ namespace Backend.DTOs.Question
 
     public class QuestionStatusUpdateDto
     {
-        public List<int> QuestionIds { get; set; } = new();
-        public string Status { get; set; } = string.Empty;
+        public List<int>? QuestionIds { get; set; }
+        public string? Status { get; set; }
     }
 
     public class QuestionListQueryDto
@@ -70,6 +72,7 @@ namespace Backend.DTOs.Question
         public int? ChapterId { get; set; }
         public int? SubjectId { get; set; }
         public string? Status { get; set; }
+        public byte? QuestionPurpose { get; set; }
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 10;
     }

@@ -1,10 +1,10 @@
-﻿// ================= GLOBAL =================
+// ================= GLOBAL =================
 let originalProfile = {};
 
 // ================= INIT =================
 $(function () {
 
-    $('#profileModal').on('shown.bs.modal', function () {
+    $('#profileModal').on('shown.bs.modal', async function () {
 
         console.log("Profile modal opened");
 
@@ -13,6 +13,8 @@ $(function () {
 
         // disable button password
         $("#changePasswordBtn").prop("disabled", true);
+
+        await window.userReady;
 
         // ẩn tab password nếu login Google
         if (isGoogleUser()) {
@@ -67,7 +69,7 @@ async function loadProfile() {
         $("#phoneNumber").val(data.phoneNumber || "");
         $("#studentId").val(data.studentId || "");
 
-        if (data.roleId === 2) {
+        if (String(data.roleId) === RoleIds.Student) {
             $("#studentIdGroup").removeAttr("hidden");
         } else {
             $("#studentIdGroup").attr("hidden", true);
@@ -194,15 +196,15 @@ $("#changePasswordForm").on("submit", function (e) {
 
     clearFieldError();
 
-    const oldPassword = $("#currentPassword").val();
+    const currentPassword = $("#currentPassword").val();
     const newPassword = $("#newPassword").val();
     const confirmPassword = $("#confirmPassword").val();
 
-    const error = validateChangePassword(oldPassword, newPassword, confirmPassword);
+    const error = validateChangePassword(currentPassword, newPassword, confirmPassword);
 
     if (error) {
 
-        if (!oldPassword) showFieldError("#currentPassword");
+        if (!currentPassword) showFieldError("#currentPassword");
         if (!newPassword) showFieldError("#newPassword");
         if (!confirmPassword) showFieldError("#confirmPassword");
 

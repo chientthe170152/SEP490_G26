@@ -8,10 +8,10 @@ public interface IAssignExamRepository
 {
     Task<bool> IsUserActiveAsync(int id, CancellationToken ct);
     
-    Task<AssignExamFiltersResponseDto> GetAssignExamFilterOptionsAsync(int teacherId, CancellationToken ct);
+    //Task<AssignExamFiltersResponseDto> GetAssignExamFilterOptionsAsync(int teacherId, CancellationToken ct);
     
-    Task<(List<ClassWithCount> Items, int Total)> GetPagedClassesForTeacherAsync(
-        int? teacherId, string? kw, string? subj, string? sem, int page, int size, CancellationToken ct);
+    //Task<(List<ClassWithCount> Items, int Total)> GetPagedClassesForTeacherAsync(
+    //    int? teacherId, string? kw, string? subj, string? sem, int page, int size, CancellationToken ct);
         
     Task<List<BlueprintListItemDto>> GetBlueprintsAsync(int? teacherId, string? subj, string? kw, CancellationToken ct);
     
@@ -53,7 +53,17 @@ public interface IAssignExamRepository
     
     Task UpdateExamStatusAsync(int id, int status, CancellationToken ct);
     
+    Task UpdateQuestionsToInprogressAsync(IEnumerable<int> questionIds, CancellationToken ct);
+    
+    Task<List<int>> GetAllQuestionIdsInExamAsync(int examId, CancellationToken ct);
+    
     Task SaveChangesAsync(CancellationToken ct);
+    Task UpdateBlueprintToInprogressAsync(int examId, CancellationToken ct);
+    
+    Task<Exam?> GetExamByIdAsync(int id, CancellationToken ct);
+    Task<bool> HasSubmissionsForExamAsync(int examId, CancellationToken ct);
+    Task HardDeleteExamAsync(int examId, CancellationToken ct);
+    Task UpdateExamInfoAsync(int examId, string? title, DateTime? visibleFrom, DateTime? openAt, DateTime? closeAt, CancellationToken ct);
 }
 
 public record ClassWithCount(int ClassId, string Name, string Semester, string SubjectCode, int MemberCount);

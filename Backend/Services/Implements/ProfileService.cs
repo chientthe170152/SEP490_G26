@@ -1,84 +1,66 @@
-﻿using Backend.DTOs;
+using Backend.Common;
+using Backend.Common.Errors;
+using Backend.Common.Models;
+using Backend.Constants;
 using Backend.DTOs.Profile;
-using Backend.Models;
 using Backend.Repositories.Interfaces;
 using Backend.Services.Interfaces;
 
-using Microsoft.AspNetCore.Identity;
+namespace Backend.Services.Implements;
 
-namespace Backend.Services.Implements
+public class ProfileService(IProfileRepository repo, TimeProvider timeProvider) : IProfileService
 {
-    public class ProfileService : IProfileService
+    public async Task<Result<UserProfileDTO>> GetProfileAsync(int userId)
     {
-        private readonly IProfileRepository _repo;
-        private readonly PasswordHasher<User> _passwordHasher;
+        var user = await repo.GetUserByIdAsync(userId);
+        if (user == null) return ProfileErrors.NotFound;
 
-        public ProfileService(IProfileRepository repo)
+        return new UserProfileDTO
         {
-            _repo = repo;
-            _passwordHasher = new PasswordHasher<User>();
-        }
+            UserId = user.UserId,
+            Email = user.Email,
+            FullName = user.FullName,
+            PhoneNumber = user.PhoneNumber,
+            StudentId = user.StudentId,
+            RoleId = user.RoleId,
+            Status = user.Status
+        };
+    }
 
-        public async Task<UserProfileDTO?> GetProfileAsync(int userId)
-        {
-            var user = await _repo.GetUserByIdAsync(userId);
+    public async Task<Result> UpdateProfileAsync(int userId, UpdateProfileDTO dto)
+    {
+        var user = await repo.GetUserByIdAsync(userId);
+        if (user == null) return Result.Failure(ProfileErrors.NotFound);
 
-            if (user == null) return null;
+        // Role-dependent StudentId rule (format already validated by FluentValidator)
+        if (user.RoleId.ToString() == RoleIds.Student && string.IsNullOrWhiteSpace(dto.StudentId))
+            return Result.Failure(ProfileErrors.StudentIdRequired);
 
-            return new UserProfileDTO
-            {
-                UserId = user.UserId,
-                Email = user.Email,
-                FullName = user.FullName,
-                PhoneNumber = user.PhoneNumber,
-                StudentId = user.StudentId,
-                RoleId = user.RoleId,
-                Status = user.Status
-            };
-        }
+        user.FullName = dto.FullName!.Trim();
+        user.PhoneNumber = string.IsNullOrWhiteSpace(dto.PhoneNumber) ? null : dto.PhoneNumber.Trim();
+        user.StudentId = string.IsNullOrWhiteSpace(dto.StudentId) ? null : dto.StudentId.Trim();
 
-        public async Task<bool> UpdateProfileAsync(int userId, UpdateProfileDTO dto)
-        {
-            var user = await _repo.GetUserByIdAsync(userId);
+        await repo.UpdateUserAsync(user);
+        await repo.SaveChangesAsync();
+        return Result.Success();
+    }
 
-            if (user == null) return false;
+    public async Task<Result> ChangePasswordAsync(int userId, ChangePasswordDTO dto)
+    {
+        var user = await repo.GetUserByIdAsync(userId);
+        if (user == null) return Result.Failure(ProfileErrors.NotFound);
 
-            user.FullName = dto.FullName;
-            user.PhoneNumber = dto.PhoneNumber;
-            user.StudentId = dto.StudentId;
+        if (string.IsNullOrEmpty(user.PasswordHash))
+            return Result.Failure(ProfileErrors.GoogleAccount);
 
-            await _repo.UpdateUserAsync(user);
-            await _repo.SaveChangesAsync();
+        if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash))
+            return Result.Failure(ProfileErrors.WrongPassword);
 
-            return true;
-        }
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        user.SecurityStamp = timeProvider.GetUtcNow().UtcDateTime;
 
-        public async Task<bool> ChangePasswordAsync(int userId, ChangePasswordDTO dto)
-        {
-            var user = await _repo.GetUserByIdAsync(userId);
-
-            if (user == null) return false;
-
-            var result = _passwordHasher.VerifyHashedPassword(
-                user,
-                user.PasswordHash!,
-                dto.CurrentPassword
-            );
-
-            if (result == PasswordVerificationResult.Failed)
-                return false;
-
-            if (dto.NewPassword != dto.ConfirmPassword)
-                return false;
-
-            user.PasswordHash = _passwordHasher.HashPassword(user, dto.NewPassword);
-
-            user.SecurityStamp = DateTime.UtcNow;
-
-            await _repo.UpdateUserAsync(user);
-            await _repo.SaveChangesAsync();
-
-            return true;
-        }
+        await repo.UpdateUserAsync(user);
+        await repo.SaveChangesAsync();
+        return Result.Success();
     }
 }
