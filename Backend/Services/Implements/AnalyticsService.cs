@@ -291,9 +291,7 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
             dto.ChapterStats = answerAnalysis.GroupBy(x => x.ChapterName)
                 .Select(g => new ChapterAnalyticsDto { ChapterName = g.Key, TotalAnswers = g.Count(), CorrectAnswers = g.Count(x => x.IsCorrect) })
                 .OrderBy(c => c.AccuracyRate).ToList();
-            dto.DifficultyStats = answerAnalysis.GroupBy(x => x.Difficulty)
-                .Select(g => new DifficultyAnalyticsDto { DifficultyLevel = g.Key, DifficultyName = DifficultyLevel.GetLabel(g.Key), TotalAnswers = g.Count(), CorrectAnswers = g.Count(x => x.IsCorrect) })
-                .OrderBy(d => d.DifficultyLevel).ToList();
+
             dto.Recommendations = new List<string>();
             foreach (var stat in dto.ChapterStats!)
             {

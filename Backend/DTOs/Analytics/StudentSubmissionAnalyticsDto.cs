@@ -32,8 +32,7 @@ public class StudentSubmissionAnalyticsDto
     // ── Phân tích theo chương (chỉ có khi ShowScore = true) ──
     public List<ChapterAnalyticsDto>? ChapterStats { get; set; }
 
-    // ── Phân tích theo độ khó (chỉ có khi ShowScore = true) ──
-    public List<DifficultyAnalyticsDto>? DifficultyStats { get; set; }
+
 
     // ── Đề xuất ôn tập (chỉ có khi ShowScore = true) ──
     public List<string>? Recommendations { get; set; }
