@@ -180,47 +180,4 @@ public static class AnalyticsHelper
             CheckIsCorrect(qa, sa));
     }
 
-    public static void GenerateTeacherRecommendations(ExamAnalyticsDetailDto dto)
-    {
-        if (dto.TotalSubmissions == 0) return;
-
-        var weakChapters = dto.ChapterStats?.Where(c => c.Status == "Báo động").ToList() ?? new();
-        var mediumChapters = dto.ChapterStats?.Where(c => c.Status == "Cần chú ý").ToList() ?? new();
-        var goodChapters = dto.ChapterStats?.Where(c => c.Status == "Tốt").ToList() ?? new();
-
-        bool hasContent = false;
-
-        if (weakChapters.Any())
-        {
-            hasContent = true;
-            var weakest = weakChapters.OrderBy(c => c.AccuracyRate).First();
-            dto.Recommendations.Add(
-                $"🚨 CẢNH BÁO: Lớp đang hổng kiến thức nặng nhất ở chương [{weakest.ChapterName}] " +
-                $"(tỉ lệ đúng chỉ {weakest.AccuracyRate}%). " +
-                $"ĐỀ XUẤT: Giáo viên cần tổ chức ôn tập lại lý thuyết và công thức cơ bản của chương này.");
-
-            foreach (var ch in weakChapters.Skip(1))
-                dto.Recommendations.Add(
-                    $"🚨 Chương [{ch.ChapterName}] cũng ở mức báo động ({ch.AccuracyRate}% đúng).");
-        }
-
-        foreach (var ch in mediumChapters)
-        {
-            hasContent = true;
-            dto.Recommendations.Add($"⚠️ Chương [{ch.ChapterName}] cần cải thiện ({ch.AccuracyRate}% đúng).");
-        }
-
-        if (dto.HardestQuestions != null && dto.HardestQuestions.Any())
-        {
-            hasContent = true;
-            var hardest = dto.HardestQuestions.First();
-            dto.Recommendations.Add(
-                $"📌 Câu hỏi khó nhất thuộc [{hardest.ChapterName}] (chỉ {hardest.AccuracyRate}% đúng). Hãy giảng lại phần này.");
-        }
-
-        if (!hasContent)
-        {
-            dto.Recommendations.Add("📊 Hệ thống đang ghi nhận dữ liệu nộp bài. Khi có đủ câu trả lời, AI sẽ đưa ra phân tích chi tiết cho từng chương.");
-        }
-    }
 }

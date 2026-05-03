@@ -25,8 +25,7 @@ public class ExamAnalyticsDetailDto
     // ── Phân tích theo chương ──
     public List<ChapterAnalyticsDto> ChapterStats { get; set; } = new();
 
-    // ── Phân tích theo độ khó ──
-    public List<DifficultyAnalyticsDto> DifficultyStats { get; set; } = new();
+
 
     // ── Top câu hỏi khó nhất ──
     public List<HardestQuestionDto> HardestQuestions { get; set; } = new();

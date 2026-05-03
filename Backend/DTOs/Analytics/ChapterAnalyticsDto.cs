@@ -18,16 +18,5 @@ public class ChapterAnalyticsDto
     [JsonInclude]
     public double AccuracyRate => TotalAnswers == 0 ? 0 : Math.Round((double)CorrectAnswers / TotalAnswers * 100, 2);
     
-    // Trạng thái theo Rule (Báo động, Cần chú ý, Tốt)
-    [JsonInclude]
-    public string Status 
-    {
-        get
-        {
-            if (TotalAnswers == 0) return "Chưa đủ dữ liệu";
-            if (AccuracyRate < 40) return "Báo động";
-            if (AccuracyRate < 70) return "Cần chú ý";
-            return "Tốt";
-        }
-    }
+    // Status removed as it's no longer used.
 }

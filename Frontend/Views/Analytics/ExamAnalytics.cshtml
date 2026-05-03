@@ -17,7 +17,6 @@
 
     <!-- ── Error State ── -->
     <div id="analyticsError" class="analytics-empty" hidden>
-        <i class="bi bi-exclamation-triangle text-warning"></i>
         <h5>Không thể tải dữ liệu</h5>
         <p id="errorMessage" class="text-muted"></p>
     </div>
@@ -26,177 +25,183 @@
     <div id="analyticsContent" hidden>
 
         <!-- Header -->
-        <header class="d-flex flex-wrap justify-content-between align-items-center mb-5 gap-3">
+        <header class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
             <div>
                 <h1 class="page-title mb-1" id="examTitle">Phân tích Bài thi</h1>
-                <p class="text-muted mb-0"><i class="bi bi-person-badge"></i> Chế độ dành cho Giáo viên — Thống kê & Phân tích tổng quát</p>
-            </div>
-            <div id="quickStats" class="d-flex gap-4">
-                <div class="text-center">
-                    <div class="h3 fw-bold mb-0 text-primary" id="totalSubmissions">—</div>
-                    <small class="text-muted text-uppercase fw-bold stat-quick-label">Lượt nộp</small>
-                </div>
-                <div class="text-center">
-                    <div class="h3 fw-bold mb-0 text-success" id="avgScoreQuick">—</div>
-                    <small class="text-muted text-uppercase fw-bold stat-quick-label">Điểm TB</small>
-                </div>
+                <p class="text-muted mb-0">Báo cáo Tổng quan & Đánh giá Chất lượng Học tập</p>
             </div>
         </header>
 
-        <!-- Stat Cards -->
-        <div class="row g-4 mb-5">
-            <div class="col-12 col-sm-6 col-lg-3">
-                <div class="stat-card stat-success">
-                    <div class="stat-value" id="avgScore">0</div>
-                    <div class="stat-label">Hiệu suất Trung bình</div>
+        <!-- System Alert (For messages like "Exam not ended") -->
+        <div id="systemAlert" class="alert alert-warning mb-4" hidden></div>
+
+        <div id="analyticsDashboard">
+            <!-- ZONE 1: TỔNG QUAN (Executive Summary) -->
+            <div class="row g-4 mb-5">
+            <div class="col-12 col-md-4">
+                <div class="stat-card text-center p-4">
+                    <div class="stat-value" id="avgScore">0.0</div>
+                    <div class="stat-label">Điểm Trung Bình</div>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 col-lg-3">
-                <div class="stat-card stat-primary">
-                    <div class="stat-value" id="maxScore">0</div>
-                    <div class="stat-label">Thành tích Cao nhất</div>
+            <div class="col-12 col-md-4">
+                <div class="stat-card text-center p-4">
+                    <div class="stat-value text-success"><span id="passRate">0</span>%</div>
+                    <div class="stat-label">Tỉ lệ Đạt (>= 5)</div>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 col-lg-3">
-                <div class="stat-card stat-danger">
-                    <div class="stat-value" id="minScore">0</div>
-                    <div class="stat-label">Điểm số Thấp nhất</div>
-                </div>
-            </div>
-            <div class="col-12 col-sm-6 col-lg-3">
-                <div class="stat-card stat-info">
-                    <div class="stat-value" id="medianScore">0</div>
-                    <div class="stat-label">Điểm số Trung vị</div>
+            <div class="col-12 col-md-4">
+                <div class="stat-card text-center p-4">
+                    <div class="stat-value text-danger"><span id="failRate">0</span>%</div>
+                    <div class="stat-label">Tỉ lệ Trượt (< 5)</div>
                 </div>
             </div>
         </div>
 
-        <div class="row g-4">
-            <!-- LEFT COLUMN -->
-            <div class="col-12 col-xl-8">
-
-                <div class="analytics-card">
+        <!-- ZONE 2: CHUẨN ĐOÁN (Knowledge Gaps) -->
+        <h4 class="mb-3 fw-bold">Phân tích Mức độ Nắm bắt Kiến thức</h4>
+        <div class="row g-4 mb-5">
+            <!-- Top 3 Chương Yếu nhất -->
+            <div class="col-12 col-lg-4">
+                <div class="analytics-card h-100 border-warning">
                     <div class="card-header">
-                        <i class="bi bi-graph-up-arrow text-primary"></i> Phân tích Phổ điểm Lớp học
-                    </div>
-                    <div class="card-body">
-                        <canvas id="scoreDistChart" height="100"></canvas>
-                    </div>
-                </div>
-
-                <div class="row g-4 mb-4">
-                    <div class="col-md-6">
-                        <div class="analytics-card h-100">
-                            <div class="card-header">
-                                <i class="bi bi-pie-chart text-success"></i> Năng lực theo Chương
-                            </div>
-                            <div class="card-body">
-                                <canvas id="chapterChart" height="200"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="analytics-card h-100">
-                            <div class="card-header">
-                                <i class="bi bi-layers-half text-warning"></i> Năng lực theo Độ khó
-                            </div>
-                            <div class="card-body">
-                                <canvas id="difficultyChart" height="200"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="analytics-card">
-                    <div class="card-header">
-                        <i class="bi bi-lightning-charge text-danger"></i> Nhóm Câu hỏi cần Lưu tâm
+                        <span class="fw-bold">Nội dung đạt kết quả thấp</span>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="analytics-table" id="hardestTable">
-                                <thead>
+                        <ul class="list-group list-group-flush" id="weakestChaptersList">
+                            <!-- JS Render -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Câu hỏi gây lú -->
+            <div class="col-12 col-lg-8">
+                <div class="analytics-card h-100">
+                    <div class="card-header">
+                        <span class="fw-bold">Danh sách Câu hỏi có Tỉ lệ sai cao</span>
+                        <span class="badge bg-danger text-white" id="hardQuestionCount">0</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 300px;">
+                            <table class="table analytics-table mb-0" id="hardestTable">
+                                <thead class="table-light position-sticky top-0">
                                     <tr>
-                                        <th style="width: 50px;">#</th>
+                                        <th style="width: 40px;">#</th>
                                         <th>Nội dung câu hỏi</th>
                                         <th>Chương</th>
-                                        <th>Mức độ</th>
-                                        <th class="text-center">Tỉ lệ đúng</th>
+                                        <th class="text-center">Làm đúng</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
                             </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="analytics-card">
-                    <div class="card-header">
-                        <i class="bi bi-person-lines-fill text-primary"></i> Bảng Kết quả Chi tiết
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="analytics-table" id="studentTable">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 50px;">#</th>
-                                        <th>Học sinh</th>
-                                        <th class="text-center">Điểm số</th>
-                                        <th>Ngày hoàn thành</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- RIGHT COLUMN -->
-            <div class="col-12 col-xl-4">
-                <div class="analytics-card" style="position: sticky; top: 1.5rem;">
-                    <div class="card-header">
-                        <i class="bi bi-magic text-warning"></i> Trình phân tích AI & Gợi ý
-                    </div>
-                    <div class="card-body" id="recommendationsBox">
-                        <div class="text-center py-4">
-                            <div class="spinner-border spinner-border-sm text-muted"></div>
-                            <span class="ms-2 text-muted">Đang tổng hợp dữ liệu...</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Phổ điểm (Biểu đồ ngang cho dễ nhìn) -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="analytics-card">
+                    <div class="card-header">
+                        <span class="fw-bold">Phân bố Phổ điểm</span>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="scoreDistChart" height="80"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ZONE 3: PHÂN LOẠI HỌC SINH (Student Triage) -->
+        <h4 class="mb-3 fw-bold">Phân nhóm Học lực Học sinh</h4>
+        <div class="row g-4">
+            <!-- Nhóm Cần hỗ trợ (Trượt) -->
+            <div class="col-12 col-md-6">
+                <div class="analytics-card h-100 border-danger">
+                    <div class="card-header">
+                        <span class="fw-bold">Nhóm Cần Phụ Đạo (< 5 điểm)</span>
+                        <span class="badge bg-danger ms-2 text-white" id="atRiskCount">0</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 400px;">
+                            <table class="table analytics-table table-hover mb-0" id="atRiskTable">
+                                <thead class="table-light position-sticky top-0">
+                                    <tr>
+                                        <th>Học sinh</th>
+                                        <th class="text-center">Điểm số</th>
+                                        <th class="text-end">Ngày nộp</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nhóm Xuất sắc -->
+            <div class="col-12 col-md-6">
+                <div class="analytics-card h-100 border-success">
+                    <div class="card-header">
+                        <span class="fw-bold">Nhóm Hoàn Thành Tốt (>= 8 điểm)</span>
+                        <span class="badge bg-success ms-2 text-white" id="excellentCount">0</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 400px;">
+                            <table class="table analytics-table table-hover mb-0" id="excellentTable">
+                                <thead class="table-light position-sticky top-0">
+                                    <tr>
+                                        <th>Học sinh</th>
+                                        <th class="text-center">Điểm số</th>
+                                        <th class="text-end">Ngày nộp</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div> <!-- End of analyticsDashboard -->
     </div>
 </main>
 
 <!-- ════════════════════════════════════════
-     TEMPLATES — JS sẽ clone các template này
+     TEMPLATES
      ════════════════════════════════════════ -->
 
-<!-- Template: Hàng bảng câu hỏi khó nhất -->
+<!-- Template: Hàng bảng câu hỏi -->
 <template id="tpl-hardest-row">
     <tr>
-        <td data-col="index"></td>
+        <td class="text-muted fw-bold" data-col="index"></td>
         <td><math-span data-col="content"></math-span></td>
-        <td data-col="chapter"></td>
-        <td data-col="difficulty"></td>
-        <td><span class="score-badge" data-col="accuracy"></span></td>
+        <td><span class="badge bg-secondary text-dark" data-col="chapter"></span></td>
+        <td class="text-center"><span class="score-badge" data-col="accuracy"></span></td>
     </tr>
 </template>
 
 <!-- Template: Hàng bảng sinh viên -->
 <template id="tpl-student-row">
     <tr>
-        <td data-col="index"></td>
-        <td data-col="name"></td>
-        <td><span class="score-badge" data-col="score"></span></td>
-        <td data-col="date"></td>
+        <td class="fw-bold text-dark" data-col="name"></td>
+        <td class="text-center"><span class="score-badge" data-col="score"></span></td>
+        <td class="text-end text-muted small" data-col="date"></td>
     </tr>
 </template>
 
-<!-- Template: Đề xuất -->
-<template id="tpl-rec-item">
-    <div class="rec-item"></div>
+<!-- Template: Chương yếu nhất -->
+<template id="tpl-weak-chapter">
+    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+        <div>
+            <h6 class="mb-1 text-dark fw-bold" data-col="name">Tên chương</h6>
+            <small class="text-muted">Tỉ lệ làm sai: <span data-col="wrong-rate" class="fw-bold">0%</span></small>
+        </div>
+        <span class="badge bg-danger text-white" data-col="acc-rate">0%</span>
+    </li>
 </template>
 
 @section Scripts {
@@ -204,4 +209,5 @@
     <script defer src="https://unpkg.com/mathlive"></script>
     <script src="~/js/Analytics/exam_analytics.js"></script>
 }
+
 

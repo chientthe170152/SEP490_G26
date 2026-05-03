@@ -39,6 +39,26 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
             .Select(g => g.OrderByDescending(s => s.UpdatedAtUtc).First())
             .ToList();
 
+        // Kiểm tra điều kiện bài thi đã kết thúc
+        bool isEnded = exam.Status == ExamStatus.Closed;
+        if (!isEnded && exam.CloseAt.HasValue)
+        {
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+            if (exam.CloseAt.Value <= now)
+                isEnded = true;
+        }
+
+        if (!isEnded)
+        {
+            return new ExamAnalyticsDetailDto
+            {
+                ExamId = exam.ExamId,
+                ExamTitle = exam.Title,
+                TotalSubmissions = rawSubmissions.Count,
+                Recommendations = { "Bài kiểm tra này hiện chưa kết thúc. Hệ thống chỉ tổng hợp và phân tích dữ liệu sau khi thời gian làm bài kết thúc hoàn toàn." }
+            };
+        }
+
         var dto = new ExamAnalyticsDetailDto
         {
             ExamId = exam.ExamId,
@@ -48,7 +68,7 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
 
         if (dto.TotalSubmissions == 0)
         {
-            dto.Recommendations.Add("Chưa có học sinh nào nộp bài thi này để phân tích.");
+            dto.Recommendations.Add("Bài kiểm tra đã kết thúc nhưng không có học sinh nào tham gia nộp bài. Hệ thống không có dữ liệu để phân tích.");
             return dto;
         }
 
@@ -59,13 +79,17 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
             .OrderBy(s => s)
             .ToList();
 
-        if (scores.Count > 0)
+        if (scores.Count == 0)
         {
-            dto.AverageScore = Math.Round(scores.Average(), 2);
-            dto.MaxScore = scores.Max();
-            dto.MinScore = scores.Min();
-            dto.MedianScore = AnalyticsHelper.GetMedian(scores);
+            dto.TotalSubmissions = 0; // Để frontend ẩn biểu đồ
+            dto.Recommendations.Add("Bài kiểm tra đã kết thúc nhưng chưa có bài làm nào được chấm điểm. Hệ thống cần dữ liệu điểm số để phân tích.");
+            return dto;
         }
+
+        dto.AverageScore = Math.Round(scores.Average(), 2);
+        dto.MaxScore = scores.Max();
+        dto.MinScore = scores.Min();
+        dto.MedianScore = AnalyticsHelper.GetMedian(scores);
 
         // ── 2. Phân bố điểm ──
         dto.ScoreDistribution = AnalyticsHelper.BuildScoreDistribution(scores);
@@ -106,20 +130,6 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
             .OrderBy(c => c.AccuracyRate)
             .ToList();
 
-        // ── 6. Thống kê theo Độ khó ──
-        dto.DifficultyStats = allAnswerResults
-            .Where(x => x != null)
-            .GroupBy(x => x!.Difficulty)
-            .Select(g => new DifficultyAnalyticsDto
-            {
-                DifficultyLevel = g.Key,
-                DifficultyName = DifficultyLevel.GetLabel(g.Key),
-                TotalAnswers = g.Count(),
-                CorrectAnswers = g.Count(x => x!.IsCorrect)
-            })
-            .OrderBy(d => d.DifficultyLevel)
-            .ToList();
-
         // ── 7. Top câu hỏi khó nhất ──
         dto.HardestQuestions = allAnswerResults
             .GroupBy(x => x!.QuestionId)
@@ -153,8 +163,6 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
             .OrderByDescending(s => s.TotalPoints)
             .ToList();
 
-        // ── 9. Đề xuất cải thiện ──
-        AnalyticsHelper.GenerateTeacherRecommendations(dto);
 
         // ── 10. Debug Info ──
         dto.DebugInfo = new
