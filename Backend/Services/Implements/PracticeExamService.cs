@@ -14,12 +14,14 @@ namespace Backend.Services.Implements
         IPracticeExamRepository repo,
         ICurrentUserService currentUserService,
         ILogger<PracticeExamService> logger,
-        TimeProvider timeProvider) : IPracticeExamService
+        TimeProvider timeProvider,
+        IMathGradingService mathGrading) : IPracticeExamService
     {
         private readonly IPracticeExamRepository _repo = repo;
         private readonly ICurrentUserService _currentUserService = currentUserService;
         private readonly ILogger<PracticeExamService> _logger = logger;
         private readonly TimeProvider _timeProvider = timeProvider;
+        private readonly IMathGradingService _mathGrading = mathGrading;
 
         private const int MinQuestions = 5;
         private const int MaxQuestions = 30;
@@ -115,7 +117,7 @@ namespace Backend.Services.Implements
             var profData = await _repo.GetStudentProficiencyAsync(studentId, request.ChapterIds);
 
             // ── 3. Auto-allocate difficulty based on proficiency ──
-            int totalQuestions = request.TotalQuestions.Value;
+            int totalQuestions = request.TotalQuestions ?? MinQuestions;
             var difficultyQuotas = ComputeDifficultyQuotas(profData, totalQuestions);
 
             // ── 4. Spaced Repetition per difficulty slot ──
@@ -258,14 +260,19 @@ namespace Backend.Services.Implements
 
             await _repo.SaveChangesAsync();
 
-            var totalQuestions = paper.Questions.DistinctBy(q => q.QuestionId).Count();
+            // Chấm điểm bài làm (hỗ trợ pynum cho FillInBlank toán)
+            var (correctCount, totalQuestions2, totalPoints) = await AnalyticsHelper.GradeSubmissionAsync(submission, _mathGrading);
+
+            // Lưu điểm vào DB để dashboard/lịch sử đọc được
+            submission.TotalPoints = totalPoints;
+            await _repo.SaveChangesAsync();
 
             return new SubmitPracticeExamResponse
             {
                 SubmissionId = submission.SubmissionId,
-                TotalQuestions = totalQuestions,
-                CorrectCount = 0,
-                AccuracyRate = 0,
+                TotalQuestions = totalQuestions2,
+                CorrectCount = correctCount,
+                AccuracyRate = totalQuestions2 > 0 ? Math.Round((double)correctCount / totalQuestions2 * 100, 1) : 0,
                 SubmittedAtUtc = submission.UpdatedAtUtc
             };
         }
@@ -372,7 +379,7 @@ namespace Backend.Services.Implements
             var answerReview = new List<PracticeAnswerReviewDto>();
             var chapterStats = new List<(string ChapterName, int ChapterId, bool IsCorrect)>();
 
-            var evaluatedQuestions = AnalyticsHelper.EvaluateSubmission(questions, submission.StudentAnswers);
+            var evaluatedQuestions = await AnalyticsHelper.EvaluateSubmissionAsync(questions, submission.StudentAnswers, _mathGrading);
 
             int correctCount = evaluatedQuestions.Count(q => q.IsCorrect);
             int wrongCount = evaluatedQuestions.Count(q => !q.IsCorrect);

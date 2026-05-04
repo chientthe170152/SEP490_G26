@@ -28,6 +28,8 @@ public class AnalyticsRepository : IAnalyticsRepository
                 .ThenInclude(q => q.Chapter)
             .Include(p => p.Questions)
                 .ThenInclude(q => q.QuestionAnswers)
+                    .ThenInclude(qa => qa.BlankInputs)
+                        .ThenInclude(bi => bi.InputType)
             .Where(p => p.ExamId == examId)
             .ToListAsync();
 
@@ -47,6 +49,9 @@ public class AnalyticsRepository : IAnalyticsRepository
             .Include(sa => sa.QuestionAnswer)
                 .ThenInclude(qa => qa.Question)
                     .ThenInclude(q => q.Chapter)
+            .Include(sa => sa.QuestionAnswer)
+                .ThenInclude(qa => qa.BlankInputs)
+                    .ThenInclude(bi => bi.InputType)
             .Where(sa => subIds.Contains(sa.SubmissionId))
             .ToListAsync();
 
@@ -74,10 +79,16 @@ public class AnalyticsRepository : IAnalyticsRepository
             .ToListAsync();
     }
 
-    public async Task<Submission?> GetSubmissionByIdWithPaperAsync(int submissionId)
+    public async Task<int?> GetExamIdBySubmissionIdAsync(int submissionId)
     {
         return await _context.Submissions
-            .Include(s => s.Paper)
-            .FirstOrDefaultAsync(s => s.SubmissionId == submissionId);
+            .Where(s => s.SubmissionId == submissionId)
+            .Select(s => s.Paper.ExamId)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task SaveChangesAsync()
+    {
+        await _context.SaveChangesAsync();
     }
 }

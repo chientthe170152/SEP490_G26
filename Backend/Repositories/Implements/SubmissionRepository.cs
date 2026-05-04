@@ -49,6 +49,22 @@ public class SubmissionRepository : ISubmissionRepository
         _context.StudentAnswers.RemoveRange(answers);
     }
 
+    public async Task<Submission?> GetSubmissionForGradingAsync(int submissionId, CancellationToken ct = default)
+    {
+        return await _context.Submissions
+            .Include(s => s.Paper)
+                .ThenInclude(p => p.Questions)
+                    .ThenInclude(q => q.Chapter)
+            .Include(s => s.Paper)
+                .ThenInclude(p => p.Questions)
+                    .ThenInclude(q => q.QuestionAnswers)
+                        .ThenInclude(qa => qa.BlankInputs)
+                            .ThenInclude(bi => bi.InputType)
+            .Include(s => s.StudentAnswers)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(s => s.SubmissionId == submissionId, ct);
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {
         await _context.SaveChangesAsync(ct);

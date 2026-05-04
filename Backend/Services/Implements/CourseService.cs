@@ -79,7 +79,7 @@ public class CourseService(
 
         var newClass = new Class
         {
-            Name = dto.ClassName,
+            Name = dto.ClassName!,
             Semester = normalizedSemester,
             SubjectId = subjectId,
             TeacherId = teacherId,

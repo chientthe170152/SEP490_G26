@@ -275,27 +275,14 @@ namespace Backend.Repositories.Implements
                     .Distinct()
                     .ToList()!;
 
-                // Tính correct count nếu đã nộp
+                // Tính correct count từ TotalPoints đã lưu (thay vì chấm lại inline)
                 int? correctCount = null;
-                if (sub.Status == SubmissionStatus.Submitted && sub.StudentAnswers.Any())
+                if (sub.Status == SubmissionStatus.Submitted && sub.TotalPoints.HasValue)
                 {
-                    correctCount = 0;
-                    foreach (var question in questions.DistinctBy(q => q.QuestionId))
-                    {
-                        bool questionCorrect = true;
-                        foreach (var qa in question.QuestionAnswers)
-                        {
-                            var sa = sub.StudentAnswers.FirstOrDefault(a => a.QuestionAnswerId == qa.QuestionAnswerId);
-                            if (sa != null)
-                            {
-                                if (!AnalyticsHelper.CheckIsCorrect(qa, sa))
-                                    questionCorrect = false;
-                            }
-                            else if (qa.IsCorrect == true)
-                                questionCorrect = false;
-                        }
-                        if (questionCorrect) correctCount++;
-                    }
+                    int totalQ = questions.DistinctBy(q => q.QuestionId).Count();
+                    correctCount = totalQ > 0
+                        ? (int)Math.Round((double)sub.TotalPoints.Value / 10 * totalQ)
+                        : 0;
                 }
 
                 result.Add(new PracticeHistoryRaw

@@ -1,3 +1,4 @@
+using Backend.Constants;
 using Backend.DTOs.StudentExam;
 using Backend.Models;
 using Backend.Repositories.Interfaces;
@@ -38,7 +39,6 @@ namespace Backend.Repositories.Implements
 
         public async Task<Submission?> GetAnyActiveSubmissionAsync(int studentId)
         {
-            // Status 1 = Active / In Progress
             // Chỉ check submission bài thi chính thức (Paper.ExamId != null)
             // Submission luyện tập (Paper.ExamId == null) KHÔNG block bài thi chính thức
             return await _context.Submissions
@@ -46,63 +46,10 @@ namespace Backend.Repositories.Implements
                 .Include(s => s.Paper)
                     .ThenInclude(p => p.Exam)
                 .FirstOrDefaultAsync(s => s.StudentId == studentId
-                                       && s.Status == 1
+                                       && s.Status == SubmissionStatus.InProgress
                                        && s.Paper.ExamId != null);
         }
 
-        public async Task<StudentAnswer?> GetStudentAnswerAsync(int submissionId, int questionAnswerId)
-        {
-            return await _context.StudentAnswers
-                .FirstOrDefaultAsync(sa => sa.SubmissionId == submissionId && sa.QuestionAnswerId == questionAnswerId);
-        }
-
-        // TODO: DB_UPDATE – StudentAnswer.QuestionIndex và ResponseText đã bị xóa/đổi tên
-        public async Task AddOrUpdateBulkStudentAnswersAsync(IEnumerable<StudentAnswer> answers)
-        {
-            if (!answers.Any()) return;
-
-            var submissionId = answers.First().SubmissionId;
-            var answerIds = answers.Select(a => a.QuestionAnswerId).ToList();
-
-            var existingAnswers = await _context.StudentAnswers
-                .Where(sa => sa.SubmissionId == submissionId && answerIds.Contains(sa.QuestionAnswerId))
-                .ToDictionaryAsync(sa => sa.QuestionAnswerId);
-
-            foreach (var answer in answers)
-            {
-                if (existingAnswers.TryGetValue(answer.QuestionAnswerId, out var existing))
-                {
-                    if (string.IsNullOrEmpty(answer.Response)) 
-                    {
-                        // User unchecked the option, delete the record
-                        _context.StudentAnswers.Remove(existing);
-                    }
-                    else 
-                    {
-                        existing.Response = answer.Response;
-                        _context.StudentAnswers.Update(existing);
-                    }
-                }
-                else
-                {
-                    if (!string.IsNullOrEmpty(answer.Response))
-                    {
-                        _context.StudentAnswers.Add(answer);
-                    }
-                }
-            }
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task CompleteSubmissionAsync(int submissionId)
-        {
-            var submission = await _context.Submissions.FindAsync(submissionId);
-            if (submission != null)
-            {
-                submission.Status = 2; // e.g. 2 = Submitted
-                await _context.SaveChangesAsync();
-            }
-        }
 
         public async Task<int> GetExamSubmissionCountAsync(int studentId, int examId)
         {
@@ -165,7 +112,7 @@ namespace Backend.Repositories.Implements
             var activeSubmissions = await _context.Submissions
                 .Include(s => s.Paper)
                 .ThenInclude(p => p.Exam)
-                .Where(s => s.Paper.ExamId == examId && s.Status == 1)
+                .Where(s => s.Paper.ExamId == examId && s.Status == SubmissionStatus.InProgress)
                 .ToListAsync();
 
             var now = _timeProvider.GetUtcNow().UtcDateTime;
@@ -179,7 +126,7 @@ namespace Backend.Repositories.Implements
                 var overCloseAt = exam.CloseAt.HasValue && now > exam.CloseAt.Value;
                 if (overDuration || overCloseAt)
                 {
-                    sub.Status = 2; // Submitted
+                    sub.Status = SubmissionStatus.Submitted;
                     sub.UpdatedAtUtc = now;
                 }
             }
@@ -284,7 +231,7 @@ namespace Backend.Repositories.Implements
             return await _context.Submissions
                 .Include(s => s.Paper)
                     .ThenInclude(p => p.Exam)
-                .FirstOrDefaultAsync(s => s.StudentId == studentId && s.Status == 1 && s.Paper.ExamId == examId);
+                .FirstOrDefaultAsync(s => s.StudentId == studentId && s.Status == SubmissionStatus.InProgress && s.Paper.ExamId == examId);
         }
 
         public async Task<List<SubmissionHistoryRaw>> GetSubmissionHistoryRawAsync(int studentId, int? classId)

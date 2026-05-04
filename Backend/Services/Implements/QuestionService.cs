@@ -230,8 +230,8 @@ namespace Backend.Services.Implements
 
                     if (ans == null) question.QuestionAnswers.Add(ans = new QuestionAnswer());
 
-                    ans.Content = adto.Content;
-                    ans.CorrectAnswer = adto.CorrectAnswer;
+                    ans.Content = adto.Content ?? string.Empty;
+                    ans.CorrectAnswer = adto.CorrectAnswer ?? string.Empty;
                     ans.IsCorrect = adto.IsCorrect;
                     ans.Point = adto.Point;
 
@@ -318,8 +318,8 @@ namespace Backend.Services.Implements
             foreach (var gDto in item.BlankGroups)
             {
                 var group = gDto.GroupAnswerId.HasValue ? existingGroups.FirstOrDefault(g => g.GroupAnswerId == gDto.GroupAnswerId) : null;
-                if (group == null) group = new GroupAnswer { Name = gDto.Name };
-                else group.Name = gDto.Name;
+                if (group == null) group = new GroupAnswer { Name = gDto.Name ?? string.Empty };
+                else group.Name = gDto.Name ?? string.Empty;
 
                 // Set DependsOnGroupId if it refers to an existing group
                 if (gDto.DependsOnGroupId.HasValue)

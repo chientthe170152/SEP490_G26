@@ -32,8 +32,6 @@ public class StudentSubmissionAnalyticsDto
     // ── Phân tích theo chương (chỉ có khi ShowScore = true) ──
     public List<ChapterAnalyticsDto>? ChapterStats { get; set; }
 
-
-
     // ── Đề xuất ôn tập (chỉ có khi ShowScore = true) ──
     public List<string>? Recommendations { get; set; }
 
