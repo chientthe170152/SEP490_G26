@@ -217,6 +217,19 @@ namespace Backend.Repositories.Implements
                 .FirstOrDefaultAsync();
         }
 
+        public async Task<Submission?> GetPracticeSubmissionForUpdateAsync(int submissionId, int studentId)
+        {
+            return await _context.Submissions
+                .Include(s => s.Paper)
+                    .ThenInclude(p => p.Questions)
+                        .ThenInclude(q => q.QuestionAnswers)
+                .Include(s => s.StudentAnswers)
+                .Where(s => s.SubmissionId == submissionId
+                         && s.StudentId == studentId
+                         && s.Paper.ExamId == null)
+                .FirstOrDefaultAsync();
+        }
+
         public async Task<Paper?> GetPracticePaperWithQuestionsAsync(int paperId)
         {
             return await _context.Papers

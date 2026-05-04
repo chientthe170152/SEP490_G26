@@ -23,7 +23,7 @@ public static class AnalyticsHelper
             return qa.CorrectAnswer.Trim().Equals(sa.Response.Trim(), StringComparison.OrdinalIgnoreCase);
 
         if (qa.IsCorrect.HasValue)
-            return qa.IsCorrect.Value && !string.IsNullOrEmpty(sa.Response);
+            return qa.IsCorrect.Value;
 
         return false;
     }
@@ -101,7 +101,7 @@ public static class AnalyticsHelper
 
         // IsCorrect-based (MCQ style in FillInBlank)
         if (qa.IsCorrect.HasValue)
-            return qa.IsCorrect.Value && !string.IsNullOrEmpty(sa.Response);
+            return qa.IsCorrect.Value;
 
         return false;
     }
@@ -148,7 +148,7 @@ public static class AnalyticsHelper
                     isCorrect = await CheckIsCorrectAsync(x.qa, sa, x.q.QuestionType, mathGrading);
                 else
                     isCorrect = false;
-                return new { x.q.QuestionId, x.qa.QuestionAnswerId, sa, isCorrect, x.qa, NeedCorrect = x.qa.IsCorrect == true && sa == null };
+                return new { x.q.QuestionId, x.qa.QuestionAnswerId, sa, isCorrect, x.qa, NeedCorrect = (x.qa.IsCorrect == true || !string.IsNullOrEmpty(x.qa.CorrectAnswer)) && sa == null };
             })
             .ToList();
 
@@ -178,7 +178,7 @@ public static class AnalyticsHelper
                         r.qa.Content,
                         r.sa?.Response,
                         r.sa != null,
-                        r.qa.IsCorrect,
+                        question.QuestionType == "FillInBlank" ? (r.sa != null ? r.isCorrect : false) : r.qa.IsCorrect,
                         r.qa.CorrectAnswer
                     ));
                 }

@@ -221,7 +221,7 @@ namespace Backend.Services.Implements
         public async Task<Result<SubmitPracticeExamResponse>> SubmitPracticeExamAsync(SubmitPracticeExamRequest request)
         {
             var studentId = _currentUserService.UserId;
-            var submission = await _repo.GetPracticeSubmissionFullAsync(request.SubmissionId!.Value, studentId);
+            var submission = await _repo.GetPracticeSubmissionForUpdateAsync(request.SubmissionId!.Value, studentId);
             if (submission == null)
                 return PracticeExamErrors.SubmissionNotFound;
 
@@ -261,18 +261,31 @@ namespace Backend.Services.Implements
             await _repo.SaveChangesAsync();
 
             // Chấm điểm bài làm (hỗ trợ pynum cho FillInBlank toán)
-            var (correctCount, totalQuestions2, totalPoints) = await AnalyticsHelper.GradeSubmissionAsync(submission, _mathGrading);
+            var fullSubmission = await _repo.GetPracticeSubmissionFullAsync(submission.SubmissionId, studentId);
+            if (fullSubmission != null)
+            {
+                var (correctCount, totalQuestions2, totalPoints) = await AnalyticsHelper.GradeSubmissionAsync(fullSubmission, _mathGrading);
 
-            // Lưu điểm vào DB để dashboard/lịch sử đọc được
-            submission.TotalPoints = totalPoints;
-            await _repo.SaveChangesAsync();
+                // Lưu điểm vào DB để dashboard/lịch sử đọc được
+                submission.TotalPoints = totalPoints;
+                await _repo.SaveChangesAsync();
+
+                return new SubmitPracticeExamResponse
+                {
+                    SubmissionId = submission.SubmissionId,
+                    TotalQuestions = totalQuestions2,
+                    CorrectCount = correctCount,
+                    AccuracyRate = totalQuestions2 > 0 ? Math.Round((double)correctCount / totalQuestions2 * 100, 1) : 0,
+                    SubmittedAtUtc = submission.UpdatedAtUtc
+                };
+            }
 
             return new SubmitPracticeExamResponse
             {
                 SubmissionId = submission.SubmissionId,
-                TotalQuestions = totalQuestions2,
-                CorrectCount = correctCount,
-                AccuracyRate = totalQuestions2 > 0 ? Math.Round((double)correctCount / totalQuestions2 * 100, 1) : 0,
+                TotalQuestions = 0,
+                CorrectCount = 0,
+                AccuracyRate = 0,
                 SubmittedAtUtc = submission.UpdatedAtUtc
             };
         }
@@ -283,7 +296,7 @@ namespace Backend.Services.Implements
         public async Task<Result> SavePracticeAnswersAsync(SubmitPracticeExamRequest request)
         {
             var studentId = _currentUserService.UserId;
-            var submission = await _repo.GetPracticeSubmissionFullAsync(request.SubmissionId!.Value, studentId);
+            var submission = await _repo.GetPracticeSubmissionForUpdateAsync(request.SubmissionId!.Value, studentId);
             if (submission == null)
                 return PracticeExamErrors.SubmissionNotFound;
 

@@ -1,144 +1,129 @@
-﻿@{
+@{
     ViewData["Title"] = "Kết quả Bài làm";
+    ViewBag.HideSidebar = true; // Ẩn sidebar để UI rộng rãi đẹp hơn (nếu có hỗ trợ)
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/Analytics/student_result.css" />
 }
 
-<main class="container-fluid px-3 px-md-4 py-4" id="analyticsRoot" data-exam-id="@ViewBag.ExamId">
-    <!-- ── Loading ── -->
-    <div id="analyticsLoading" class="analytics-loading">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Đang tải...</span>
+<!-- Hero Header Background -->
+<div class="student-hero position-absolute w-100 top-0 start-0 z-0">
+    <div class="hero-bg-shapes"></div>
+</div>
+
+<main class="container-xl px-3 px-md-4 py-5 position-relative z-1 mt-4" id="analyticsRoot" data-exam-id="@ViewBag.ExamId">
+    
+    <!-- Header Text -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center align-items-md-start mb-5">
+        <div class="text-center text-md-start text-white mb-3 mb-md-0">
+            <h1 class="fw-bold display-5 mb-2" id="examTitle">Kết quả Bài làm</h1>
+            <p class="fs-5 opacity-75 mb-0"><i class="bi bi-person-badge me-2"></i> Báo cáo năng lực và đánh giá cá nhân</p>
         </div>
-        <p class="mt-3 text-muted">Đang tải kết quả bài làm...</p>
+        <a href="/Class/ClassList" class="btn btn-light rounded-pill px-4 fw-bold shadow-sm text-primary">
+            <i class="bi bi-arrow-left me-2"></i> Quay lại
+        </a>
+    </div>
+
+    <!-- ── Loading ── -->
+    <div id="analyticsLoading" class="glass-card text-center py-5">
+        <div class="spinner-border text-white" style="width: 3rem; height: 3rem;" role="status"></div>
+        <h5 class="mt-4 text-white fw-bold">Đang tổng hợp dữ liệu...</h5>
+        <p class="text-white-50">Hệ thống đang phân tích chi tiết bài làm của em</p>
     </div>
 
     <!-- ── Error ── -->
-    <div id="analyticsError" class="analytics-empty" hidden>
-        <i class="bi bi-exclamation-triangle text-warning"></i>
-        <h5>Không thể tải dữ liệu</h5>
-        <p id="errorMessage" class="text-muted"></p>
+    <div id="analyticsError" class="glass-card text-center py-5" hidden>
+        <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 4rem;"></i>
+        <h4 class="text-white fw-bold mt-3">Không thể tải dữ liệu</h4>
+        <p id="errorMessage" class="text-white-50"></p>
+        <a href="/Class/ClassList" class="btn btn-outline-light mt-3 rounded-pill px-4">Quay lại danh sách lớp</a>
     </div>
 
     <!-- ── Main Content ── -->
     <div id="analyticsContent" hidden>
 
-        <!-- Header -->
-        <header class="d-flex flex-wrap justify-content-between align-items-center mb-5 gap-3">
-            <div>
-                <h1 class="page-title mb-1" id="examTitle">Kết quả Bài làm</h1>
-                <p class="text-muted mb-0"><i class="bi bi-clock-history"></i> Xem lại chi tiết và phân tích năng lực của em</p>
-            </div>
-            <div id="quickStats" class="d-flex gap-4">
-                <div class="text-center">
-                    <div class="h3 fw-bold mb-0 text-primary" id="miniScore">—</div>
-                    <small class="text-muted text-uppercase fw-bold stat-quick-label">Điểm số</small>
-                </div>
-                <div class="text-center">
-                    <div class="h3 fw-bold mb-0 text-success" id="miniCorrect">0</div>
-                    <small class="text-muted text-uppercase fw-bold stat-quick-label">Câu đúng</small>
-                </div>
-            </div>
-        </header>
-
         <!-- ══════════════════════════════════════
              PHẦN 1: ĐIỂM + THỐNG KÊ (ShowScore)
              ══════════════════════════════════════ -->
         <div id="scoreSection" hidden>
-            <!-- Stats Row -->
-            <div class="row g-4 mb-5">
-                <div class="col-12 col-sm-6 col-lg-3">
-                    <div class="stat-card stat-primary">
-                        <div class="stat-value" id="totalPoints">—</div>
-                        <div class="stat-label">Điểm số đạt được</div>
+            <!-- TOP STATS -->
+            <div class="row g-4 mb-4">
+                <div class="col-lg-4 col-md-6">
+                    <div class="score-card main-score-card h-100 d-flex flex-column align-items-center justify-content-center p-4">
+                        <div class="score-circle-wrapper position-relative">
+                            <svg viewBox="0 0 36 36" class="circular-chart primary">
+                                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path class="circle" id="scoreCirclePath" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                            <div class="score-text-overlay">
+                                <span class="main-score-val" id="mainScoreText">—</span>
+                                <span class="main-score-label">Điểm</span>
+                            </div>
+                        </div>
+                        <h5 class="fw-bold text-dark mt-4 mb-0 text-center">Điểm số tổng quát</h5>
                     </div>
                 </div>
-                <div class="col-12 col-sm-6 col-lg-3">
-                    <div class="stat-card stat-success">
-                        <div class="stat-value" id="correctCount">0</div>
-                        <div class="stat-label">Số câu trả lời đúng</div>
-                    </div>
-                </div>
-                <div class="col-12 col-sm-6 col-lg-3">
-                    <div class="stat-card stat-danger">
-                        <div class="stat-value" id="wrongCount">0</div>
-                        <div class="stat-label">Số câu trả lời sai</div>
-                    </div>
-                </div>
-                <div class="col-12 col-sm-6 col-lg-3">
-                    <div class="stat-card stat-info">
-                        <div class="stat-value" id="totalQuestions">0</div>
-                        <div class="stat-label">Tổng số câu hỏi</div>
+                <div class="col-lg-8 col-md-6">
+                    <div class="row g-4 h-100">
+                        <div class="col-sm-6">
+                            <div class="metric-card bg-white h-100 p-4 d-flex flex-column justify-content-center">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="icon-box bg-success-soft text-success"><i class="bi bi-check-circle-fill"></i></div>
+                                    <div>
+                                        <p class="text-muted fw-bold mb-0 fs-7 ls-1 text-uppercase">Trả lời đúng</p>
+                                        <h2 class="fw-bold mb-0 text-dark"><span id="correctCount">0</span><small class="text-muted fs-5 fw-normal"> / <span class="totalQuestions">0</span></small></h2>
+                                    </div>
+                                </div>
+                                <div class="progress mt-4" style="height: 8px; border-radius: 4px;">
+                                    <div class="progress-bar bg-success" id="correctBar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="metric-card bg-white h-100 p-4 d-flex flex-column justify-content-center">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="icon-box bg-danger-soft text-danger"><i class="bi bi-x-circle-fill"></i></div>
+                                    <div>
+                                        <p class="text-muted fw-bold mb-0 fs-7 ls-1 text-uppercase">Trả lời sai</p>
+                                        <h2 class="fw-bold mb-0 text-dark"><span id="wrongCount">0</span><small class="text-muted fs-5 fw-normal"> / <span class="totalQuestions">0</span></small></h2>
+                                    </div>
+                                </div>
+                                <div class="progress mt-4" style="height: 8px; border-radius: 4px;">
+                                    <div class="progress-bar bg-danger" id="wrongBar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Vị trí lớp học -->
+                        <div class="col-12">
+                            <div class="metric-card bg-primary-gradient text-white position-relative overflow-hidden h-100 p-4">
+                                <i class="bi bi-trophy position-absolute bg-icon" style="font-size: 8rem; right: -20px; bottom: -20px; opacity: 0.15; transform: rotate(-15deg);"></i>
+                                <div class="position-relative z-1 d-flex flex-wrap justify-content-between align-items-center gap-3">
+                                    <div>
+                                        <h5 class="fw-bold mb-2">So sánh với lớp học</h5>
+                                        <div class="d-flex gap-3 text-white-50 fs-6">
+                                            <span>Trung bình: <strong class="text-white fs-5" id="classAvgLabel">—</strong></span>
+                                            <span>Cao nhất: <strong class="text-white fs-5" id="classMaxLabel">—</strong></span>
+                                        </div>
+                                    </div>
+                                    <div class="text-md-end">
+                                        <div class="display-6 fw-bold" id="rankDelta">—</div>
+                                        <div class="fs-7 text-white-50 text-uppercase ls-1">Khoảng cách với TB</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="row g-4 mb-5">
-                <!-- Comparison Chart -->
-                <div class="col-12 col-lg-7">
-                    <div class="analytics-card h-100">
-                        <div class="card-header">
-                            <i class="bi bi-bar-chart-line text-primary"></i> Hiệu suất so với Lớp học
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-4 align-items-center">
-                                <div class="col-md-5">
-                                    <div class="p-3 rounded-4 bg-light mb-3">
-                                        <div class="small text-muted mb-1">Điểm TB của lớp</div>
-                                        <div class="h4 fw-bold mb-0" id="classAvgLabel">—</div>
-                                    </div>
-                                    <div class="p-3 rounded-4 bg-primary bg-opacity-10">
-                                        <div class="small text-primary mb-1">Điểm cao nhất</div>
-                                        <div class="h4 fw-bold text-primary mb-0" id="classMaxLabel">—</div>
-                                    </div>
-                                </div>
-                                <div class="col-md-7">
-                                    <canvas id="comparisonChart" height="180"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Recommendations -->
-                <div class="col-12 col-lg-5">
-                    <div class="analytics-card h-100" id="recSection">
-                        <div class="card-header">
-                            <i class="bi bi-lightbulb-fill text-warning"></i> Phân tích Lớp học & Lời khuyên
-                        </div>
-                        <div class="card-body" id="recommendationsBox">
-                            <!-- Rec items will be injected here -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-4 mb-5">
-                <!-- Chapter Radar -->
-                <div class="col-12 col-md-6">
-                    <div class="analytics-card">
-                        <div class="card-header">
-                            <i class="bi bi-diagram-3 text-success"></i> Mức độ thông thạo theo Chương
-                        </div>
-                        <div class="card-body">
-                            <div class="radar-container">
-                                <canvas id="chapterRadar"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Difficulty Radar -->
-                <div class="col-12 col-md-6">
-                    <div class="analytics-card">
-                        <div class="card-header">
-                            <i class="bi bi-cpu text-info"></i> Năng lực theo Mức độ nhận thức
-                        </div>
-                        <div class="card-body">
-                            <div class="radar-container">
-                                <canvas id="difficultyRadar"></canvas>
-                            </div>
+            <!-- PHẦN 2: PHÂN TÍCH CHUYÊN SÂU -->
+            <div class="row g-4 mb-4">
+                <div class="col-12">
+                    <div class="content-card h-100 p-4">
+                        <h5 class="fw-bold mb-4 text-dark"><i class="bi bi-bar-chart-steps text-primary me-2"></i> Mức độ thông thạo theo chuyên đề</h5>
+                        <div id="chapterBarsContainer" class="pe-2 custom-scrollbar" style="max-height: 400px; overflow-y: auto;">
+                            <!-- JS injected bars -->
                         </div>
                     </div>
                 </div>
@@ -146,33 +131,28 @@
         </div>
 
         <!-- Thông báo khi ShowScore = false -->
-        <div id="noScoreNotice" class="analytics-card mb-5" hidden>
-            <div class="card-body text-center py-5">
-                <div class="mb-4">
-                    <i class="bi bi-lock-fill text-muted notice-icon"></i>
-                </div>
-                <h3 class="fw-bold text-dark">Kết quả đang được xử lý</h3>
-                <p class="text-muted mx-auto notice-text">
-                    Giáo viên chưa cho phép hiển thị điểm số và phân tích chi tiết. 
-                    Em vẫn có thể xem lại nội dung các câu hỏi mình đã thực hiện bên dưới.
-                </p>
+        <div id="noScoreNotice" class="content-card mb-5 text-center py-5" hidden>
+            <div class="mb-4">
+                <i class="bi bi-lock-fill text-muted" style="font-size: 5rem; opacity: 0.3;"></i>
             </div>
+            <h3 class="fw-bold text-dark">Kết quả đang được xử lý</h3>
+            <p class="text-muted mx-auto" style="max-width: 600px; font-size: 1.1rem;">
+                Giáo viên chưa cho phép hiển thị điểm số và phân tích chi tiết. 
+                Tuy nhiên, em vẫn có thể xem lại nội dung các câu hỏi và câu trả lời đã nộp của mình bên dưới.
+            </p>
         </div>
 
         <!-- ══════════════════════════════════════
-             PHẦN 2: XEM LẠI BÀI LÀM (LUÔN HIỆN)
+             PHẦN 4: XEM LẠI BÀI LÀM (LUÔN HIỆN)
              ══════════════════════════════════════ -->
-        <section>
-            <div class="d-flex align-items-center mb-4 gap-2">
-                <h4 class="fw-bold mb-0">Nhật ký Bài làm</h4>
-                <hr class="flex-grow-1 opacity-10">
-            </div>
+        <div class="content-card p-4">
+            <h5 class="fw-bold mb-4 text-dark"><i class="bi bi-journal-check text-success me-2"></i> Chi tiết Bài làm</h5>
             <div id="answerReviewBox">
                 <div class="text-center py-5 text-muted">
-                    <div class="spinner-border spinner-border-sm me-2"></div> Đang đối chiếu dữ liệu...
+                    <div class="spinner-border spinner-border-sm me-2"></div> Đang tải danh sách câu hỏi...
                 </div>
             </div>
-        </section>
+        </div>
     </div>
 </main>
 
@@ -180,36 +160,50 @@
      TEMPLATES — JS sẽ clone các template này
      ════════════════════════════════════════ -->
 
-<!-- Template: Đề xuất -->
-<template id="tpl-rec-item">
-    <div class="rec-item"></div>
+
+
+<!-- Template: Chapter Bar -->
+<template id="tpl-chapter-bar">
+    <div class="chapter-stat-item mb-4">
+        <div class="d-flex justify-content-between align-items-end mb-2">
+            <div class="fw-bold text-dark text-truncate pe-3 chapter-name" style="max-width: 80%;"></div>
+            <div class="fw-bold chapter-rate"></div>
+        </div>
+        <div class="progress" style="height: 10px; border-radius: 5px; background-color: #f1f5f9;">
+            <div class="progress-bar chapter-bar" style="width: 0%; border-radius: 5px; transition: width 1s ease-in-out;"></div>
+        </div>
+    </div>
 </template>
+
+
 
 <!-- Template: Câu hỏi xem lại -->
 <template id="tpl-review-question">
-    <div class="answer-review-item">
-        <div class="question-label">
-            <strong>Câu <span data-field="order"></span>:</strong>
-            <math-span data-field="content"></math-span>
-            <small class="text-muted" data-field="chapter"></small>
+    <div class="answer-review-item p-4 mb-4 rounded-4 bg-white border shadow-sm position-relative overflow-hidden">
+        <div class="review-status-indicator position-absolute top-0 bottom-0 start-0" style="width: 5px;"></div>
+        <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
+            <div class="question-label d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge bg-secondary fs-7 px-2 py-1 question-order"></span>
+                <span class="badge bg-light text-dark border fs-7 px-2 py-1 question-chapter"></span>
+            </div>
+            <div class="question-result-badge badge px-3 py-2 fs-7 rounded-pill"></div>
         </div>
-        <div data-slot="options"></div>
+        <div class="question-content fs-5 text-dark fw-medium mb-4"></div>
+        <div class="options-container d-flex flex-column gap-2" data-slot="options"></div>
     </div>
 </template>
 
 <!-- Template: Option trong câu hỏi -->
 <template id="tpl-review-option">
-    <div class="option-row">
-        <span class="option-icon" data-field="icon"></span>
-        <math-span data-field="content"></math-span>
-        <em class="text-muted" data-field="response"></em>
-        <small class="text-success" data-field="correct"></small>
+    <div class="option-row p-3 rounded-3 border d-flex align-items-center gap-3 transition-all">
+        <div class="option-icon fs-5"></div>
+        <div class="option-content flex-grow-1 text-dark"></div>
+        <div class="option-response text-muted fst-italic fs-7"></div>
+        <div class="option-correct text-success fw-bold fs-7"></div>
     </div>
 </template>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script defer src="https://unpkg.com/mathlive"></script>
-    <script src="~/js/Analytics/student_result.js"></script>
+    <script src="~/js/Analytics/student_result.js" asp-append-version="true"></script>
 }
-

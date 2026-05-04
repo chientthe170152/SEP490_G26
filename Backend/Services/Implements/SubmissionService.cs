@@ -78,6 +78,10 @@ public class SubmissionService(
         await submissionRepo.SaveChangesAsync(ct);
 
         // ── 6. Chấm điểm nếu đã nộp bài ────────────────────────────────
+        decimal? finalTotalPoints = null;
+        int? finalCorrectCount = null;
+        int? finalTotalQuestions = null;
+
         if (submission.Status == SubmissionStatus.Submitted)
         {
             // Load đầy đủ graph để chấm (Questions → QuestionAnswers → BlankInputs)
@@ -85,18 +89,33 @@ public class SubmissionService(
                 submission.SubmissionId, ct);
             if (fullSubmission != null)
             {
-                var (_, _, totalPoints) = await AnalyticsHelper.GradeSubmissionAsync(
+                var (correctCount, totalQuestions, totalPoints) = await AnalyticsHelper.GradeSubmissionAsync(
                     fullSubmission, mathGrading);
-                fullSubmission.TotalPoints = totalPoints;
+                submission.TotalPoints = totalPoints;
                 await submissionRepo.SaveChangesAsync(ct);
+
+                // Gán lại để trả về response nếu rules cho phép
+                finalTotalPoints = totalPoints;
+                finalCorrectCount = correctCount;
+                finalTotalQuestions = totalQuestions;
             }
         }
 
+        // Kiểm tra nguyên tắc xem điểm
+        // ShowScore: 0 = Không hiển thị, 1 = Ngay khi nộp, 2 = Khi kết thúc kỳ thi
+        bool canShowScore = exam.ShowScore == 1 || (exam.ShowScore == 2 && exam.CloseAt.HasValue && now >= exam.CloseAt.Value);
+        
         // ── 7. Return response ──────────────────────────────────────────
         return new SubmitExamResponse(
             submission.SubmissionId,
             now,
-            isLate
+            isLate,
+            canShowScore ? finalTotalPoints : null,
+            canShowScore ? finalCorrectCount : null,
+            canShowScore ? finalTotalQuestions : null,
+            exam.ShowScore,
+            exam.ShowAnswer,
+            exam.AnswerTimingMode
         );
     }
 }

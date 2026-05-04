@@ -38,6 +38,7 @@ namespace Backend.Repositories.Implements
                     InvitationCodeStatus = c.InvitationCodeStatus,
                     // Map Semester from DB
                     SemesterId = c.SemesterId,
+                    Semester = c.Semester != null ? c.Semester.Name : string.Empty,
                     StudentCount = c.ClassMembers.Count(),
                     ExamCount = c.Exams.Count,
                     Status = c.Status,
@@ -59,6 +60,7 @@ namespace Backend.Repositories.Implements
                     InvitationCode = c.InvitationCode,
                     InvitationCodeStatus = c.InvitationCodeStatus,
                     SemesterId = c.SemesterId,
+                    Semester = c.Semester != null ? c.Semester.Name : string.Empty,
                     StudentCount = c.ClassMembers.Count(),
                     ExamCount = c.Exams.Count,
                     Status = c.Status,
@@ -82,6 +84,7 @@ namespace Backend.Repositories.Implements
                     InvitationCode = c.InvitationCode,
                     InvitationCodeStatus = c.InvitationCodeStatus,
                     SemesterId = c.SemesterId,
+                    Semester = c.Semester != null ? c.Semester.Name : string.Empty,
                     Status = c.Status,
                     Chapters = c.Subject != null ? c.Subject.Chapters
                         .Where(ch => ch.Status == ChapterStatus.Active)
@@ -205,9 +208,9 @@ namespace Backend.Repositories.Implements
             _context.Classes.Add(newClass);
             await _context.SaveChangesAsync();
 
-            // Load Subject and Teacher for the returned DTO
             await _context.Entry(newClass).Reference(c => c.Subject).LoadAsync();
             await _context.Entry(newClass).Reference(c => c.Teacher).LoadAsync();
+            await _context.Entry(newClass).Reference(c => c.Semester).LoadAsync();
 
             return new ClassDTO
             {
@@ -218,6 +221,7 @@ namespace Backend.Repositories.Implements
                 TeacherName = newClass.Teacher?.FullName ?? string.Empty,
                 InvitationCode = newClass.InvitationCode,
                 SemesterId = newClass.SemesterId,
+                Semester = newClass.Semester?.Name ?? string.Empty,
                 StudentCount = 0,
                 ExamCount = 0,
                 Role = "Teacher"

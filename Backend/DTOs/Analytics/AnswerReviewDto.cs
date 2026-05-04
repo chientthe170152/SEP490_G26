@@ -12,6 +12,9 @@ public class AnswerReviewDto
     public string QuestionContent { get; set; } = null!;
     public string QuestionType { get; set; } = null!;
     public string ChapterName { get; set; } = null!;
+    
+    /// <summary>Câu hỏi này học sinh làm đúng hay sai (chỉ có giá trị khi ShowAnswer = true)</summary>
+    public bool? IsQuestionCorrect { get; set; }
 
     /// <summary>
     /// Danh sách đáp án/ô trống của câu hỏi, kèm response của HS

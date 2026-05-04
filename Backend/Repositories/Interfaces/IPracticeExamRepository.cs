@@ -48,6 +48,11 @@ namespace Backend.Repositories.Interfaces
         Task<Submission?> GetPracticeSubmissionFullAsync(int submissionId, int studentId);
 
         /// <summary>
+        /// Lấy Submission để update điểm (câu hỏi/blank).
+        /// </summary>
+        Task<Submission?> GetPracticeSubmissionForUpdateAsync(int submissionId, int studentId);
+
+        /// <summary>
         /// Lấy lịch sử luyện tập (Paper.ExamId == null).
         /// </summary>
         Task<List<PracticeHistoryRaw>> GetPracticeHistoryAsync(int studentId, int? classId);

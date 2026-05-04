@@ -45,3 +45,74 @@ math-field::part(placeholder-field) {
 .panel-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; }
 .question-nav button { margin: 2px; width: 35px; }
 .toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* --- Fix Overflow Issues --- */
+#question-area, .question-block {
+    max-width: 100%;
+    overflow-x: hidden;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+math-field, math-span {
+    max-width: 100%;
+    overflow-x: auto !important;
+    display: inline-block;
+}
+
+math-span img {
+    max-width: 100%;
+    height: auto;
+}
+
+#question-block-mcq li {
+    word-wrap: break-word;
+    max-width: 100%;
+    margin-bottom: 10px;
+}
+
+#question-block-mcq label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    max-width: 100%;
+}
+
+#question-block-mcq math-span {
+    overflow-x: auto;
+    flex: 1;
+}
+
+/* --- Improve Readability and Usability --- */
+#question-stem {
+    font-size: 1.25rem !important;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    display: block;
+}
+
+#question-block-mcq li {
+    padding: 12px 15px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+#question-block-mcq li:hover {
+    background-color: #e9ecef;
+    border-color: #ced4da;
+}
+
+#question-block-mcq label {
+    cursor: pointer;
+    margin: 0;
+    width: 100%;
+}
+
+#question-block-mcq input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    margin-top: 3px;
+}

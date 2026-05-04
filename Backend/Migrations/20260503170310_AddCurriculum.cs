@@ -31,6 +31,11 @@ CREATE TABLE dbo.Semesters (
     CONSTRAINT FK_Semesters_UpdatedBy   FOREIGN KEY (UpdatedByUserId) REFERENCES dbo.Users(UserId)
 );
 
+SET IDENTITY_INSERT dbo.Semesters ON;
+INSERT INTO dbo.Semesters (SemesterId, Code, Name, StartDate, EndDate, CreatedByUserId, UpdatedByUserId) 
+VALUES (1, 'DEFAULT', N'Học kỳ mặc định', '2024-01-01', '2024-12-31', (SELECT TOP 1 UserId FROM dbo.Users), (SELECT TOP 1 UserId FROM dbo.Users));
+SET IDENTITY_INSERT dbo.Semesters OFF;
+
 ALTER TABLE dbo.Subjects
     ADD Description       NVARCHAR(1000) NULL,
         Status            INT  NOT NULL CONSTRAINT DF_Subjects_Status          DEFAULT (1),

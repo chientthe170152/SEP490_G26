@@ -52,6 +52,7 @@ public class SubmissionRepository : ISubmissionRepository
     public async Task<Submission?> GetSubmissionForGradingAsync(int submissionId, CancellationToken ct = default)
     {
         return await _context.Submissions
+            .AsNoTracking()
             .Include(s => s.Paper)
                 .ThenInclude(p => p.Questions)
                     .ThenInclude(q => q.Chapter)

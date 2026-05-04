@@ -16,6 +16,7 @@ public class ClassDTO
     public int InvitationCodeStatus { get; set; }
 
     public int SemesterId { get; set; }
+    public string? Semester { get; set; }
 
     public int StudentCount { get; set; }
 

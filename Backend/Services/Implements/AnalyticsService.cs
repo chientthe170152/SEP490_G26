@@ -198,7 +198,27 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
         if (submission == null)
             return AnalyticsErrors.SubmissionNotFound;
 
-        return await BuildSubmissionAnalyticsDtoAsync(exam, submission, exam.ShowScore, exam.ShowAnswer);
+        int actualShowScore = exam.ShowScore;
+        int actualShowAnswer = exam.ShowAnswer;
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+        if (actualShowScore == 2)
+        {
+            if (exam.CloseAt.HasValue && now < exam.CloseAt.Value)
+            {
+                actualShowScore = 0; // Chưa đến thời gian đóng cửa -> Ẩn điểm
+            }
+        }
+
+        if (actualShowAnswer == 2) // Giả sử quy tắc 2 cũng áp dụng cho AnswerTimingMode nếu có
+        {
+            if (exam.CloseAt.HasValue && now < exam.CloseAt.Value)
+            {
+                actualShowAnswer = 0; // Chưa đến thời gian đóng cửa -> Ẩn đáp án
+            }
+        }
+
+        return await BuildSubmissionAnalyticsDtoAsync(exam, submission, actualShowScore, actualShowAnswer);
     }
 
     // ════════════════════════════════════════════════════════
@@ -257,7 +277,8 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
                 QuestionOrder = questionOrder,
                 QuestionContent = eq.QuestionContent,
                 QuestionType = eq.QuestionType,
-                ChapterName = eq.ChapterName
+                ChapterName = eq.ChapterName,
+                IsQuestionCorrect = showAnswer != 0 ? eq.IsCorrect : null
             };
 
             review.Options = eq.Options.Select(opt => new AnswerOptionReviewDto

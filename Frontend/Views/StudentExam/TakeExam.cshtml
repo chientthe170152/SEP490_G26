@@ -244,15 +244,29 @@
                             hour: '2-digit', minute: '2-digit', second: '2-digit'
                         });
 
-                        if (response.isLate) {
-                            showToast(`Nộp bài trễ! Thời điểm ghi nhận: ${formattedTime}. Bài làm của bạn đã được nộp nhưng đã quá thời hạn.`, "warning", 8000);
-                        } else {
-                            showToast(`Nộp bài thành công! Thời điểm ghi nhận: ${formattedTime}`, "success", 5000);
+                        let msg = response.isLate 
+                            ? `Nộp bài trễ! Thời điểm ghi nhận: ${formattedTime}.` 
+                            : `Nộp bài thành công! Thời điểm ghi nhận: ${formattedTime}.`;
+                        let type = response.isLate ? "warning" : "success";
+
+                        if (response.totalPoints !== null && response.totalPoints !== undefined) {
+                            msg += `<br><strong>Điểm của bạn: ${response.totalPoints}/10</strong> (Đúng ${response.correctCount}/${response.totalQuestions} câu).`;
                         }
+
+                        showToast(msg, type, 8000);
 
                         // Chuyển hướng hoặc vô hiệu hóa giao diện sau khi nộp
                         document.getElementById('examWorkspace').style.pointerEvents = 'none';
                         document.getElementById('examWorkspace').style.opacity = '0.6';
+
+                        setTimeout(() => {
+                            let referrer = document.referrer;
+                            if (referrer && referrer.includes('/Class/')) {
+                                window.location.href = referrer;
+                            } else {
+                                window.location.href = '/';
+                            }
+                        }, 3000);
                     } else {
                         // Cập nhật lựa chọn thành công (không cần thông báo)
                         if (btnSubmit) btnSubmit.disabled = false;

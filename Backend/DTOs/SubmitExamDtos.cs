@@ -27,5 +27,11 @@ public class StudentAnswerDto
 public record SubmitExamResponse(
     int SubmissionId,
     DateTime SubmittedAtUtc,
-    bool IsLate
+    bool IsLate,
+    decimal? TotalPoints = null,
+    int? CorrectCount = null,
+    int? TotalQuestions = null,
+    int ShowScore = 0,
+    int ShowAnswer = 0,
+    int AnswerTimingMode = 0
 );
