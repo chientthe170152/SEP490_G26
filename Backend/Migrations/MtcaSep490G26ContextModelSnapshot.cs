@@ -52,18 +52,49 @@ namespace Backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ChapterId"));
 
+                    b.Property<byte[]>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
                     b.Property<int>("SubjectId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UpdatedByUserId")
                         .HasColumnType("int");
 
                     b.HasKey("ChapterId")
                         .HasName("PK__Chapters__0893A36AEE81EE8B");
 
+                    b.HasIndex("CreatedByUserId");
+
                     b.HasIndex("SubjectId");
+
+                    b.HasIndex("UpdatedByUserId");
 
                     b.ToTable("Chapters");
                 });
@@ -104,11 +135,8 @@ namespace Backend.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<string>("Semester")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(10)");
+                    b.Property<int>("SemesterId")
+                        .HasColumnType("int");
 
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
@@ -123,6 +151,8 @@ namespace Backend.Migrations
 
                     b.HasKey("ClassId")
                         .HasName("PK__Classes__CB1927C04A621E7C");
+
+                    b.HasIndex("SemesterId");
 
                     b.HasIndex("SubjectId");
 
@@ -518,6 +548,58 @@ namespace Backend.Migrations
                     b.ToTable("Roles");
                 });
 
+            modelBuilder.Entity("Backend.Models.Semester", b =>
+                {
+                    b.Property<int>("SemesterId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SemesterId"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UpdatedByUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("SemesterId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("Semesters");
+                });
+
             modelBuilder.Entity("Backend.Models.StudentAnswer", b =>
                 {
                     b.Property<int>("StudentAnswerId")
@@ -531,6 +613,12 @@ namespace Backend.Migrations
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
+
+                    b.Property<bool?>("IsCorrect")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("PointsEarned")
+                        .HasColumnType("decimal(5, 2)");
 
                     b.Property<int>("QuestionAnswerId")
                         .HasColumnType("int");
@@ -546,7 +634,8 @@ namespace Backend.Migrations
 
                     b.HasIndex("QuestionAnswerId");
 
-                    b.HasIndex("SubmissionId");
+                    b.HasIndex("SubmissionId", "IsCorrect")
+                        .HasDatabaseName("IX_StudentAnswers_Submission_IsCorrect");
 
                     b.ToTable("StudentAnswers");
                 });
@@ -564,13 +653,41 @@ namespace Backend.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(50)");
 
+                    b.Property<byte[]>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UpdatedByUserId")
+                        .HasColumnType("int");
+
                     b.HasKey("SubjectId")
                         .HasName("PK__Subjects__AC1BA3A86E08C448");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("UpdatedByUserId");
 
                     b.ToTable("Subjects");
                 });
@@ -593,6 +710,15 @@ namespace Backend.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("(getutcdate())");
+
+                    b.Property<string>("GradingError")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<byte>("GradingStatus")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((byte)0);
 
                     b.Property<int>("PaperId")
                         .HasColumnType("int");
@@ -726,17 +852,39 @@ namespace Backend.Migrations
 
             modelBuilder.Entity("Backend.Models.Chapter", b =>
                 {
+                    b.HasOne("Backend.Models.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Backend.Models.Subject", "Subject")
                         .WithMany("Chapters")
                         .HasForeignKey("SubjectId")
                         .IsRequired()
                         .HasConstraintName("FK_Chapters_Subjects");
 
+                    b.HasOne("Backend.Models.User", "UpdatedByUser")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
                     b.Navigation("Subject");
+
+                    b.Navigation("UpdatedByUser");
                 });
 
             modelBuilder.Entity("Backend.Models.Class", b =>
                 {
+                    b.HasOne("Backend.Models.Semester", "Semester")
+                        .WithMany("Classes")
+                        .HasForeignKey("SemesterId")
+                        .IsRequired()
+                        .HasConstraintName("FK_Classes_Semesters");
+
                     b.HasOne("Backend.Models.Subject", "Subject")
                         .WithMany("Classes")
                         .HasForeignKey("SubjectId")
@@ -748,6 +896,8 @@ namespace Backend.Migrations
                         .HasForeignKey("TeacherId")
                         .IsRequired()
                         .HasConstraintName("FK_Classes_Users");
+
+                    b.Navigation("Semester");
 
                     b.Navigation("Subject");
 
@@ -901,6 +1051,25 @@ namespace Backend.Migrations
                     b.Navigation("Question");
                 });
 
+            modelBuilder.Entity("Backend.Models.Semester", b =>
+                {
+                    b.HasOne("Backend.Models.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Backend.Models.User", "UpdatedByUser")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("UpdatedByUser");
+                });
+
             modelBuilder.Entity("Backend.Models.StudentAnswer", b =>
                 {
                     b.HasOne("Backend.Models.QuestionAnswer", "QuestionAnswer")
@@ -918,6 +1087,25 @@ namespace Backend.Migrations
                     b.Navigation("QuestionAnswer");
 
                     b.Navigation("Submission");
+                });
+
+            modelBuilder.Entity("Backend.Models.Subject", b =>
+                {
+                    b.HasOne("Backend.Models.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Backend.Models.User", "UpdatedByUser")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("UpdatedByUser");
                 });
 
             modelBuilder.Entity("Backend.Models.Submission", b =>
@@ -1023,6 +1211,11 @@ namespace Backend.Migrations
             modelBuilder.Entity("Backend.Models.Role", b =>
                 {
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("Backend.Models.Semester", b =>
+                {
+                    b.Navigation("Classes");
                 });
 
             modelBuilder.Entity("Backend.Models.Subject", b =>

@@ -12,19 +12,40 @@ public static class ErrorCodes
     public const string ProfileWrongPassword = "PROFILE_WRONG_PASSWORD";
     public const string ProfileStudentIdRequired = "PROFILE_STUDENT_ID_REQUIRED";
 
-    // Course
-    public const string CourseNotFound = "COURSE_NOT_FOUND";
-    public const string CourseClosed = "COURSE_CLOSED";
-    public const string CourseDuplicate = "COURSE_DUPLICATE";
-    public const string CourseInviteCodeInvalid = "COURSE_INVITE_CODE_INVALID";
-    public const string CourseAlreadyMember = "COURSE_ALREADY_MEMBER";
-    public const string CourseAlreadyInvited = "COURSE_ALREADY_INVITED";
-    public const string CourseNotMember = "COURSE_NOT_MEMBER";
-    public const string CourseAccessDenied = "COURSE_ACCESS_DENIED";
-    public const string CourseStudentNotFound = "COURSE_STUDENT_NOT_FOUND";
-    public const string CourseUserNotStudent = "COURSE_USER_NOT_STUDENT";
-    public const string CourseInviteTokenInvalid = "COURSE_INVITE_TOKEN_INVALID";
-    public const string CourseConfigError = "COURSE_CONFIG_ERROR";
+    // Class
+    public const string ClassNotFound = "CLASS_NOT_FOUND";
+    public const string ClassClosed = "CLASS_CLOSED";
+    public const string ClassDuplicate = "CLASS_DUPLICATE";
+    public const string ClassInviteCodeInvalid = "CLASS_INVITE_CODE_INVALID";
+    public const string ClassAlreadyMember = "CLASS_ALREADY_MEMBER";
+    public const string ClassAlreadyInvited = "CLASS_ALREADY_INVITED";
+    public const string ClassNotMember = "CLASS_NOT_MEMBER";
+    public const string ClassAccessDenied = "CLASS_ACCESS_DENIED";
+    public const string ClassStudentNotFound = "CLASS_STUDENT_NOT_FOUND";
+    public const string ClassUserNotStudent = "CLASS_USER_NOT_STUDENT";
+    public const string ClassInviteTokenInvalid = "CLASS_INVITE_TOKEN_INVALID";
+    public const string ClassConfigError = "CLASS_CONFIG_ERROR";
+
+    // Semester
+    public const string SemesterNotFound = "SEMESTER_NOT_FOUND";
+    public const string SemesterCodeDuplicate = "SEMESTER_CODE_DUPLICATE";
+    public const string SemesterClosed = "SEMESTER_CLOSED";
+    public const string SemesterAlreadyClosed = "SEMESTER_ALREADY_CLOSED";
+    public const string SemesterDateInvalid = "SEMESTER_DATE_INVALID";
+    public const string SemesterConcurrentUpdate = "SEMESTER_CONCURRENT_UPDATE";
+
+    // Subject
+    public const string SubjectNotFound = "SUBJECT_NOT_FOUND";
+    public const string SubjectCodeDuplicate = "SUBJECT_CODE_DUPLICATE";
+    public const string SubjectClosed = "SUBJECT_CLOSED";
+    public const string SubjectAlreadyClosed = "SUBJECT_ALREADY_CLOSED";
+    public const string SubjectConcurrentUpdate = "SUBJECT_CONCURRENT_UPDATE";
+
+    // Chapter
+    public const string ChapterNotFound = "CHAPTER_NOT_FOUND";
+    public const string ChapterNameDuplicate = "CHAPTER_NAME_DUPLICATE";
+    public const string ChapterAlreadyDeleted = "CHAPTER_ALREADY_DELETED";
+    public const string ChapterConcurrentUpdate = "CHAPTER_CONCURRENT_UPDATE";
 
     // Auth
     public const string AuthInvalidCredentials = "AUTH_INVALID_CREDENTIALS";
@@ -100,7 +121,8 @@ public static class ErrorCodes
     public const string AssignExamSwapMissingFields = "ASSIGN_EXAM_SWAP_MISSING_FIELDS";
     public const string AssignExamManualEmptyQuestions = "ASSIGN_EXAM_MANUAL_EMPTY_QUESTIONS";
     public const string AssignExamInvalidTimeWindow = "ASSIGN_EXAM_INVALID_TIME_WINDOW";
-    public const string AssignExamConcurrentUpdate = "EXAM_CONCURRENT_UPDATE";
+    public const string AssignExamConcurrentUpdate = "ASSIGN_EXAM_CONCURRENT_UPDATE";
+    public const string ExamTimeOutOfSemester = "EXAM_TIME_OUT_OF_SEMESTER";
 
     // StudentExam
     public const string StudentExamNotFound = "STUDENT_EXAM_NOT_FOUND";
@@ -131,4 +153,14 @@ public static class ErrorCodes
     public const string AnalyticsExamNotFound = "ANALYTICS_EXAM_NOT_FOUND";
     public const string AnalyticsSubmissionNotFound = "ANALYTICS_SUBMISSION_NOT_FOUND";
     public const string AnalyticsInvalidToken = "ANALYTICS_INVALID_TOKEN";
+
+    // Grading
+    public const string GradingSubmissionNotFound    = "GRADING_SUBMISSION_NOT_FOUND";
+    public const string GradingNotEligibleForRegrade = "GRADING_NOT_ELIGIBLE_FOR_REGRADE";
+    public const string GradingAecHttpFail           = "GRADING_AEC_HTTP_FAIL";
+    public const string GradingAecBadResponse        = "GRADING_AEC_BAD_RESPONSE";
+    public const string GradingAecTimeout            = "GRADING_AEC_TIMEOUT";
+    public const string GradingAecNetwork            = "GRADING_AEC_NETWORK";
+    public const string GradingUnexpected            = "GRADING_UNEXPECTED";
+    public const string GradingRetryExhausted        = "GRADING_RETRY_EXHAUSTED";
 }

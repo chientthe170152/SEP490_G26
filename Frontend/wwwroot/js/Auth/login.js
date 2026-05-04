@@ -1,4 +1,12 @@
+﻿// Chỉ chấp nhận same-origin path tương đối, tránh open redirect (`?returnUrl=https://evil.com`).
+function safeReturnUrl(raw) {
+    if (!raw) return null;
+    return (raw.startsWith('/') && !raw.startsWith('//')) ? raw : null;
+}
+
 $(document).ready(function () {
+    // Password show/hide is handled by Shared/passwordToggle.js (delegated).
+
     // 1. Handle traditional login form submission
     $('#loginForm').on('submit', function (e) {
         e.preventDefault(); // Prevent standard POST
@@ -24,16 +32,21 @@ $(document).ready(function () {
 
         const requestData = {
             Email: email,
-            Password: password
+            Password: password,
+            RememberMe: $('#rememberMe').is(':checked')
         };
 
         apiClient.post("/api/auth/login", requestData)
-            .then(function (response) {
-                const returnUrl = $('#returnUrl').val();
-                window.location.href = returnUrl ? returnUrl : '/';
+            .then(function () {
+                const safe = safeReturnUrl($('#returnUrl').val());
+                window.location.href = safe || '/Class/ClassList';
             })
             .catch(function (err) {
-                $('#formError').text("Email hoặc mật khẩu không chính xác.");
+                if (err.xhr && err.xhr.status === 403 && err.xhr.responseJSON?.code === 'AUTH_ACCOUNT_LOCKED') {
+                    $('#formError').text('Tài khoản đã bị khoá. Vui lòng liên hệ quản trị viên.');
+                } else {
+                    $('#formError').text("Email hoặc mật khẩu không chính xác.");
+                }
             });
     });
 });
@@ -41,13 +54,14 @@ $(document).ready(function () {
 // 2. Handle Google Login callback
 function handleCredentialResponse(response) {
     const requestData = {
-        IdToken: response.credential
+        IdToken: response.credential,
+        RememberMe: $('#rememberMe').is(':checked')
     };
 
     apiClient.post("/api/auth/google-login", requestData)
         .then(function () {
-            const returnUrl = $('#returnUrl').val();
-            window.location.href = returnUrl ? returnUrl : '/';
+            const safe = safeReturnUrl($('#returnUrl').val());
+            window.location.href = safe || '/Class/ClassList';
         })
         .catch(function (err) {
             const code = err && err.xhr && err.xhr.responseJSON ? err.xhr.responseJSON.code : null;

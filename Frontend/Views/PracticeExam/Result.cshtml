@@ -1,4 +1,4 @@
-@{
+﻿@{
     ViewData["Title"] = "Kết quả luyện tập";
     var submissionId = ViewBag.SubmissionId ?? 0;
 }
@@ -34,7 +34,7 @@
                     </div>
                 </div>
                 <div class="col-md-8">
-                    <h3 class="mb-3" style="font-family: 'Libre Baskerville', serif;">Kết quả luyện tập</h3>
+                    <h3 class="mb-3">Kết quả luyện tập</h3>
                     <div class="row g-3">
                         <div class="col-sm-4">
                             <div class="text-muted small">Tổng câu hỏi</div>
@@ -103,7 +103,7 @@
             if (classId) {
                 window.location.href = `/PracticeExam/History?classId=${classId}`;
             } else {
-                window.location.href = `/Course/CourseList`;
+                window.location.href = `/Class/ClassList`;
             }
         }
 
@@ -112,11 +112,11 @@
             if (!classId) return;
 
             try {
-                const data = await apiClient.get(`/api/Course/${classId}/settings`);
+                const data = await apiClient.get(`/api/class/${classId}/settings`);
                 if (typeof setBreadcrumb === "function") {
                     setBreadcrumb([
-                        { text: "Khóa học", url: "/Course/CourseList" },
-                        { text: data.className || ('Lớp ' + classId), url: "/Course/ExamListInCourse/" + classId + (data.className ? "?className=" + encodeURIComponent(data.className) : "") },
+                        { text: "Lớp học", url: "/Class/ClassList" },
+                        { text: data.className || ('Lớp ' + classId), url: "/Class/ExamListInClass/" + classId + (data.className ? "?className=" + encodeURIComponent(data.className) : "") },
                         { text: "Lịch sử luyện tập", url: "/PracticeExam/History?classId=" + classId },
                         { text: "Chi tiết bài làm", url: null }
                     ]);
@@ -124,8 +124,8 @@
             } catch {
                 if (typeof setBreadcrumb === "function") {
                     setBreadcrumb([
-                        { text: "Khóa học", url: "/Course/CourseList" },
-                        { text: 'Lớp ' + classId, url: "/Course/ExamListInCourse/" + classId },
+                        { text: "Lớp học", url: "/Class/ClassList" },
+                        { text: 'Lớp ' + classId, url: "/Class/ExamListInClass/" + classId },
                         { text: "Lịch sử luyện tập", url: "/PracticeExam/History?classId=" + classId },
                         { text: "Chi tiết bài làm", url: null }
                     ]);
@@ -162,8 +162,8 @@
             document.getElementById('wrongCount').textContent = data.wrongCount;
 
             // Time
-            document.getElementById('startTime').textContent = formatDate(data.createdAtUtc);
-            document.getElementById('endTime').textContent = formatDate(data.submittedAtUtc);
+            document.getElementById('startTime').textContent = formatDateTime(data.createdAtUtc);
+            document.getElementById('endTime').textContent = formatDateTime(data.submittedAtUtc);
 
             // Chapter stats
             renderChapterStats(data.chapterStats);
@@ -330,13 +330,6 @@
             return map[diff] || '';
         }
 
-        function formatDate(dateStr) {
-            if (!dateStr) return '-';
-            return new Date(dateStr).toLocaleString('vi-VN', {
-                timeZone: 'Asia/Ho_Chi_Minh',
-                year: 'numeric', month: '2-digit', day: '2-digit',
-                hour: '2-digit', minute: '2-digit'
-            });
-        }
+
     </script>
 }

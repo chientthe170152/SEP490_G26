@@ -1,5 +1,7 @@
 @{
     ViewData["Title"] = "Hệ thống Quản lý Khảo thí MTCA";
+    ViewBag.HideSidebar = true;
+    ViewBag.IsFullWidth = true;
 }
 
 <div class="home-hero py-5 position-relative overflow-hidden">
@@ -27,8 +29,8 @@
                 </div>
 
                 <div id="authRequiredActions" class="d-none">
-                    <a href="/Course/CourseList" class="btn btn-primary btn-lg px-5 py-3 rounded-pill shadow-premium transition-all hover-translate">
-                        Đến Khóa học của tôi <i class="fas fa-chalkboard-teacher ms-2"></i>
+                    <a href="/Class/ClassList" class="btn btn-primary btn-lg px-5 py-3 rounded-pill shadow-premium transition-all hover-translate">
+                        Đến Lớp học của tôi <i class="fas fa-chalkboard-teacher ms-2"></i>
                     </a>
                 </div>
             </div>
@@ -138,7 +140,7 @@
 
     .math-accent {
         position: absolute;
-        font-family: 'Libre Baskerville', serif;
+        font-family: var(--font-serif);
         font-size: 8rem;
         color: rgba(37, 99, 235, 0.03);
         pointer-events: none;
