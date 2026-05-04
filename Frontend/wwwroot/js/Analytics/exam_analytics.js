@@ -17,7 +17,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         recBox:     document.getElementById("recommendationsBox"),
         tplHardest: document.getElementById("tpl-hardest-row"),
         tplStudent: document.getElementById("tpl-student-row"),
-        tplRec:     document.getElementById("tpl-rec-item")
+        tplRec:     document.getElementById("tpl-rec-item"),
+        examId:     document.getElementById("analyticsRoot")?.dataset.examId
     };
 
     await window.userReady;
@@ -85,11 +86,26 @@ function renderAnalytics(rawData) {
     DOM.submissions.textContent = data.totalSubmissions;
 
     if (data.totalSubmissions === 0) {
+        // Cập nhật avgScoreQuick về 0 cho đồng nhất
+        var avgEl = document.getElementById("avgScoreQuick");
+        if (avgEl) avgEl.textContent = "—";
+
         var alertDiv = document.createElement("div");
-        alertDiv.className = "alert alert-info";
-        alertDiv.textContent = "Chưa có dữ liệu bài làm để phân tích năng lực.";
+        alertDiv.className = "alert alert-info mb-0";
+        alertDiv.innerHTML = '<i class="bi bi-info-circle me-2"></i>Chưa có học sinh nào nộp bài hợp lệ để phân tích.';
         DOM.recBox.innerHTML = "";
         DOM.recBox.appendChild(alertDiv);
+
+        // Hiển thị thông báo "chưa có dữ liệu" trong mỗi chart canvas
+        ["scoreDistChart", "chapterChart", "difficultyChart"].forEach(function (id) {
+            var cv = document.getElementById(id);
+            if (!cv) return;
+            var ctx = cv.getContext("2d");
+            ctx.font = "14px 'Be Vietnam Pro', sans-serif";
+            ctx.fillStyle = "#94a3b8";
+            ctx.textAlign = "center";
+            ctx.fillText("Chưa có dữ liệu", cv.width / 2, cv.height / 2);
+        });
         return;
     }
 
@@ -183,7 +199,11 @@ function renderAccuracyChart(canvasId, stats, labelKey, valueKey) {
     
     // Thử lấy key (hỗ trợ cả PascalCase trong mảng)
     var labels = stats.map(function (s) { return s[labelKey] || s[labelKey.charAt(0).toUpperCase() + labelKey.slice(1)]; });
-    var values = stats.map(function (s) { return s[valueKey] || s[valueKey.charAt(0).toUpperCase() + valueKey.slice(1)] || 0; });
+    var values = stats.map(function (s) {
+        var v = s[valueKey];
+        if (v == null) v = s[valueKey.charAt(0).toUpperCase() + valueKey.slice(1)];
+        return v != null ? Number(v) : 0;
+    });
     
     var colors = values.map(function (v) {
         return v < 40 ? getCSSColor("--clr-danger", 0.7) : (v < 70 ? getCSSColor("--clr-warning", 0.7) : getCSSColor("--clr-success", 0.7));
@@ -237,16 +257,25 @@ function fillHardestRow(row, q, i) {
     var badge = row.querySelector("[data-col='accuracy']");
     var acc = q.accuracyRate || q.AccuracyRate || 0;
     badge.textContent = acc + "%";
-    badge.classList.add(getScoreClass(acc));
+    badge.classList.add(getScoreClass(acc, 'percent'));
 }
 
 function fillStudentRow(row, s, i) {
     row.querySelector("[data-col='index']").textContent = i + 1;
-    row.querySelector("[data-col='name']").textContent = s.studentName;
+    row.querySelector("[data-col='name']").textContent = s.studentName || s.StudentName;
     var badge = row.querySelector("[data-col='score']");
-    badge.textContent = s.totalPoints != null ? s.totalPoints : "—";
-    badge.classList.add(getScoreClass(s.totalPoints));
-    row.querySelector("[data-col='date']").textContent = formatDateVN(s.submittedAt);
+    var pts = s.totalPoints != null ? s.totalPoints : (s.TotalPoints != null ? s.TotalPoints : null);
+    badge.textContent = pts != null ? pts : "—";
+    badge.classList.add(getScoreClass(pts));
+    row.querySelector("[data-col='date']").textContent = formatDateVN(s.submittedAt || s.SubmittedAt);
+
+    var submissionId = s.submissionId || s.SubmissionId;
+    var viewBtn = row.querySelector("[data-col='view']");
+    if (viewBtn && submissionId) {
+        viewBtn.href = "/Analytics/ViewSubmission?submissionId=" + submissionId + (DOM.examId ? "&examId=" + DOM.examId : "");
+    } else if (viewBtn) {
+        viewBtn.remove();
+    }
 }
 
 // ═══════════════════════════════════════════
@@ -284,9 +313,10 @@ function renderRecList(recs, box, template) {
 // ═══════════════════════════════════════════
 //  Utility
 // ═══════════════════════════════════════════
-function getScoreClass(v) {
+function getScoreClass(v, mode) {
     if (v == null) return "score-bad";
-    return v >= 70 || v >= 8 ? "score-good" : (v >= 40 || v >= 5 ? "score-medium" : "score-bad");
+    if (mode === 'percent') return v >= 70 ? "score-good" : (v >= 40 ? "score-medium" : "score-bad");
+    return v >= 8 ? "score-good" : (v >= 5 ? "score-medium" : "score-bad");
 }
 
 function getRecClass(rec) {

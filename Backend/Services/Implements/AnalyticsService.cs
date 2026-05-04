@@ -23,11 +23,14 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
     // ════════════════════════════════════════════════════════
     //  GIÁO VIÊN — Phân tích chi tiết bài thi
     // ════════════════════════════════════════════════════════
-    public async Task<Result<ExamAnalyticsDetailDto>> GetExamAnalyticsDetailAsync(int examId)
+    public async Task<Result<ExamAnalyticsDetailDto>> GetExamAnalyticsDetailAsync(int examId, int teacherId)
     {
         var exam = await _analyticsRepo.GetExamWithFullGraphAsync(examId);
         if (exam == null)
             return AnalyticsErrors.ExamNotFound;
+
+        if (exam.TeacherId != teacherId)
+            return AnalyticsErrors.ExamNotOwned;
 
         var rawSubmissions = exam.Papers.SelectMany(p => p.Submissions).ToList();
         
@@ -43,7 +46,7 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
         {
             ExamId = exam.ExamId,
             ExamTitle = exam.Title,
-            TotalSubmissions = rawSubmissions.Count // Vẫn giữ tổng số lượt nộp thực tế
+            TotalSubmissions = allSubmissions.Count // Chỉ đếm bài nộp có câu trả lời hợp lệ
         };
 
         if (dto.TotalSubmissions == 0)
@@ -146,6 +149,7 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
             .Select(s => new StudentResultDto
             {
                 StudentId = s.StudentId,
+                SubmissionId = s.SubmissionId,
                 StudentName = s.Student?.FullName ?? s.Student?.Email ?? $"HS #{s.StudentId}",
                 TotalPoints = s.TotalPoints,
                 SubmittedAt = DateTime.SpecifyKind(s.UpdatedAtUtc, DateTimeKind.Utc)
