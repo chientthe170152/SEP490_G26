@@ -5,6 +5,18 @@ $(function () {
         return;
     }
 
+    const pageLoading = document.getElementById('page-loading');
+    const pageContent = document.getElementById('page-content');
+    let firstLoad = true;
+
+    function revealContent() {
+        if (firstLoad) {
+            pageLoading.classList.add('is-hidden');
+            pageContent.classList.remove('is-hidden');
+            firstLoad = false;
+        }
+    }
+
     function renderRole(roleId) {
         if (roleId === 1) return 'Giáo viên';
         if (roleId === 2) return 'Học sinh';
@@ -15,6 +27,7 @@ $(function () {
     function loadUserDetail() {
         apiClient.get('/api/admin/users/' + userId)
             .then(function (user) {
+                revealContent();
                 const initials = user.fullName ? user.fullName.substring(0, 2).toUpperCase() : user.email.substring(0, 2).toUpperCase();
                 
                 let actionsHtml = '';
@@ -62,7 +75,8 @@ $(function () {
                 $('#userKvList').html(kvHtml);
             })
             .catch(function (err) {
-                showApiError(err, 'Lỗi khi tải chi tiết.');
+                revealContent();
+                AdminUI.showError(err, 'Lỗi khi tải chi tiết.');
             });
     }
 
@@ -73,11 +87,11 @@ $(function () {
         apiClient.patch('/api/admin/users/' + userId + '/unlock', {})
             .then(function() {
                 closeModal('unlockModal');
-                showToast('Đã mở khóa tài khoản.');
+                AdminUI.showNotice('success', 'Thành công', 'Đã mở khóa tài khoản.');
                 loadUserDetail();
             })
             .catch(function(err) {
-                showApiError(err, 'Lỗi khi mở khóa.');
+                AdminUI.showError(err, 'Lỗi khi mở khóa.');
             })
             .finally(function() {
                 $btn.prop('disabled', false).text('Mở khóa');
@@ -91,11 +105,11 @@ $(function () {
         apiClient.patch('/api/admin/users/' + userId + '/lock', {})
             .then(function() {
                 closeModal('lockModal');
-                showToast('Đã khóa tài khoản.');
+                AdminUI.showNotice('success', 'Thành công', 'Đã khóa tài khoản.');
                 loadUserDetail();
             })
             .catch(function(err) {
-                showApiError(err, 'Lỗi khi khóa.');
+                AdminUI.showError(err, 'Lỗi khi khóa.');
             })
             .finally(function() {
                 $btn.prop('disabled', false).text('Khóa tài khoản');
@@ -113,7 +127,7 @@ $(function () {
                 loadUserDetail();
             })
             .catch(function(err) {
-                showApiError(err, 'Lỗi khi cấp lại mật khẩu.');
+                AdminUI.showError(err, 'Lỗi khi cấp lại mật khẩu.');
             })
             .finally(function() {
                 $btn.prop('disabled', false).text('Cấp lại mật khẩu');

@@ -35,6 +35,8 @@
         </main>
     </div>
 
+    @await Html.PartialAsync("_AdminNoticeModal")
+
     <!-- Libs -->
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
@@ -43,7 +45,9 @@
     <script src="~/js/Shared/modal.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/Shared/auth-guard.js" asp-append-version="true"></script>
-    <script src="~/js/Admin/admin-errors.js" asp-append-version="true"></script>
+    <script src="~/js/Shared/validation_shared.js" asp-append-version="true"></script>
+    <script src="~/js/Admin/admin-ui.js" asp-append-version="true"></script>
+    <script src="~/js/Admin/admin-pager.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>

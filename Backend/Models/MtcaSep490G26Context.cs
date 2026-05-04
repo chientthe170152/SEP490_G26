@@ -43,6 +43,8 @@ public partial class MtcaSep490G26Context : DbContext
 
     public virtual DbSet<StudentAnswer> StudentAnswers { get; set; }
 
+    public virtual DbSet<Semester> Semesters { get; set; }
+
     public virtual DbSet<Subject> Subjects { get; set; }
 
     public virtual DbSet<Submission> Submissions { get; set; }
@@ -106,9 +108,10 @@ public partial class MtcaSep490G26Context : DbContext
                 .IsFixedLength();
             entity.Property(e => e.InvitationCodeStatus).HasDefaultValue(1);
             entity.Property(e => e.Name).HasMaxLength(200);
-            entity.Property(e => e.Semester)
-                .HasMaxLength(10)
-                .IsUnicode(false);
+            entity.HasOne(d => d.Semester).WithMany(p => p.Classes)
+                .HasForeignKey(d => d.SemesterId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Classes_Semesters");
             entity.Property(e => e.Status).HasDefaultValue(1);
 
             entity.HasOne(d => d.Subject).WithMany(p => p.Classes)

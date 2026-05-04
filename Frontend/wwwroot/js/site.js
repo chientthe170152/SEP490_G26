@@ -100,7 +100,11 @@ function logout() {
         .catch(function () { /* ignore â€” váº«n redirect */ })
         .finally(function () {
             window.currentUser = null;
-            window.location.href = '/Auth/Login';
+            if (window.location.pathname.startsWith('/Admin')) {
+                window.location.href = '/Admin/Login';
+            } else {
+                window.location.href = '/Auth/Login';
+            }
         });
 }
 
@@ -220,7 +224,7 @@ function showToast(message, type = 'success', duration = 3000) {
 }
 
 /**
- * Set breadcrumb in header (Classroom-style: KhÃ³a há»c > [TÃªn lá»›p] > Danh sÃ¡ch Ä‘á»)
+ * Set breadcrumb in header (Classroom-style: Lớp học > [Tên lớp] > Danh sách đề)
  * @param {Array<{text: string, url?: string|null}>} items - Each item: text, url (null/undefined = current, no link)
  */
 function setBreadcrumb(items) {
@@ -236,7 +240,7 @@ function setBreadcrumb(items) {
         const url = item.url;
 
         if (i > 0) {
-            parts.push('<span class="breadcrumb-sep">â€º</span>');
+            parts.push('<span class="breadcrumb-sep">›</span>');
         }
 
         if (url) {
