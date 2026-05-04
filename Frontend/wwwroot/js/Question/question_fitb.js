@@ -437,6 +437,11 @@ window.QuestionEditorFITB = (() => {
                 renderConstraintChips(row, inputTypesData);
                 bindConstraintChips(row);
             }
+
+            const tabContainer = row.querySelector('[data-tabbed-editor="blank-answer"]');
+            if (tabContainer) {
+                row._answerEditor = window.QuestionEditorUtils.setupTabbedEditor(tabContainer);
+            }
         }
         return row;
     };
@@ -740,7 +745,11 @@ window.QuestionEditorFITB = (() => {
 
                     const ansInp = row.querySelector('[data-blank-answer]');
                     if (ansInp) {
-                        ansInp.value = ans.correctAnswer || '';
+                        if (row._answerEditor) {
+                            row._answerEditor.setValue(ans.correctAnswer || '');
+                        } else {
+                            window.QuestionEditorUtils.setMathValue(ansInp, ans.correctAnswer || '');
+                        }
                     }
 
                     // Restore active chips (supports both legacy inputTypeId and new inputTypeIds)
