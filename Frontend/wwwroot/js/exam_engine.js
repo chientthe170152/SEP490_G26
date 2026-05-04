@@ -30,13 +30,23 @@ class ExamEngine {
             inputTypeBody: document.getElementById('inputTypeBody'),
             mcqTemplate: document.getElementById("mcq-template"),
             inputLimitBtnTemplate: document.getElementById("input-limit-btn-template"),
-            inputLimitTextTemplate: document.getElementById("input-limit-text-template")
+            inputLimitTextTemplate: document.getElementById("input-limit-text-template"),
+            btnPrev: document.getElementById('btnPrevQuestion'),
+            btnNext: document.getElementById('btnNextQuestion'),
         };
     }
 
     init() {
         if (!this.data || !this.data.questions) return;
         this.buildQuestionNav(this.data.questions.length);
+
+        if (this.dom.btnPrev) {
+            this.dom.btnPrev.addEventListener('click', () => this.prevQuestion());
+        }
+        if (this.dom.btnNext) {
+            this.dom.btnNext.addEventListener('click', () => this.nextQuestion());
+        }
+
         this.goToQuestion(this.questionNumber);
     }
 
@@ -45,11 +55,32 @@ class ExamEngine {
         this.dom.questionNav.innerHTML = '';
         for (let i = 1; i <= total; i++) {
             const btn = document.createElement('button');
-            btn.className = 'btn btn-outline-primary btn-sm m-1';
+            btn.className = 'btn btn-outline-primary btn-sm';
             btn.textContent = i;
-            btn.style.minWidth = '40px';
             btn.addEventListener('click', () => this.goToQuestion(i));
             this.dom.questionNav.appendChild(btn);
+        }
+    }
+
+    prevQuestion() {
+        if (this.questionNumber > 1) {
+            this.goToQuestion(this.questionNumber - 1);
+        }
+    }
+
+    nextQuestion() {
+        if (this.questionNumber < this.data.questions.length) {
+            this.goToQuestion(this.questionNumber + 1);
+        }
+    }
+
+    _updatePrevNext() {
+        const total = this.data ? this.data.questions.length : 0;
+        if (this.dom.btnPrev) {
+            this.dom.btnPrev.disabled = this.questionNumber <= 1;
+        }
+        if (this.dom.btnNext) {
+            this.dom.btnNext.disabled = this.questionNumber >= total;
         }
     }
 
@@ -57,6 +88,7 @@ class ExamEngine {
         this.saveCurrentAnswers();
         this.questionNumber = num;
         this.renderQuestion(this.data.questions[num - 1]);
+        this._updatePrevNext();
         this.onNavUpdated(this.questionNumber, this.data.questions, this.studentAnswers);
         this.onProgressUpdated(this.data.questions, this.studentAnswers);
     }
@@ -74,11 +106,14 @@ class ExamEngine {
         this.dom.questionMcq.hidden = true;
         this.dom.questionBlockFibField.hidden = true;
 
+        const total = this.data.questions.length;
+        const titleText = `Câu ${this.questionNumber} / ${total}`;
+
         if (question.questionType === this.fillInBlank) {
             let questionContent = JSON.parse(question.questionContent);
             this.dom.questionStem.textContent = questionContent.stem;
             this.dom.questionStem.render?.();
-            this.dom.questionTitle.textContent = "Câu " + this.questionNumber;
+            this.dom.questionTitle.textContent = titleText;
             this.dom.questionBlockFibField.value = questionContent.frame;
             this.dom.questionBlockFib.hidden = false;
             this.dom.questionBlockFibField.hidden = false;
@@ -110,7 +145,7 @@ class ExamEngine {
         else if (question.questionType === this.multipleChoice) {
             this.dom.questionStem.textContent = question.questionContent;
             this.dom.questionStem.render?.();
-            this.dom.questionTitle.textContent = "Câu " + this.questionNumber;
+            this.dom.questionTitle.textContent = titleText;
             this.dom.questionMcq.hidden = false;
             this.dom.questionMcq.innerHTML = "";
 

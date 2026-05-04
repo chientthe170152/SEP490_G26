@@ -38,20 +38,35 @@
             @await Html.PartialAsync("_QuestionArea")
 
             @* ── Sidebar ── *@
-            <div class="col-12 col-xl-4">
+            <div class="col-12 col-xl-4 exam-sidebar">
                 <aside class="panel-card mb-3">
-                    <h2 class="panel-title">Điều hướng câu hỏi</h2>
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h2 class="panel-title mb-0">Điều hướng</h2>
+                        <span class="progress-info small">
+                            <i class="bi bi-check2-square text-success me-1"></i>
+                            <strong id="answeredCount">0</strong> / <strong id="totalCount">0</strong> câu
+                        </span>
+                    </div>
+
                     <div class="question-nav mb-2" id="questionNav"></div>
-                    <p class="form-note mb-0 text-muted small">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Không giới hạn thời gian — làm bài thoải mái
+
+                    <div class="nav-legend small text-muted mt-2 mb-3">
+                        <span class="legend-item"><span class="legend-dot dot-current"></span>Đang xem</span>
+                        <span class="legend-item"><span class="legend-dot dot-answered"></span>Đã làm</span>
+                        <span class="legend-item"><span class="legend-dot dot-unanswered"></span>Chưa làm</span>
+                        <span class="legend-item"><span class="legend-dot dot-error"></span>Lỗi</span>
+                    </div>
+
+                    <hr class="my-2">
+
+                    <p class="small text-muted mb-3">
+                        <i class="fas fa-info-circle me-1"></i>Không giới hạn thời gian — làm bài thoải mái
                     </p>
-                </aside>
-                <div class="toolbar d-flex gap-2 mt-3 mb-3">
-                    <button class="btn btn-danger flex-grow-1" id="btnSubmitPractice" onclick="confirmSubmit()">
-                        <i class="fas fa-paper-plane me-1"></i> Nộp bài
+
+                    <button class="btn btn-danger w-100" id="btnSubmitPractice" onclick="confirmSubmit()">
+                        <i class="fas fa-paper-plane me-1"></i>Nộp bài
                     </button>
-                </div>
+                </aside>
                 @await Html.PartialAsync("_InputLimitContainer")
             </div>
         </div>
@@ -111,8 +126,11 @@
         }
 
         function initExam(answersMap) {
-            document.getElementById('questionProgress').textContent = `0/${practiceData.questions.length}`;
-            
+            const total = practiceData.questions.length;
+            document.getElementById('questionProgress').textContent = `0/${total}`;
+            const totalEl = document.getElementById('totalCount');
+            if (totalEl) totalEl.textContent = total;
+
             examEngine = new ExamEngine({
                 data: practiceData,
                 studentAnswers: answersMap,
@@ -146,14 +164,17 @@
                         if (q.answers.some(a => stdAnswers.has(String(a.questionAnswerId)))) answered++;
                     });
                     document.getElementById('questionProgress').textContent = `${answered}/${questions.length}`;
-                    
+
+                    const countEl = document.getElementById('answeredCount');
+                    if (countEl) countEl.textContent = answered;
+
                     // Tự động lưu nháp
                     if (typeof submitPracticeDraft === 'function') {
                         submitPracticeDraft();
                     }
                 }
             });
-            
+
             examEngine.init();
         }
 
