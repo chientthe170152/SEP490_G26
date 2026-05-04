@@ -159,6 +159,24 @@ namespace Backend.Repositories.Implements
             return await query.CountAsync();
         }
 
+        public async Task<List<PracticeQuestionCountRaw>> GetPracticeQuestionCountsAsync(List<int> chapterIds, int teacherId)
+        {
+            return await _context.Questions
+                .Where(q => chapterIds.Contains(q.ChapterId)
+                         && q.QuestionPurpose == QuestionPurpose.Practice
+                         && q.CreatedByUserId == teacherId
+                         && q.Status == QuestionStatus.Active)
+                .GroupBy(q => new { q.ChapterId, q.Difficulty })
+                .Select(g => new PracticeQuestionCountRaw
+                {
+                    ChapterId = g.Key.ChapterId,
+                    Difficulty = g.Key.Difficulty,
+                    Count = g.Count()
+                })
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
         public async Task<Paper> CreatePracticePaperAsync(List<int> questionIds)
         {
             var paper = new Paper
@@ -196,9 +214,9 @@ namespace Backend.Repositories.Implements
             return submission;
         }
 
-        public async Task<Submission?> GetPracticeSubmissionFullAsync(int submissionId, int studentId)
+        public async Task<Submission?> GetPracticeSubmissionFullAsync(int submissionId, int studentId, bool tracked = false)
         {
-            return await _context.Submissions
+            var query = _context.Submissions
                 .Include(s => s.Paper)
                     .ThenInclude(p => p.Questions)
                         .ThenInclude(q => q.Chapter)
@@ -212,9 +230,12 @@ namespace Backend.Repositories.Implements
                 .Where(s => s.SubmissionId == submissionId
                          && s.StudentId == studentId
                          && s.Paper.ExamId == null) // Chỉ lấy bài luyện tập
-                .AsNoTracking()
-                .AsSplitQuery() // <-- Tránh Cartesian explosion
-                .FirstOrDefaultAsync();
+                .AsSplitQuery(); // <-- Tránh Cartesian explosion
+
+            if (!tracked)
+                query = query.AsNoTracking();
+
+            return await query.FirstOrDefaultAsync();
         }
 
         public async Task<Paper?> GetPracticePaperWithQuestionsAsync(int paperId)
@@ -325,6 +346,126 @@ namespace Backend.Repositories.Implements
                 .OrderBy(c => c.ChapterId)
                 .AsNoTracking()
                 .ToListAsync();
+        }
+
+        // ════════════════════════════════════════════════════════
+        //  ANALYTICS: lấy thông tin lớp + thành viên
+        // ════════════════════════════════════════════════════════
+        public async Task<(Class? Cls, List<ClassMember> Members)> GetClassWithMembersAsync(int classId, int teacherId)
+        {
+            var query = _context.Classes
+                .Include(c => c.Subject)
+                .Include(c => c.ClassMembers)
+                    .ThenInclude(cm => cm.Student)
+                .Where(c => c.ClassId == classId);
+
+            if (teacherId > 0)
+                query = query.Where(c => c.TeacherId == teacherId);
+
+            var cls = await query.AsNoTracking().FirstOrDefaultAsync();
+            return (cls, cls?.ClassMembers.ToList() ?? new List<ClassMember>());
+        }
+
+        // ════════════════════════════════════════════════════════
+        //  ANALYTICS: lấy phiên luyện tập đã nộp (per-question correctness)
+        // ════════════════════════════════════════════════════════
+        public async Task<List<PracticeSessionRaw>> GetPracticeSessionsAsync(List<int> studentIds, int subjectId)
+        {
+            if (studentIds.Count == 0) return new List<PracticeSessionRaw>();
+
+            // Lấy tất cả submission đã nộp (kể cả submission không có câu trả lời)
+            var submissionMeta = await _context.Submissions
+                .Where(s => studentIds.Contains(s.StudentId)
+                         && s.Status == SubmissionStatus.Submitted
+                         && s.Paper.ExamId == null
+                         && s.Paper.Questions.Any(q => q.Chapter.SubjectId == subjectId))
+                .Select(s => new
+                {
+                    s.SubmissionId,
+                    s.StudentId,
+                    s.CreatedAtUtc,
+                    SubmittedAtUtc = s.UpdatedAtUtc
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            if (submissionMeta.Count == 0) return new List<PracticeSessionRaw>();
+
+            var submissionIds = submissionMeta.Select(s => s.SubmissionId).ToList();
+
+            // Lấy câu trả lời — ưu tiên StudentAnswer.IsCorrect (do GradingService set)
+            var rawData = await _context.StudentAnswers
+                .Where(sa => submissionIds.Contains(sa.SubmissionId)
+                          && sa.QuestionAnswer.Question.Chapter.SubjectId == subjectId)
+                .Select(sa => new
+                {
+                    sa.SubmissionId,
+                    sa.QuestionAnswer.QuestionId,
+                    ChapterId = sa.QuestionAnswer.Question.ChapterId,
+                    ChapterName = sa.QuestionAnswer.Question.Chapter.Name,
+                    Difficulty = sa.QuestionAnswer.Question.Difficulty,
+                    SAIsCorrect = sa.IsCorrect,               // set bởi GradingService
+                    QAIsCorrect = sa.QuestionAnswer.IsCorrect, // correctness của option
+                    sa.QuestionAnswer.CorrectAnswer,
+                    sa.Response
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Tính correctness per (SubmissionId, QuestionId)
+            var questionCorrectness = rawData
+                .GroupBy(x => new { x.SubmissionId, x.QuestionId, x.ChapterId, x.ChapterName, x.Difficulty })
+                .Select(g => new
+                {
+                    g.Key.SubmissionId,
+                    g.Key.QuestionId,
+                    g.Key.ChapterId,
+                    g.Key.ChapterName,
+                    g.Key.Difficulty,
+                    IsCorrect = g.All(a =>
+                    {
+                        // Ưu tiên kết quả GradingService nếu đã chấm
+                        if (a.SAIsCorrect.HasValue)
+                            return a.SAIsCorrect.Value;
+                        // Fallback: so sánh đáp án
+                        if (!string.IsNullOrEmpty(a.CorrectAnswer) && !string.IsNullOrEmpty(a.Response))
+                            return a.CorrectAnswer.Trim().Equals(a.Response.Trim(), StringComparison.OrdinalIgnoreCase);
+                        if (a.QAIsCorrect.HasValue)
+                            return a.QAIsCorrect.Value && !string.IsNullOrEmpty(a.Response);
+                        return false;
+                    })
+                })
+                .ToList();
+
+            // Tạo lookup answers theo SubmissionId
+            var answersBySubmission = questionCorrectness
+                .GroupBy(x => x.SubmissionId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(q => new PracticeQuestionAnswerRaw
+                    {
+                        QuestionId = q.QuestionId,
+                        ChapterId = q.ChapterId,
+                        ChapterName = q.ChapterName,
+                        Difficulty = q.Difficulty,
+                        IsCorrect = q.IsCorrect
+                    }).ToList()
+                );
+
+            // Tạo sessions từ submissionMeta để đảm bảo đủ số lượng
+            return submissionMeta
+                .Select(s => new PracticeSessionRaw
+                {
+                    SubmissionId = s.SubmissionId,
+                    StudentId = s.StudentId,
+                    CreatedAtUtc = s.CreatedAtUtc,
+                    SubmittedAtUtc = s.SubmittedAtUtc,
+                    QuestionAnswers = answersBySubmission.TryGetValue(s.SubmissionId, out var answers)
+                        ? answers
+                        : new List<PracticeQuestionAnswerRaw>()
+                })
+                .OrderBy(s => s.SubmittedAtUtc)
+                .ToList();
         }
 
         public async Task SaveChangesAsync()

@@ -25,6 +25,10 @@ async function loadSettings() {
         if (practiceMenu) practiceMenu.style.display = 'none';
         const historyMenu = document.getElementById("practiceHistoryMenuItem");
         if (historyMenu) historyMenu.style.display = 'none';
+        const classAnalyticsMenu = document.getElementById("classAnalyticsMenuItem");
+        if (classAnalyticsMenu) classAnalyticsMenu.classList.remove("d-none");
+        const studentAnalyticsMenu = document.getElementById("studentAnalyticsMenuItem");
+        if (studentAnalyticsMenu) studentAnalyticsMenu.style.display = 'none';
     }
 
     try {
@@ -37,7 +41,7 @@ async function loadSettings() {
         currentClassStatus = data.status ?? 1;
         document.getElementById("classNameInput").value = data.className;
         document.getElementById("subjectInput").value = (data.subjectCode ? data.subjectCode + ' - ' : '') + data.subjectName;
-        document.getElementById("semesterInput").value = data.semester;
+        document.getElementById("semesterInput").value = data.semesterCode ?? "";
         document.getElementById("inviteCodeInput").value = data.invitationCode;
 
         // Generate link

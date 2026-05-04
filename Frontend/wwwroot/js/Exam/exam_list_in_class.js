@@ -44,21 +44,33 @@ async function loadExams() {
         if (settingsMenu) settingsMenu.style.display = 'none';
         const pendingMenu = document.getElementById("pendingMenuItem");
         if (pendingMenu) pendingMenu.style.display = 'none';
-        
+
         if (currentClassStatus === 0) {
             const practiceMenu = document.getElementById("practiceMenuItem");
             if (practiceMenu) practiceMenu.style.display = 'none';
         }
+
+        // Hiện menu phân tích cá nhân dành cho học sinh
+        const studentAnalyticsMenu = document.getElementById("studentAnalyticsMenuItem");
+        if (studentAnalyticsMenu) studentAnalyticsMenu.classList.remove("d-none");
+        const classAnalyticsMenu = document.getElementById("classAnalyticsMenuItem");
+        if (classAnalyticsMenu) classAnalyticsMenu.style.display = 'none';
     }
     if (role === RoleIds.Teacher) {
         const btnCreate = document.getElementById("btnCreateExam");
         if (btnCreate && currentClassStatus !== 0) btnCreate.classList.remove("d-none");
-        
-        // Ẩn menu luyện tập cho giáo viên
+
+        // Ẩn menu luyện tập dành cho học sinh
         const practiceMenu = document.getElementById("practiceMenuItem");
         if (practiceMenu) practiceMenu.style.display = 'none';
         const practiceHistoryMenu = document.getElementById("practiceHistoryMenuItem");
         if (practiceHistoryMenu) practiceHistoryMenu.style.display = 'none';
+        const studentAnalyticsMenu = document.getElementById("studentAnalyticsMenuItem");
+        if (studentAnalyticsMenu) studentAnalyticsMenu.style.display = 'none';
+
+        // Hiện menu phân tích luyện tập dành cho giáo viên
+        const classAnalyticsMenu = document.getElementById("classAnalyticsMenuItem");
+        if (classAnalyticsMenu) classAnalyticsMenu.classList.remove("d-none");
     }
 
     await loadChapters();   // load chapter trước
@@ -112,9 +124,15 @@ function getExamStatus(openAt, closeAt) {
 
     if (!openAt || !closeAt) return "unknown";
 
+    const toUtcDate = (s) => {
+        let str = String(s).trim();
+        if (str && !str.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(str)) str += 'Z';
+        return new Date(str);
+    };
+
     const now = new Date();
-    const openTime = new Date(openAt);
-    const closeTime = new Date(closeAt);
+    const openTime = toUtcDate(openAt);
+    const closeTime = toUtcDate(closeAt);
 
     const diffMinutes = (openTime - now) / 1000 / 60;
 
@@ -242,13 +260,22 @@ function renderExams(exams) {
             } else if (isStudent && studentActionTemplate) {
                 const actionFragment = studentActionTemplate.content.cloneNode(true);
                 actionFragment.querySelector(".btn-detail").href = detailUrl;
-                
-                if (status === "open" && currentClassStatus !== 0) {
+
+                // Hide btn-take when:
+                //  - exam is not open or class is closed, OR
+                //  - student has hit MaxAttempts AND has no in-progress submission for this exam
+                //    (student with in-progress can still continue regardless of attempts).
+                const maxAttempts = exam.maxAttempts || 0;
+                const studentAttempts = exam.studentAttempts || 0;
+                const hasInProgress = !!exam.hasInProgressSubmission;
+                const attemptsExhausted = maxAttempts > 0 && studentAttempts >= maxAttempts && !hasInProgress;
+
+                if (status === "open" && currentClassStatus !== 0 && !attemptsExhausted) {
                     actionFragment.querySelector(".btn-take").href = `/StudentExam/TakeExam?examId=${exam.examId}`;
                 } else {
                     actionFragment.querySelector(".btn-take").remove();
                 }
-                
+
                 actionsCol.appendChild(actionFragment);
             }
         }

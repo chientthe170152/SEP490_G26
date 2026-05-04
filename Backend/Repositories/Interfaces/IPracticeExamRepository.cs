@@ -6,6 +6,19 @@ namespace Backend.Repositories.Interfaces
     public interface IPracticeExamRepository
     {
         /// <summary>
+        /// Lấy class + subject + ClassMembers (kèm Student) để phân tích luyện tập lớp học.
+        /// teacherId=0 để bỏ qua kiểm tra ownership (dùng cho Student lookup).
+        /// </summary>
+        Task<(Class? Cls, List<ClassMember> Members)> GetClassWithMembersAsync(int classId, int teacherId);
+
+        /// <summary>
+        /// Lấy toàn bộ phiên luyện tập đã nộp của danh sách học sinh, lọc theo môn học.
+        /// Trả về per-session với danh sách câu hỏi đúng/sai đã được tính.
+        /// </summary>
+        Task<List<PracticeSessionRaw>> GetPracticeSessionsAsync(List<int> studentIds, int subjectId);
+
+
+        /// <summary>
         /// Lấy thông tin Class (SubjectId, TeacherId) + validate sinh viên thuộc lớp.
         /// </summary>
         Task<Class?> GetClassWithValidationAsync(int classId, int studentId);
@@ -33,6 +46,11 @@ namespace Backend.Repositories.Interfaces
         Task<int> CountPracticeQuestionsAsync(int chapterId, int teacherId, List<int>? difficultyLevels = null);
 
         /// <summary>
+        /// Đếm số câu hỏi luyện tập theo từng (ChapterId, Difficulty) trong 1 query (tránh N+1).
+        /// </summary>
+        Task<List<PracticeQuestionCountRaw>> GetPracticeQuestionCountsAsync(List<int> chapterIds, int teacherId);
+
+        /// <summary>
         /// Tạo Paper (ExamId=null) + gắn câu hỏi.
         /// </summary>
         Task<Paper> CreatePracticePaperAsync(List<int> questionIds);
@@ -44,8 +62,9 @@ namespace Backend.Repositories.Interfaces
 
         /// <summary>
         /// Lấy Submission kèm Paper, Questions, QuestionAnswers cho submit/result.
+        /// Đặt <paramref name="tracked"/>=true khi cần ghi (Submit/Save) — mặc định AsNoTracking cho read paths.
         /// </summary>
-        Task<Submission?> GetPracticeSubmissionFullAsync(int submissionId, int studentId);
+        Task<Submission?> GetPracticeSubmissionFullAsync(int submissionId, int studentId, bool tracked = false);
 
         /// <summary>
         /// Lấy lịch sử luyện tập (Paper.ExamId == null).
@@ -77,6 +96,13 @@ namespace Backend.Repositories.Interfaces
         public int Difficulty { get; set; }
         public int TotalAttempted { get; set; }
         public int CorrectCount { get; set; }
+    }
+
+    public class PracticeQuestionCountRaw
+    {
+        public int ChapterId { get; set; }
+        public int Difficulty { get; set; }
+        public int Count { get; set; }
     }
 
     public class PracticeHistoryRaw
