@@ -19,5 +19,11 @@ public interface ISubmissionRepository
 
     void RemoveStudentAnswers(IEnumerable<StudentAnswer> answers);
 
+    /// <summary>
+    /// Load Submission kèm đầy đủ graph cho chấm điểm:
+    /// Paper.Questions.QuestionAnswers.BlankInputs.InputType + StudentAnswers + Chapter.
+    /// </summary>
+    Task<Submission?> GetSubmissionForGradingAsync(int submissionId, CancellationToken ct = default);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }

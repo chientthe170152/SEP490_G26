@@ -159,6 +159,16 @@ namespace Backend
             builder.Services.AddScoped<IPracticeExamRepository, PracticeExamRepository>();
             builder.Services.AddScoped<IPracticeExamService, PracticeExamService>();
 
+            // Pynum Math Grading API (POST /api/compare)
+            var pynumBaseUrl = Environment.GetEnvironmentVariable("PYNUM_API_URL")
+                ?? builder.Configuration["Pynum:BaseUrl"]
+                ?? "http://localhost:8000";
+            builder.Services.AddHttpClient<IMathGradingService, MathGradingService>(client =>
+            {
+                client.BaseAddress = new Uri(pynumBaseUrl.TrimEnd('/') + "/");
+                client.Timeout = TimeSpan.FromSeconds(10);
+            });
+
             // Hangfire
             builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
                 ConnectionMultiplexer.Connect(

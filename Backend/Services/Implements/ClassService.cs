@@ -87,7 +87,7 @@ public class ClassService(
 
         var newClass = new Class
         {
-            Name = dto.ClassName,
+            Name = dto.ClassName!,
             SemesterId = semester.SemesterId,
             SubjectId = subject.SubjectId,
             TeacherId = teacherId,

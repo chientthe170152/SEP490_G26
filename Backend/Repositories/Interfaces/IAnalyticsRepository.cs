@@ -15,7 +15,9 @@ public interface IAnalyticsRepository
     Task<List<ClassMember>> GetClassMembersWithStudentsAsync(int classId);
 
     /// <summary>
-    /// Lấy Submission theo ID kèm Paper (để lấy ExamId).
+    /// Lấy ExamId từ SubmissionId (trả về null nếu không tìm thấy).
     /// </summary>
-    Task<Submission?> GetSubmissionByIdWithPaperAsync(int submissionId);
+    Task<int?> GetExamIdBySubmissionIdAsync(int submissionId);
+
+    Task SaveChangesAsync();
 }

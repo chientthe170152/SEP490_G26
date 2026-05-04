@@ -149,7 +149,7 @@ namespace Backend.Services.Implements
                 TotalOfQuestions = r.TotalQuestions!.Value
             }).ToList();
 
-            ExamBlueprint updated;
+            ExamBlueprint? updated;
 
             if (existing.Status == ExamBlueprintStatus.Inprogress || existing.Status == ExamBlueprintStatus.Archived || isUsed)
             {
@@ -169,7 +169,7 @@ namespace Backend.Services.Implements
 
             return Result<CreateExamBlueprintResponse>.Success(new CreateExamBlueprintResponse
             {
-                ExamBlueprintId = updated.ExamBlueprintId,
+                ExamBlueprintId = updated!.ExamBlueprintId,
                 Status = updated.Status,
                 StatusLabel = ExamBlueprintStatus.GetLabel(updated.Status),
                 UpdatedAtUtc = updated.UpdatedAtUtc,

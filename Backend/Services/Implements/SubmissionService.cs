@@ -13,7 +13,8 @@ namespace Backend.Services.Implements;
 public class SubmissionService(
     ISubmissionRepository submissionRepo,
     ICurrentUserService currentUserService,
-    TimeProvider timeProvider) : ISubmissionService
+    TimeProvider timeProvider,
+    IMathGradingService mathGrading) : ISubmissionService
 {
     public async Task<Result<SubmitExamResponse>> SubmitExamAsync(
         SubmitExamRequest request,
@@ -69,12 +70,29 @@ public class SubmissionService(
             submission.SubmissionId);
 
         // ── 5. Cập nhật Submission ──────────────────────────────────────
-        submission.Status = request.Submit == true ? 2 : 1;
+        submission.Status = request.Submit == true
+            ? SubmissionStatus.Submitted
+            : SubmissionStatus.InProgress;
         submission.UpdatedAtUtc = now;
 
         await submissionRepo.SaveChangesAsync(ct);
 
-        // ── 6. Return response ──────────────────────────────────────────
+        // ── 6. Chấm điểm nếu đã nộp bài ────────────────────────────────
+        if (submission.Status == SubmissionStatus.Submitted)
+        {
+            // Load đầy đủ graph để chấm (Questions → QuestionAnswers → BlankInputs)
+            var fullSubmission = await submissionRepo.GetSubmissionForGradingAsync(
+                submission.SubmissionId, ct);
+            if (fullSubmission != null)
+            {
+                var (_, _, totalPoints) = await AnalyticsHelper.GradeSubmissionAsync(
+                    fullSubmission, mathGrading);
+                fullSubmission.TotalPoints = totalPoints;
+                await submissionRepo.SaveChangesAsync(ct);
+            }
+        }
+
+        // ── 7. Return response ──────────────────────────────────────────
         return new SubmitExamResponse(
             submission.SubmissionId,
             now,

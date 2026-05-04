@@ -14,11 +14,12 @@ using Backend.Common.Errors;
 
 namespace Backend.Services.Implements;
 
-public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRepository studentExamRepo, TimeProvider timeProvider) : IAnalyticsService
+public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRepository studentExamRepo, TimeProvider timeProvider, IMathGradingService mathGrading) : IAnalyticsService
 {
     private readonly IAnalyticsRepository _analyticsRepo = analyticsRepo;
     private readonly IStudentExamRepository _studentExamRepo = studentExamRepo;
     private readonly TimeProvider _timeProvider = timeProvider;
+    private readonly IMathGradingService _mathGrading = mathGrading;
 
     // ════════════════════════════════════════════════════════
     //  GIÁO VIÊN — Phân tích chi tiết bài thi
@@ -110,17 +111,18 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
         var allQuestions = paperQuestions.UnionBy(submissionQuestions, q => q.QuestionId).ToList();
         var questionDict = allQuestions.ToDictionary(q => q.QuestionId, q => q);
 
-        // ── 4. Tính tỉ lệ đúng ──
-        var allAnswerResults = allSubmissions
+        // ── 4. Tính tỉ lệ đúng (async — hỗ trợ pynum cho math FillInBlank) ──
+        var answerTasks = allSubmissions
             .SelectMany(s => s.StudentAnswers)
-            .Select(ans => AnalyticsHelper.MapStudentAnswer(ans, questionDict))
-            .Where(x => x != null)
+            .Select(ans => AnalyticsHelper.MapStudentAnswerAsync(ans, questionDict, _mathGrading))
             .ToList();
+        var allAnswerResultsRaw = await Task.WhenAll(answerTasks);
+        var allAnswerResults = allAnswerResultsRaw.Where(x => x != null).ToList();
 
         // ── 5. Thống kê theo Chương ──
         dto.ChapterStats = allAnswerResults
             .Where(x => x != null)
-            .GroupBy(x => x!.ChapterName) // Nhóm theo tên chương cho trực quan
+            .GroupBy(x => x!.ChapterName)
             .Select(g => new ChapterAnalyticsDto
             {
                 ChapterName = g.Key,
@@ -130,7 +132,7 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
             .OrderBy(c => c.AccuracyRate)
             .ToList();
 
-        // ── 7. Top câu hỏi khó nhất ──
+        // ── 6. Top câu hỏi khó nhất ──
         dto.HardestQuestions = allAnswerResults
             .GroupBy(x => x!.QuestionId)
             .Select(g =>
@@ -151,7 +153,7 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
             .Take(10)
             .ToList();
 
-        // ── 8. Danh sách sinh viên ──
+        // ── 7. Danh sách sinh viên ──
         dto.StudentResults = allSubmissions
             .Select(s => new StudentResultDto
             {
@@ -163,8 +165,7 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
             .OrderByDescending(s => s.TotalPoints)
             .ToList();
 
-
-        // ── 10. Debug Info ──
+        // ── 8. Debug Info ──
         dto.DebugInfo = new
         {
             PaperCount = exam.Papers.Count,
@@ -205,14 +206,12 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
     // ════════════════════════════════════════════════════════
     public async Task<Result<StudentSubmissionAnalyticsDto>> GetSubmissionBySubmissionIdAsync(int submissionId)
     {
-        var submission = await _analyticsRepo.GetSubmissionByIdWithPaperAsync(submissionId);
-        if (submission?.Paper == null)
+        // Lấy ExamId bằng query nhẹ (tránh load toàn bộ submission lần 1 thừa)
+        var examId = await _analyticsRepo.GetExamIdBySubmissionIdAsync(submissionId);
+        if (examId == null || examId == 0)
             return AnalyticsErrors.SubmissionNotFound;
 
-        var examId = submission.Paper.ExamId ?? 0;
-        var studentId = submission.StudentId;
-
-        var exam = await _analyticsRepo.GetExamWithFullGraphAsync(examId);
+        var exam = await _analyticsRepo.GetExamWithFullGraphAsync(examId.Value);
         if (exam == null)
             return AnalyticsErrors.ExamNotFound;
 
@@ -223,8 +222,7 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
             return AnalyticsErrors.SubmissionNotFound;
 
         // Giáo viên luôn xem được điểm và đáp án
-        var dto = await BuildSubmissionAnalyticsDtoAsync(exam, targetSubmission, showScore: 1, showAnswer: 2);
-        return dto;
+        return await BuildSubmissionAnalyticsDtoAsync(exam, targetSubmission, showScore: 1, showAnswer: 2);
     }
 
     private async Task<StudentSubmissionAnalyticsDto> BuildSubmissionAnalyticsDtoAsync(Exam exam, Submission submission, int showScore, int showAnswer)
@@ -245,7 +243,7 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
         int questionOrder = 0;
         var answerAnalysis = new List<(string ChapterName, int Difficulty, bool IsCorrect)>();
 
-        var evaluatedQuestions = AnalyticsHelper.EvaluateSubmission(paperQuestions.DistinctBy(q => q.QuestionId), submission.StudentAnswers);
+        var evaluatedQuestions = await AnalyticsHelper.EvaluateSubmissionAsync(paperQuestions.DistinctBy(q => q.QuestionId), submission.StudentAnswers, _mathGrading);
 
         int correctCount = evaluatedQuestions.Count(q => q.IsCorrect);
         int wrongCount = evaluatedQuestions.Count(q => !q.IsCorrect);
@@ -304,7 +302,7 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
             }
         }
 
-        return await Task.FromResult(dto);
+        return dto;
     }
 
     // ════════════════════════════════════════════════════════
@@ -317,7 +315,26 @@ public class AnalyticsService(IAnalyticsRepository analyticsRepo, IStudentExamRe
         if (exam == null)
             return AnalyticsErrors.ExamNotFound;
 
+        // Chấm điểm cho các bài đã nộp nhưng chưa có TotalPoints (VD: force-submit hoặc submit cũ)
         var rawSubmissions = exam.Papers.SelectMany(p => p.Submissions).ToList();
+        var ungradedSubmissions = rawSubmissions
+            .Where(s => s.Status == SubmissionStatus.Submitted && !s.TotalPoints.HasValue
+                        && s.StudentAnswers != null && s.StudentAnswers.Any())
+            .ToList();
+
+        if (ungradedSubmissions.Count > 0)
+        {
+            foreach (var sub in ungradedSubmissions)
+            {
+                var paper = exam.Papers.FirstOrDefault(p => p.PaperId == sub.PaperId);
+                if (paper?.Questions == null) continue;
+                sub.Paper = paper;
+                var (_, _, totalPoints) = await AnalyticsHelper.GradeSubmissionAsync(sub, _mathGrading);
+                sub.TotalPoints = totalPoints;
+            }
+            await _analyticsRepo.SaveChangesAsync();
+        }
+
         var maxAttempts = exam.MaxAttempts > 0 ? exam.MaxAttempts : 999;
 
         // Lấy danh sách học sinh trong lớp (nếu có)
