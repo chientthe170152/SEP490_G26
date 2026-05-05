@@ -242,9 +242,9 @@ public class AssignExamRepository : IAssignExamRepository
             query = query.Where(x => chapterIds.Contains(x.ChapterId));
         }
 
-        var totalTask = query.CountAsync(ct);
+        var total = await query.CountAsync(ct);
 
-        var byChapterTask = query
+        var byChapterTask = await query
             .GroupBy(x => new { x.ChapterId, x.Name, x.Difficulty })
             .Select(g => new Backend.DTOs.PreviewChapterDifficultyRaw
             {
@@ -255,7 +255,7 @@ public class AssignExamRepository : IAssignExamRepository
             })
             .ToListAsync(ct);
 
-        var byBankTask = query
+        var byBankTask = await query
             .GroupBy(x => new { x.QuestionBankId, x.BankName })
             .Select(g => new Backend.DTOs.PreviewBankContributionRaw
             {
@@ -265,9 +265,7 @@ public class AssignExamRepository : IAssignExamRepository
             })
             .ToListAsync(ct);
 
-        await Task.WhenAll(totalTask, byChapterTask, byBankTask);
-
-        return (byChapterTask.Result, byBankTask.Result, totalTask.Result);
+        return (byChapterTask, byBankTask, total);
     }
 
     public async Task<Class?> GetClassByIdAsync(int id, CancellationToken ct)
@@ -329,7 +327,7 @@ public class AssignExamRepository : IAssignExamRepository
     }
 
     public async Task<List<QuestionListItemDto>> GetAlternativeQuestionsAsync(
-        int subjectId, int chapterId, int difficulty, string[] activeStatus, List<int> excludeIds, List<int> bankIds, CancellationToken ct)
+        int subjectId, int chapterId, int difficulty, string[] activeStatus, List<int> excludeIds, List<int>? bankIds, CancellationToken ct)
     {
         return await BuildQuestionQuery(activeStatus, bankIds)
             .Where(z => z.s.SubjectId == subjectId &&
