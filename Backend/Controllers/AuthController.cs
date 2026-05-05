@@ -23,7 +23,8 @@ public class AuthController(IAuthService authService, ICurrentUserService curren
             userId = currentUser.UserId,
             email = currentUser.Email,
             role = currentUser.Role,
-            authProvider = User.FindFirstValue("auth_provider")
+            authProvider = User.FindFirstValue("auth_provider"),
+            fullName = currentUser.FullName
         });
 
     [HttpPost("login")]

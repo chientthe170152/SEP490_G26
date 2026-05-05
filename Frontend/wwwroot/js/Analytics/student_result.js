@@ -105,36 +105,77 @@ function fillScoreCards(data) {
 }
 
 // ═══════════════════════════════════════════
-//  Biểu đồ — Modern Styling
+//  Biểu đồ — So sánh điểm
 // ═══════════════════════════════════════════
 function renderComparisonChart(data) {
-    if (data.totalPoints == null || data.classAverageScore == null) return;
-    var ctx = document.getElementById("comparisonChart").getContext("2d");
+    if (data.totalPoints == null) return;
 
+    var myScore   = +data.totalPoints;
+    var classAvg  = data.classAverageScore != null ? +data.classAverageScore : 0;
+    var classMax  = data.classMaxScore     != null ? +data.classMaxScore     : 0;
+    var myLabel   = (window.currentUser && window.currentUser.fullName)
+                    ? window.currentUser.fullName
+                    : (window.currentUser && window.currentUser.email
+                        ? window.currentUser.email.split('@')[0]
+                        : 'Bạn');
+
+    // Plugin nội tuyến: hiển thị giá trị trên mỗi cột
+    var valueLabelPlugin = {
+        id: 'valueLabelPlugin',
+        afterDatasetsDraw: function (chart) {
+            var c = chart.ctx;
+            chart.data.datasets.forEach(function (dataset, i) {
+                chart.getDatasetMeta(i).data.forEach(function (bar, idx) {
+                    var v = dataset.data[idx];
+                    c.save();
+                    c.fillStyle = '#374151';
+                    c.font = 'bold 13px sans-serif';
+                    c.textAlign = 'center';
+                    c.textBaseline = 'bottom';
+                    c.fillText(v, bar.x, bar.y - 4);
+                    c.restore();
+                });
+            });
+        }
+    };
+
+    var ctx = document.getElementById("comparisonChart").getContext("2d");
     new Chart(ctx, {
         type: "bar",
         data: {
-            labels: ["Em", "TB Lớp", "Top 1"],
+            labels: [myLabel, "TB Lớp", "Top 1"],
             datasets: [{
-                data: [data.totalPoints, data.classAverageScore, data.classMaxScore || 10],
+                data: [myScore, classAvg, classMax],
                 backgroundColor: [
-                    getCSSColor("--clr-primary", 0.8),
-                    getCSSColor("--clr-info", 0.2),
-                    getCSSColor("--clr-success", 0.2)
+                    getCSSColor("--clr-primary", 0.85),
+                    getCSSColor("--clr-success", 0.7),
+                    getCSSColor("--clr-info",    0.7)
                 ],
-                borderRadius: 8,
-                barThickness: 20
+                borderRadius: 10,
+                barThickness: 48
             }]
         },
         options: {
             responsive: true,
-            indexAxis: "y",
             plugins: { legend: { display: false } },
             scales: {
-                x: { beginAtZero: true, grid: { display: false }, ticks: { font: { weight: '600' } } },
-                y: { grid: { display: false }, ticks: { font: { weight: '600' } } }
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { weight: '600', size: 13 } }
+                },
+                y: {
+                    beginAtZero: true,
+                    max: 10,
+                    grid: { color: '#f1f5f9' },
+                    ticks: {
+                        font: { weight: '600' },
+                        stepSize: 2,
+                        callback: function (v) { return v + ' đ'; }
+                    }
+                }
             }
-        }
+        },
+        plugins: [valueLabelPlugin]
     });
 }
 

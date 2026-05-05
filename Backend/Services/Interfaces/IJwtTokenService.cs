@@ -7,5 +7,6 @@ public interface IJwtTokenService
         string email,
         string role,
         string authProvider,
-        bool mustChangePassword);
+        bool mustChangePassword,
+        string? fullName = null);
 }

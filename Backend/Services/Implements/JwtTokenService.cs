@@ -30,7 +30,8 @@ public sealed class JwtTokenService : IJwtTokenService
         string email,
         string role,
         string authProvider,
-        bool mustChangePassword)
+        bool mustChangePassword,
+        string? fullName = null)
     {
         var now = _timeProvider.GetUtcNow();
         var expiresAt = now.AddMinutes(_options.AccessTokenMinutes);
@@ -46,6 +47,8 @@ public sealed class JwtTokenService : IJwtTokenService
             new("auth_provider", authProvider),
             new(AuthClaims.MustChangePassword, mustChangePassword ? AuthClaims.True : AuthClaims.False)
         };
+        if (!string.IsNullOrEmpty(fullName))
+            claims.Add(new Claim(ClaimTypes.Name, fullName));
 
         var token = new JwtSecurityToken(
             issuer: _options.Issuer,
