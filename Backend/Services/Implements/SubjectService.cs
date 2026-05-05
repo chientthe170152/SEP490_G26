@@ -16,13 +16,17 @@ namespace Backend.Services.Implements;
 
 public class SubjectService : ISubjectService
 {
-    private readonly ISubjectRepository _repo;
-    private readonly TimeProvider _timeProvider;
+    private readonly ISubjectRepository      _repo;
+    private readonly IQuestionBankRepository _bankRepo;
+    private readonly TimeProvider            _timeProvider;
+
     public SubjectService(
-        ISubjectRepository repo,
-        TimeProvider timeProvider)
+        ISubjectRepository      repo,
+        IQuestionBankRepository bankRepo,
+        TimeProvider            timeProvider)
     {
-        _repo = repo;
+        _repo         = repo;
+        _bankRepo     = bankRepo;
         _timeProvider = timeProvider;
     }
 
@@ -64,7 +68,14 @@ public class SubjectService : ISubjectService
         };
 
         await _repo.AddAsync(subject);
-        await _repo.SaveChangesAsync();
+
+        // ★ P2: auto-create 2 Shared Banks atomically with the Subject.
+        // Using Subject navigation so EF resolves SubjectId after commit.
+        var sharedExam = MakeSharedBank(subject, BankPurpose.Exam,     request.Name, request.Code, adminUserId, now);
+        var sharedPrac = MakeSharedBank(subject, BankPurpose.Practice,  request.Name, request.Code, adminUserId, now);
+        await _bankRepo.AddManyAsync([sharedExam, sharedPrac]);
+
+        await _repo.SaveChangesAsync(); // atomic: 1 Subject + 2 Banks in implicit transaction
 
         var detail = await _repo.GetDetailAsync(subject.SubjectId);
         return Result<SubjectDetail>.Success(detail!);
@@ -109,5 +120,29 @@ public class SubjectService : ISubjectService
         await _repo.SaveChangesAsync();
 
         return Result.Success();
+    }
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+
+    private static QuestionBank MakeSharedBank(
+        Subject subject, byte purpose,
+        string subjectName, string subjectCode,
+        int adminUserId, DateTime now)
+    {
+        var label = purpose == BankPurpose.Exam ? "Kiem tra" : "Luyen tap";
+        return new QuestionBank
+        {
+            Subject         = subject, // EF resolves SubjectId from navigation on SaveChanges
+            Name            = $"Kho chung {label} {subjectName} {subjectCode}".Trim(),
+            Description     = null,
+            Purpose         = purpose,
+            OwnerType       = BankOwnerType.Shared,
+            OwnerUserId     = null,
+            Status          = BankStatus.Active,
+            CreatedByUserId = adminUserId,
+            CreatedAtUtc    = now,
+            UpdatedByUserId = adminUserId,
+            UpdatedAtUtc    = now,
+        };
     }
 }

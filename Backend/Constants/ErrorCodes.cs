@@ -163,4 +163,14 @@ public static class ErrorCodes
     public const string GradingAecNetwork            = "GRADING_AEC_NETWORK";
     public const string GradingUnexpected            = "GRADING_UNEXPECTED";
     public const string GradingRetryExhausted        = "GRADING_RETRY_EXHAUSTED";
+
+    // QuestionBank
+    public const string BankNotFound         = "BANK_NOT_FOUND";
+    public const string BankSubjectClosed    = "BANK_SUBJECT_CLOSED";
+    public const string BankSubjectNotFound  = "BANK_SUBJECT_NOT_FOUND";
+    public const string BankInvalidPurpose   = "BANK_INVALID_PURPOSE";
+    public const string BankNotOwned         = "BANK_NOT_OWNED";
+    public const string BankCannotEditShared = "BANK_CANNOT_EDIT_SHARED";
+    public const string BankAlreadyArchived  = "BANK_ALREADY_ARCHIVED";
+    public const string BankConcurrentUpdate = "BANK_CONCURRENT_UPDATE";
 }
