@@ -138,4 +138,25 @@ public class AssignExamController(IAssignExamService assignExamService) : Contro
         var result = await _assignExamService.UpdateExamInfoAsync(id, request, cancellationToken);
         return result.ToActionResult(this);
     }
+
+    [HttpGet("usable-banks")]
+    [Authorize(Roles = RoleIds.Teacher)]
+    public async Task<IActionResult> GetUsableBanks(
+        [FromQuery] int subjectId,
+        [FromQuery] byte purpose,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _assignExamService.GetUsableBanksAsync(subjectId, purpose, cancellationToken);
+        return result.ToActionResult(this);
+    }
+
+    [HttpPost("preview-pool")]
+    [Authorize(Roles = RoleIds.Teacher)]
+    public async Task<IActionResult> PreviewPool(
+        [FromBody] PreviewPoolRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _assignExamService.PreviewPoolAsync(request, cancellationToken);
+        return result.ToActionResult(this);
+    }
 }

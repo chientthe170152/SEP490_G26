@@ -57,6 +57,7 @@ public class PromotionRepository : IPromotionRepository
         int pageSize)
     {
         var query = _context.QuestionPromotionRequests
+            .AsNoTracking()
             .Include(r => r.RequestedByUser)
             .Include(r => r.SourcePersonalBank)
             .Include(r => r.TargetSharedBank)
@@ -92,6 +93,8 @@ public class PromotionRepository : IPromotionRepository
     public async Task<QuestionPromotionRequest?> GetRequestDetailAsync(int requestId)
     {
         return await _context.QuestionPromotionRequests
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(r => r.RequestedByUser)
             .Include(r => r.SourcePersonalBank)
             .Include(r => r.TargetSharedBank)

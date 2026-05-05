@@ -156,6 +156,40 @@ public class QuestionBankRepository(MtcaSep490G26Context db) : IQuestionBankRepo
 
     public Task SaveChangesAsync() => db.SaveChangesAsync();
 
+    public async Task<List<Backend.DTOs.UsableBankDto>> GetUsableBanksAsync(int userId, int subjectId, byte purpose)
+    {
+        return await db.QuestionBanks
+            .Where(b => b.SubjectId == subjectId
+                     && b.Purpose == purpose
+                     && b.Status == BankStatus.Active
+                     && (
+                         (b.OwnerType == BankOwnerType.Personal && b.OwnerUserId == userId)
+                         || b.OwnerType == BankOwnerType.Shared
+                        ))
+            .Select(b => new Backend.DTOs.UsableBankDto {
+                BankId = b.QuestionBankId,
+                BankName = b.Name,
+                OwnerType = b.OwnerType,
+                Purpose = b.Purpose,
+                QuestionCount = b.Questions.Count(q => q.Status == QuestionStatus.Active || q.Status == QuestionStatus.Inprogress),
+            })
+            .ToListAsync();
+    }
+
+    public async Task<List<int>> GetUsableBankIdsAsync(int userId, int subjectId, byte purpose)
+    {
+        return await db.QuestionBanks
+            .Where(b => b.SubjectId == subjectId
+                     && b.Purpose == purpose
+                     && b.Status == BankStatus.Active
+                     && (
+                         (b.OwnerType == BankOwnerType.Personal && b.OwnerUserId == userId)
+                         || b.OwnerType == BankOwnerType.Shared
+                        ))
+            .Select(b => b.QuestionBankId)
+            .ToListAsync();
+    }
+
     // ── helpers ──────────────────────────────────────────────
     private static QuestionBank MakeSharedBank(
         int subjectId, string subjectName, string subjectCode,

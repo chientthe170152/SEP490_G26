@@ -162,9 +162,9 @@ public class AssignExamRepository : IAssignExamRepository
     }
 
     public async Task<List<QuestionListItemDto>> GetQuestionsAsync(
-        int? teacherId, string? subj, int? ch, int? diff, string[] activeStatus, CancellationToken ct)
+        int? teacherId, string? subj, int? ch, int? diff, string[] activeStatus, List<int>? bankIds, CancellationToken ct)
     {
-        var query = BuildQuestionQuery(activeStatus);
+        var query = BuildQuestionQuery(activeStatus, bankIds);
 
         if (!string.IsNullOrEmpty(subj))
         {
@@ -200,24 +200,20 @@ public class AssignExamRepository : IAssignExamRepository
             .FirstOrDefaultAsync(x => x.ExamBlueprintId == id && (x.Status == 1 || x.Status == 2), ct);
     }
 
-    public async Task<List<int>> GetQuestionIdsForBlueprintRowAsync(int chapterId, int difficulty, int count, string[] activeStatus, CancellationToken ct)
+    public async Task<List<int>> GetQuestionIdsForBlueprintRowAsync(int chapterId, int difficulty, int count, string[] activeStatus, List<int> bankIds, CancellationToken ct)
     {
         return await _db.Questions
-            .Where(q => activeStatus.Contains(q.Status) && q.ChapterId == chapterId && q.Difficulty == difficulty
-                     // P1 bridge: Purpose now lives on bank
-                     && q.QuestionBank.Purpose == BankPurpose.Exam)
+            .Where(q => bankIds.Contains(q.QuestionBankId) && activeStatus.Contains(q.Status) && q.ChapterId == chapterId && q.Difficulty == difficulty)
             .OrderBy(q => Guid.NewGuid())
             .Take(count)
             .Select(q => q.QuestionId)
             .ToListAsync(ct);
     }
 
-    public async Task<List<int>> GetAllQuestionIdsForBlueprintRowAsync(int chapterId, int difficulty, string[] activeStatus, CancellationToken ct)
+    public async Task<List<int>> GetAllQuestionIdsForBlueprintRowAsync(int chapterId, int difficulty, string[] activeStatus, List<int> bankIds, CancellationToken ct)
     {
         return await _db.Questions
-            .Where(q => activeStatus.Contains(q.Status) && q.ChapterId == chapterId && q.Difficulty == difficulty
-                     // P1 bridge: Purpose now lives on bank
-                     && q.QuestionBank.Purpose == BankPurpose.Exam)
+            .Where(q => bankIds.Contains(q.QuestionBankId) && activeStatus.Contains(q.Status) && q.ChapterId == chapterId && q.Difficulty == difficulty)
             .Select(q => q.QuestionId)
             .ToListAsync(ct);
     }
@@ -226,9 +222,52 @@ public class AssignExamRepository : IAssignExamRepository
     {
         return await (from q in _db.Questions
                       join c in _db.Chapters on q.ChapterId equals c.ChapterId
+                      join b in _db.QuestionBanks on q.QuestionBankId equals b.QuestionBankId
                       where ids.Contains(q.QuestionId) && activeStatus.Contains(q.Status)
-                      select new QuestionSubjectDto(q.QuestionId, c.SubjectId))
+                      select new QuestionSubjectDto(q.QuestionId, c.SubjectId, b.QuestionBankId, b.OwnerType, b.OwnerUserId))
                      .ToListAsync(ct);
+    }
+
+    public async Task<(List<Backend.DTOs.PreviewChapterDifficultyRaw> ByChapter, List<Backend.DTOs.PreviewBankContributionRaw> ByBank, int Total)> GetPreviewPoolAggregationsAsync(List<int> bankIds, List<int>? chapterIds, CancellationToken ct)
+    {
+        var query = from q in _db.Questions
+                    join b in _db.QuestionBanks on q.QuestionBankId equals b.QuestionBankId
+                    join c in _db.Chapters on q.ChapterId equals c.ChapterId
+                    where bankIds.Contains(q.QuestionBankId)
+                          && (q.Status == QuestionStatus.Active || q.Status == QuestionStatus.Inprogress)
+                    select new { q.QuestionId, c.ChapterId, c.Name, q.Difficulty, b.QuestionBankId, BankName = b.Name };
+
+        if (chapterIds != null && chapterIds.Any())
+        {
+            query = query.Where(x => chapterIds.Contains(x.ChapterId));
+        }
+
+        var totalTask = query.CountAsync(ct);
+
+        var byChapterTask = query
+            .GroupBy(x => new { x.ChapterId, x.Name, x.Difficulty })
+            .Select(g => new Backend.DTOs.PreviewChapterDifficultyRaw
+            {
+                ChapterId = g.Key.ChapterId,
+                ChapterName = g.Key.Name,
+                Difficulty = g.Key.Difficulty,
+                Count = g.Count()
+            })
+            .ToListAsync(ct);
+
+        var byBankTask = query
+            .GroupBy(x => new { x.QuestionBankId, x.BankName })
+            .Select(g => new Backend.DTOs.PreviewBankContributionRaw
+            {
+                QuestionBankId = g.Key.QuestionBankId,
+                BankName = g.Key.BankName,
+                Count = g.Count()
+            })
+            .ToListAsync(ct);
+
+        await Task.WhenAll(totalTask, byChapterTask, byBankTask);
+
+        return (byChapterTask.Result, byBankTask.Result, totalTask.Result);
     }
 
     public async Task<Class?> GetClassByIdAsync(int id, CancellationToken ct)
@@ -290,9 +329,9 @@ public class AssignExamRepository : IAssignExamRepository
     }
 
     public async Task<List<QuestionListItemDto>> GetAlternativeQuestionsAsync(
-        int subjectId, int chapterId, int difficulty, string[] activeStatus, List<int> excludeIds, CancellationToken ct)
+        int subjectId, int chapterId, int difficulty, string[] activeStatus, List<int> excludeIds, List<int> bankIds, CancellationToken ct)
     {
-        return await BuildQuestionQuery(activeStatus)
+        return await BuildQuestionQuery(activeStatus, bankIds)
             .Where(z => z.s.SubjectId == subjectId &&
                         z.q.ChapterId == chapterId &&
                         z.q.Difficulty == difficulty &&
@@ -469,15 +508,24 @@ public class AssignExamRepository : IAssignExamRepository
         await _db.SaveChangesAsync(ct);
     }
 
-    private IQueryable<QuestionQueryRow> BuildQuestionQuery(string[] activeStatus)
+    private IQueryable<QuestionQueryRow> BuildQuestionQuery(string[] activeStatus, List<int>? bankIds)
     {
-        return from q in _db.Questions
+        var query = from q in _db.Questions
                join c in _db.Chapters on q.ChapterId equals c.ChapterId
                join s in _db.Subjects on c.SubjectId equals s.SubjectId
                where activeStatus.Contains(q.Status)
-                  // P1 bridge: Purpose now lives on bank (Phase 5 will fully refactor pool)
-                  && q.QuestionBank.Purpose == BankPurpose.Exam
                select new QuestionQueryRow { q = q, c = c, s = s };
+               
+        if (bankIds != null)
+        {
+            query = query.Where(z => bankIds.Contains(z.q.QuestionBankId));
+        }
+        else
+        {
+            query = query.Where(z => z.q.QuestionBank.Purpose == BankPurpose.Exam);
+        }
+        
+        return query;
     }
 }
 

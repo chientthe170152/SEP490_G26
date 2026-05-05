@@ -32,7 +32,7 @@ namespace Backend.Repositories.Interfaces
         /// Lấy toàn bộ Question IDs luyện tập khả dụng cho các chương đã chọn (Purpose=2, Status=Active, CreatedBy=teacherId).
         /// Có thể lọc theo mức độ câu hỏi.
         /// </summary>
-        Task<List<int>> GetAllPracticeQuestionIdsAsync(List<int> chapterIds, int teacherId, List<int>? difficultyLevels = null);
+        Task<List<int>> GetAllPracticeQuestionIdsAsync(List<int> chapterIds, int teacherIdOfClass, int subjectId, List<int>? difficultyLevels = null);
 
         /// <summary>
         /// Lấy lịch sử làm đúng/sai từng câu hỏi của sinh viên trong các chương cụ thể (phục vụ Spaced Repetition).
@@ -43,12 +43,12 @@ namespace Backend.Repositories.Interfaces
         /// Đếm số câu hỏi luyện tập khả dụng theo chương (Purpose=2, Status=Active, CreatedBy=teacherId).
         /// Có thể lọc theo mức độ câu hỏi.
         /// </summary>
-        Task<int> CountPracticeQuestionsAsync(int chapterId, int teacherId, List<int>? difficultyLevels = null);
+        Task<int> CountPracticeQuestionsAsync(int chapterId, int teacherIdOfClass, int subjectId, List<int>? difficultyLevels = null);
 
         /// <summary>
         /// Đếm số câu hỏi luyện tập theo từng (ChapterId, Difficulty) trong 1 query (tránh N+1).
         /// </summary>
-        Task<List<PracticeQuestionCountRaw>> GetPracticeQuestionCountsAsync(List<int> chapterIds, int teacherId);
+        Task<List<PracticeQuestionCountRaw>> GetPracticeQuestionCountsAsync(List<int> chapterIds, int teacherIdOfClass, int subjectId);
 
         /// <summary>
         /// Tạo Paper (ExamId=null) + gắn câu hỏi.

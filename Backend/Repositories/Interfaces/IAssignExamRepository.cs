@@ -18,15 +18,17 @@ public interface IAssignExamRepository
     Task<List<BlueprintDetailRowDto>> GetBlueprintDetailAsync(int id, CancellationToken ct);
     
     Task<List<QuestionListItemDto>> GetQuestionsAsync(
-        int? teacherId, string? subj, int? ch, int? diff, string[] activeStatus, CancellationToken ct);
+        int? teacherId, string? subj, int? ch, int? diff, string[] activeStatus, List<int>? bankIds, CancellationToken ct);
         
     Task<ExamBlueprint?> GetBlueprintWithChaptersAsync(int id, CancellationToken ct);
     
-    Task<List<int>> GetQuestionIdsForBlueprintRowAsync(int chapterId, int difficulty, int count, string[] activeStatus, CancellationToken ct);
+    Task<List<int>> GetQuestionIdsForBlueprintRowAsync(int chapterId, int difficulty, int count, string[] activeStatus, List<int> bankIds, CancellationToken ct);
     
-    Task<List<int>> GetAllQuestionIdsForBlueprintRowAsync(int chapterId, int difficulty, string[] activeStatus, CancellationToken ct);
+    Task<List<int>> GetAllQuestionIdsForBlueprintRowAsync(int chapterId, int difficulty, string[] activeStatus, List<int> bankIds, CancellationToken ct);
     
     Task<List<QuestionSubjectDto>> GetQuestionsWithSubjectByIdsAsync(IEnumerable<int> ids, string[] activeStatus, CancellationToken ct);
+    
+    Task<(List<Backend.DTOs.PreviewChapterDifficultyRaw> ByChapter, List<Backend.DTOs.PreviewBankContributionRaw> ByBank, int Total)> GetPreviewPoolAggregationsAsync(List<int> bankIds, List<int>? chapterIds, CancellationToken ct);
     
     Task<Class?> GetClassByIdAsync(int id, CancellationToken ct);
     
@@ -41,7 +43,7 @@ public interface IAssignExamRepository
     Task<Exam?> GetExamReviewDataAsync(int id, CancellationToken ct);
     
     Task<List<QuestionListItemDto>> GetAlternativeQuestionsAsync(
-        int subjectId, int chapterId, int difficulty, string[] activeStatus, List<int> excludeIds, CancellationToken ct);
+        int subjectId, int chapterId, int difficulty, string[] activeStatus, List<int> excludeIds, List<int> bankIds, CancellationToken ct);
         
     Task SwapPaperQuestionAsync(int paperId, int oldQuestionId, int newQuestionId, CancellationToken ct);
     
@@ -67,4 +69,4 @@ public interface IAssignExamRepository
 }
 
 public record ClassWithCount(int ClassId, string Name, string Semester, string SubjectCode, int MemberCount);
-public record QuestionSubjectDto(int QuestionId, int SubjectId);
+public record QuestionSubjectDto(int QuestionId, int SubjectId, int BankId, byte BankOwnerType, int? BankOwnerUserId);

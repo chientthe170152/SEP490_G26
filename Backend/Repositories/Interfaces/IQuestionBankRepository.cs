@@ -12,5 +12,7 @@ public interface IQuestionBankRepository
     Task AddManyAsync(IEnumerable<QuestionBank> banks);
     Task UpdateAsync(QuestionBank bank);
     Task<int> RepairSharedBanksAsync(int adminUserId, DateTime now);
+    Task<List<Backend.DTOs.UsableBankDto>> GetUsableBanksAsync(int userId, int subjectId, byte purpose);
+    Task<List<int>> GetUsableBankIdsAsync(int userId, int subjectId, byte purpose);
     Task SaveChangesAsync();
 }

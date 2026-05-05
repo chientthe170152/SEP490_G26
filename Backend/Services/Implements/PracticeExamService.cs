@@ -46,7 +46,7 @@ namespace Backend.Services.Implements
 
             var chapterIds = chapters.Select(c => c.ChapterId).ToList();
             var profData = await _repo.GetStudentProficiencyAsync(studentId, chapterIds);
-            var counts = await _repo.GetPracticeQuestionCountsAsync(chapterIds, cls.TeacherId);
+            var counts = await _repo.GetPracticeQuestionCountsAsync(chapterIds, cls.TeacherId, cls.SubjectId);
 
             var countsByChapterDiff = counts.ToDictionary(c => (c.ChapterId, c.Difficulty), c => c.Count);
 
@@ -136,7 +136,7 @@ namespace Backend.Services.Implements
                 if (quota.Value <= 0) continue;
 
                 var diffFilter = new List<int> { quota.Key };
-                var poolIds = await _repo.GetAllPracticeQuestionIdsAsync(request.ChapterIds, cls.TeacherId, diffFilter);
+                var poolIds = await _repo.GetAllPracticeQuestionIdsAsync(request.ChapterIds, cls.TeacherId, cls.SubjectId, diffFilter);
                 if (poolIds.Count == 0) continue;
 
                 // Phân loại theo spaced repetition
@@ -186,7 +186,7 @@ namespace Backend.Services.Implements
             // ── 5. Bù nếu thiếu (do pool từng mức không đủ) ──
             if (selectedQuestionIds.Count < request.TotalQuestions!.Value)
             {
-                var allIds = await _repo.GetAllPracticeQuestionIdsAsync(request.ChapterIds, cls.TeacherId, null);
+                var allIds = await _repo.GetAllPracticeQuestionIdsAsync(request.ChapterIds, cls.TeacherId, cls.SubjectId, null);
                 var remaining = allIds.Where(id => !selectedQuestionIds.Contains(id)).OrderBy(_ => Guid.NewGuid()).ToList();
                 int deficit = request.TotalQuestions.Value - selectedQuestionIds.Count;
                 selectedQuestionIds.AddRange(remaining.Take(deficit));

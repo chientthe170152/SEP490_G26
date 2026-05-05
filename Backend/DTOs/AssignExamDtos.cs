@@ -70,6 +70,7 @@ public class CreateAssignExamRequest
     public int? ExamBlueprintId { get; set; }
     public int? SubjectId { get; set; }
     public List<int>? QuestionIds { get; set; }
+    public List<int>? SourceBankIds { get; set; }
     public int? PaperCount { get; set; }
     public int? PaperCode { get; set; }
 }
@@ -150,4 +151,63 @@ public class SwapQuestionRequestDto
     public int? OldQuestionId { get; set; }
     public int? NewQuestionId { get; set; }
     public bool? SwapGlobal { get; set; }
+}
+
+public class PreviewPoolRequest
+{
+    public int SubjectId { get; set; }
+    public byte Purpose { get; set; } // 1=Exam, 2=Practice
+    public List<int>? BankIds { get; set; }
+    public List<int>? ChapterIds { get; set; }
+}
+
+public class PreviewPoolResponse
+{
+    public int TotalQuestions { get; set; }
+    public List<ChapterBucket> ByChapter { get; set; } = new();
+    public List<BankContribution> BankBreakdown { get; set; } = new();
+
+    public class ChapterBucket
+    {
+        public int ChapterId { get; set; }
+        public string ChapterName { get; set; } = "";
+        public List<DifficultyBucket> ByDifficulty { get; set; } = new();
+    }
+
+    public class DifficultyBucket
+    {
+        public int Difficulty { get; set; }
+        public int Count { get; set; }
+    }
+
+    public class BankContribution
+    {
+        public int BankId { get; set; }
+        public string BankName { get; set; } = "";
+        public int Contribution { get; set; }
+    }
+}
+
+public class UsableBankDto
+{
+    public int BankId { get; set; }
+    public string BankName { get; set; } = "";
+    public byte OwnerType { get; set; }
+    public byte Purpose { get; set; }
+    public int QuestionCount { get; set; }
+}
+
+public class PreviewChapterDifficultyRaw
+{
+    public int ChapterId { get; set; }
+    public string ChapterName { get; set; } = "";
+    public int Difficulty { get; set; }
+    public int Count { get; set; }
+}
+
+public class PreviewBankContributionRaw
+{
+    public int QuestionBankId { get; set; }
+    public string BankName { get; set; } = "";
+    public int Count { get; set; }
 }

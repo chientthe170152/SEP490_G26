@@ -39,4 +39,8 @@ public interface IAssignExamService
     Task<Result> DeleteExamAsync(int examId, CancellationToken cancellationToken = default);
 
     Task<Result> UpdateExamInfoAsync(int examId, UpdateExamInfoRequest request, CancellationToken cancellationToken = default);
+
+    Task<Result<IReadOnlyList<UsableBankDto>>> GetUsableBanksAsync(int subjectId, byte bankKind, CancellationToken cancellationToken = default);
+
+    Task<Result<PreviewPoolResponse>> PreviewPoolAsync(PreviewPoolRequest request, CancellationToken cancellationToken = default);
 }

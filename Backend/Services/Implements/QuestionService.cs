@@ -35,6 +35,11 @@ namespace Backend.Services.Implements
             var (items, totalCount) = await _questionRepository.GetQuestionsAsync(query, userId);
             var pageSize = Math.Clamp(query.PageSize, 1, 50);
 
+            foreach (var item in items)
+            {
+                item.PurposeLabel = BankPurpose.GetLabel(item.Purpose);
+            }
+
             return Result<QuestionListResultDto>.Success(new QuestionListResultDto
             {
                 Items = items,

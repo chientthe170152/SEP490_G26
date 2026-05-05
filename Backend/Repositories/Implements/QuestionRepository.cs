@@ -20,6 +20,8 @@ namespace Backend.Repositories.Implements
         public async Task<(List<QuestionSummaryDto> Items, int TotalCount)> GetQuestionsAsync(QuestionListQueryDto queryDto, int userId)
         {
             var query = _dbContext.Questions
+                .AsNoTracking()
+                .AsSplitQuery()
                 .Include(x => x.Chapter)
                     .ThenInclude(c => c.Subject)
                 .Include(x => x.QuestionAnswers)
@@ -96,12 +98,6 @@ namespace Backend.Repositories.Implements
                     AnswerCount = x.QuestionAnswers.Count
                 })
                 .ToListAsync();
-
-            // Compute labels after materialization (can't use custom methods in LINQ-to-SQL)
-            foreach (var item in items)
-            {
-                item.PurposeLabel = BankPurpose.GetLabel(item.Purpose);
-            }
 
             return (items, totalCount);
         }

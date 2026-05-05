@@ -131,14 +131,18 @@ namespace Backend.Repositories.Implements
                 .ToList();
         }
 
-        public async Task<List<int>> GetAllPracticeQuestionIdsAsync(List<int> chapterIds, int teacherId, List<int>? difficultyLevels = null)
+        public async Task<List<int>> GetAllPracticeQuestionIdsAsync(List<int> chapterIds, int teacherIdOfClass, int subjectId, List<int>? difficultyLevels = null)
         {
             var query = _context.Questions
                 .Where(q => chapterIds.Contains(q.ChapterId)
-                         // P1 bridge: Purpose now lives on bank
+                         && q.QuestionBank.SubjectId == subjectId
                          && q.QuestionBank.Purpose == BankPurpose.Practice
-                         && q.CreatedByUserId == teacherId
-                         && q.Status == QuestionStatus.Active);
+                         && q.QuestionBank.Status == BankStatus.Active
+                         && q.Status == QuestionStatus.Active
+                         && (
+                             (q.QuestionBank.OwnerType == BankOwnerType.Personal && q.QuestionBank.OwnerUserId == teacherIdOfClass)
+                             || q.QuestionBank.OwnerType == BankOwnerType.Shared
+                            ));
 
             if (difficultyLevels != null && difficultyLevels.Count > 0)
                 query = query.Where(q => difficultyLevels.Contains(q.Difficulty));
@@ -146,14 +150,18 @@ namespace Backend.Repositories.Implements
             return await query.Select(q => q.QuestionId).ToListAsync();
         }
 
-        public async Task<int> CountPracticeQuestionsAsync(int chapterId, int teacherId, List<int>? difficultyLevels = null)
+        public async Task<int> CountPracticeQuestionsAsync(int chapterId, int teacherIdOfClass, int subjectId, List<int>? difficultyLevels = null)
         {
             var query = _context.Questions
                 .Where(q => q.ChapterId == chapterId
-                              // P1 bridge: Purpose now lives on bank
-                              && q.QuestionBank.Purpose == BankPurpose.Practice
-                              && q.CreatedByUserId == teacherId
-                              && q.Status == QuestionStatus.Active);
+                         && q.QuestionBank.SubjectId == subjectId
+                         && q.QuestionBank.Purpose == BankPurpose.Practice
+                         && q.QuestionBank.Status == BankStatus.Active
+                         && q.Status == QuestionStatus.Active
+                         && (
+                             (q.QuestionBank.OwnerType == BankOwnerType.Personal && q.QuestionBank.OwnerUserId == teacherIdOfClass)
+                             || q.QuestionBank.OwnerType == BankOwnerType.Shared
+                            ));
 
             if (difficultyLevels != null && difficultyLevels.Count > 0)
                 query = query.Where(q => difficultyLevels.Contains(q.Difficulty));
@@ -161,14 +169,18 @@ namespace Backend.Repositories.Implements
             return await query.CountAsync();
         }
 
-        public async Task<List<PracticeQuestionCountRaw>> GetPracticeQuestionCountsAsync(List<int> chapterIds, int teacherId)
+        public async Task<List<PracticeQuestionCountRaw>> GetPracticeQuestionCountsAsync(List<int> chapterIds, int teacherIdOfClass, int subjectId)
         {
             return await _context.Questions
                 .Where(q => chapterIds.Contains(q.ChapterId)
-                         // P1 bridge: Purpose now lives on bank
+                         && q.QuestionBank.SubjectId == subjectId
                          && q.QuestionBank.Purpose == BankPurpose.Practice
-                         && q.CreatedByUserId == teacherId
-                         && q.Status == QuestionStatus.Active)
+                         && q.QuestionBank.Status == BankStatus.Active
+                         && q.Status == QuestionStatus.Active
+                         && (
+                             (q.QuestionBank.OwnerType == BankOwnerType.Personal && q.QuestionBank.OwnerUserId == teacherIdOfClass)
+                             || q.QuestionBank.OwnerType == BankOwnerType.Shared
+                            ))
                 .GroupBy(q => new { q.ChapterId, q.Difficulty })
                 .Select(g => new PracticeQuestionCountRaw
                 {

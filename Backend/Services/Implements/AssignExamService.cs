@@ -16,7 +16,8 @@ public class AssignExamService(
     ICurrentUserService currentUserService,
     IExamStatusScheduler examStatusScheduler,
     TimeProvider timeProvider,
-    IClassRepository classRepo) : IAssignExamService
+    IClassRepository classRepo,
+    IQuestionBankRepository bankRepo) : IAssignExamService
 {
     private static readonly string[] ActiveStatus = [QuestionStatus.Active, QuestionStatus.Inprogress];
 
@@ -25,6 +26,7 @@ public class AssignExamService(
     private readonly IExamStatusScheduler _examStatusScheduler = examStatusScheduler;
     private readonly TimeProvider _timeProvider = timeProvider;
     private readonly IClassRepository _classRepo = classRepo;
+    private readonly IQuestionBankRepository _bankRepo = bankRepo;
 
     private async Task<Result> EnsureUserActiveAsync(int id, CancellationToken ct)
     {
@@ -69,7 +71,7 @@ public class AssignExamService(
         if (userCheck.IsFailure) return userCheck.Error!;
 
         subj = subj?.Trim();
-        var res = await _repo.GetQuestionsAsync(teacherId, subj, ch, diff, ActiveStatus, ct);
+        var res = await _repo.GetQuestionsAsync(teacherId, subj, ch, diff, ActiveStatus, null, ct);
         return Result<IReadOnlyList<QuestionListItemDto>>.Success(res);
     }
 
@@ -105,7 +107,15 @@ public class AssignExamService(
 
             foreach (var row in bp.ExamBlueprintChapters)
             {
-                var bank = await _repo.GetAllQuestionIdsForBlueprintRowAsync(row.ChapterId, row.Difficulty, ActiveStatus, ct);
+                var allowedBankIds = await _bankRepo.GetUsableBankIdsAsync(teacherId, bp.SubjectId, BankPurpose.Exam);
+                var bankIds = r.SourceBankIds?.Any() == true ? r.SourceBankIds : allowedBankIds;
+                
+                if (bankIds.Except(allowedBankIds).Any())
+                {
+                    return AssignExamErrors.BankNotAccessible;
+                }
+
+                var bank = await _repo.GetAllQuestionIdsForBlueprintRowAsync(row.ChapterId, row.Difficulty, ActiveStatus, bankIds, ct);
                 if (bank.Count < row.TotalOfQuestions)
                 {
                     return AssignExamErrors.InsufficientQuestions;
@@ -144,7 +154,7 @@ public class AssignExamService(
         }
         else
         {
-            var res = await BuildFromManualAsync(r.SubjectId, r.QuestionIds ?? [], ct);
+            var res = await BuildFromManualAsync(r.SubjectId, r.QuestionIds ?? [], teacherId, ct);
             if (res.IsFailure) return res.Error!;
 
             subjectId = res.Value.SubjId;
@@ -344,6 +354,7 @@ public class AssignExamService(
             old.Difficulty,
             ActiveStatus,
             currentIds,
+            null,
             ct);
         
         return Result<IReadOnlyList<QuestionListItemDto>>.Success(res);
@@ -525,7 +536,7 @@ public class AssignExamService(
         }
     }
 
-    private async Task<Result<(int SubjId, int? BpId, List<int> QIds)>> BuildFromManualAsync(int? sid, IReadOnlyCollection<int> ids, CancellationToken ct)
+    private async Task<Result<(int SubjId, int? BpId, List<int> QIds)>> BuildFromManualAsync(int? sid, IReadOnlyCollection<int> ids, int teacherId, CancellationToken ct)
     {
         if (ids == null || ids.Count == 0)
         {
@@ -536,6 +547,12 @@ public class AssignExamService(
         if (sel.Count != ids.Distinct().Count())
         {
             return AssignExamErrors.InvalidOrInactiveQuestions;
+        }
+
+        foreach (var q in sel)
+        {
+            if (q.BankOwnerType == BankOwnerType.Personal && q.BankOwnerUserId != teacherId)
+                return AssignExamErrors.QuestionNotAccessible;
         }
 
         var subjectIds = sel.Select(x => x.SubjectId).Distinct().ToList();
@@ -550,6 +567,63 @@ public class AssignExamService(
         }
 
         return Result<(int SubjId, int? BpId, List<int> QIds)>.Success((subjectIds[0], null, sel.Select(x => x.QuestionId).ToList()));
+    }
+
+    public async Task<Result<IReadOnlyList<UsableBankDto>>> GetUsableBanksAsync(int subjectId, byte bankKind, CancellationToken ct = default)
+    {
+        int teacherId = _currentUserService.UserId;
+        var res = await _bankRepo.GetUsableBanksAsync(teacherId, subjectId, bankKind);
+        return Result<IReadOnlyList<UsableBankDto>>.Success(res);
+    }
+
+    public async Task<Result<PreviewPoolResponse>> PreviewPoolAsync(PreviewPoolRequest req, CancellationToken ct = default)
+    {
+        int teacherId = _currentUserService.UserId;
+        var allowedBankIds = await _bankRepo.GetUsableBankIdsAsync(teacherId, req.SubjectId, req.Purpose);
+        
+        var bankIds = req.BankIds?.Any() == true ? req.BankIds : allowedBankIds;
+        bankIds = bankIds.Intersect(allowedBankIds).ToList();
+
+        if (!bankIds.Any()) 
+        {
+            return Result<PreviewPoolResponse>.Success(new PreviewPoolResponse());
+        }
+
+        var aggs = await _repo.GetPreviewPoolAggregationsAsync(bankIds, req.ChapterIds, ct);
+
+        var response = new PreviewPoolResponse
+        {
+            TotalQuestions = aggs.Total
+        };
+
+        response.ByChapter = aggs.ByChapter
+            .GroupBy(q => new { q.ChapterId, q.ChapterName })
+            .Select(g => new PreviewPoolResponse.ChapterBucket
+            {
+                ChapterId = g.Key.ChapterId,
+                ChapterName = g.Key.ChapterName,
+                ByDifficulty = g.Select(x => new PreviewPoolResponse.DifficultyBucket
+                                {
+                                    Difficulty = x.Difficulty,
+                                    Count = x.Count
+                                })
+                                .OrderBy(x => x.Difficulty)
+                                .ToList()
+            })
+            .OrderBy(x => x.ChapterId)
+            .ToList();
+
+        response.BankBreakdown = aggs.ByBank
+            .Select(x => new PreviewPoolResponse.BankContribution
+            {
+                BankId = x.QuestionBankId,
+                BankName = x.BankName,
+                Contribution = x.Count
+            })
+            .OrderByDescending(x => x.Contribution)
+            .ToList();
+
+        return Result<PreviewPoolResponse>.Success(response);
     }
 
     private static Result ValidateTimeWindow(DateTime? v, DateTime? o, DateTime? c)
