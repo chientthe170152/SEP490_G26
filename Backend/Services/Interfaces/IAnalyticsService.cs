@@ -9,8 +9,9 @@ public interface IAnalyticsService
     /// <summary>
     /// Phân tích chi tiết bài thi cho Giáo viên:
     /// Điểm TB, phân bố, theo chương + độ khó, câu khó nhất, danh sách HS, đề xuất cải thiện.
+    /// teacherId dùng để xác nhận giáo viên sở hữu bài thi.
     /// </summary>
-    Task<Result<ExamAnalyticsDetailDto>> GetExamAnalyticsDetailAsync(int examId);
+    Task<Result<ExamAnalyticsDetailDto>> GetExamAnalyticsDetailAsync(int examId, int teacherId);
 
     /// <summary>
     /// Phân tích bài làm cá nhân cho Học sinh:

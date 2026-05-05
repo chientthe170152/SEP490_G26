@@ -108,7 +108,7 @@ function renderComparisonChart(data) {
         data: {
             labels: ["Học sinh", "TB Lớp", "Top 1"],
             datasets: [{
-                data: [totalPoints, classAvg, data.classMaxScore || data.ClassMaxScore || 10],
+                data: [totalPoints, classAvg, data.classMaxScore ?? data.ClassMaxScore ?? 10],
                 backgroundColor: [getCSSColor("--clr-primary", 0.8), getCSSColor("--clr-info", 0.2), getCSSColor("--clr-success", 0.2)],
                 borderRadius: 8,
                 barThickness: 20
@@ -132,7 +132,11 @@ function renderRadar(canvasId, stats, labelKey, valueKey, colorVar) {
     if (!canvas) return;
     var ctx = canvas.getContext("2d");
     var labels = stats.map(function (s) { return s[labelKey] || s[labelKey.charAt(0).toUpperCase() + labelKey.slice(1)]; });
-    var values = stats.map(function (s) { return s[valueKey] || s[valueKey.charAt(0).toUpperCase() + valueKey.slice(1)]; });
+    var values = stats.map(function (s) {
+        var v = s[valueKey];
+        if (v == null) v = s[valueKey.charAt(0).toUpperCase() + valueKey.slice(1)];
+        return v != null ? Number(v) : 0;
+    });
     new Chart(ctx, {
         type: "radar",
         data: {
