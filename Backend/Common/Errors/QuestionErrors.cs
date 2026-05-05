@@ -20,4 +20,20 @@ public static class QuestionErrors
     public static readonly Error EmptyList = new(
         ErrorCodes.QuestionEmptyList,
         ErrorType.Validation);
+
+    public static readonly Error BankRequired = new(
+        ErrorCodes.QuestionBankRequired,
+        ErrorType.Validation);
+
+    public static readonly Error BankMismatch = new(
+        ErrorCodes.QuestionBankMismatch,
+        ErrorType.Forbidden);
+
+    public static readonly Error NotEditableShared = new(
+        ErrorCodes.QuestionNotEditableShared,
+        ErrorType.Forbidden);
+
+    public static readonly Error PromotionPending = new(
+        ErrorCodes.QuestionPromotionPending,
+        ErrorType.Conflict);
 }

@@ -12,7 +12,7 @@ namespace Backend.DTOs.Question
         public string? Explanation { get; set; }
         public int? ChapterId { get; set; }
         public int? Difficulty { get; set; }
-        public byte? QuestionPurpose { get; set; }
+        public int QuestionBankId { get; set; }
         public string? Status { get; set; }
         public List<AnswerDto>? Answers { get; set; }
         public List<GroupAnswerDto>? BlankGroups { get; set; }
@@ -50,8 +50,10 @@ namespace Backend.DTOs.Question
         public string ChapterName { get; set; } = null!;
         public DateTime UpdatedAt { get; set; }
         public string Status { get; set; } = null!;
-        public byte QuestionPurpose { get; set; }
-        public string QuestionPurposeLabel { get; set; } = null!;
+        public int QuestionBankId { get; set; }
+        public string BankName { get; set; } = "";
+        public byte Purpose { get; set; }
+        public string PurposeLabel { get; set; } = "";
         public int AnswerCount { get; set; }
     }
 
@@ -73,7 +75,8 @@ namespace Backend.DTOs.Question
         public int? ChapterId { get; set; }
         public int? SubjectId { get; set; }
         public string? Status { get; set; }
-        public byte? QuestionPurpose { get; set; }
+        public int? QuestionBankId { get; set; }
+        public byte? Purpose { get; set; }
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 10;
     }

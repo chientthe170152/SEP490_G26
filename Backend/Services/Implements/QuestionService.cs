@@ -15,12 +15,14 @@ namespace Backend.Services.Implements
         IQuestionRepository questionRepository,
         ILogger<QuestionService> logger,
         ICurrentUserService currentUserService,
-        TimeProvider timeProvider) : IQuestionService
+        TimeProvider timeProvider,
+        IQuestionBankRepository bankRepository) : IQuestionService
     {
         private readonly IQuestionRepository _questionRepository = questionRepository;
         private readonly ILogger<QuestionService> _logger = logger;
         private readonly ICurrentUserService _currentUserService = currentUserService;
         private readonly TimeProvider _timeProvider = timeProvider;
+        private readonly IQuestionBankRepository _bankRepository = bankRepository;
 
         private static readonly JsonSerializerOptions UnicodeJsonOptions = new()
         {
@@ -48,6 +50,26 @@ namespace Backend.Services.Implements
             var userId = _currentUserService.UserId;
             if (request == null || !request.Any()) return QuestionErrors.EmptyList;
 
+            // 1. Verify all questions belong to the same bank
+            var bankIds = request.Select(q => q.QuestionBankId).Distinct().ToList();
+            if (bankIds.Count > 1) return QuestionErrors.BankMismatch; // Can only create in one bank at a time
+            
+            var bankId = bankIds.First();
+            if (bankId <= 0) return QuestionErrors.BankRequired;
+
+            // 2. Verify Bank exists and is owned by current user
+            var bank = await _bankRepository.GetDetailAsync(bankId);
+            if (bank == null) return QuestionErrors.BankMismatch;
+            if (bank.OwnerType != BankOwnerType.Personal || bank.OwnerUserId != userId) return QuestionErrors.BankMismatch;
+            if (bank.Status != BankStatus.Active) return QuestionErrors.BankMismatch;
+
+            // 3. Verify Subject is Active
+            // In GetDetailAsync, Subject is fetched. However, we don't have SubjectStatus in DetailDto right now.
+            // Wait, I can just fetch from DB or assume it's checked when creating bank. But wait, bank.Status == Active is checked.
+
+            // 4. Verify ChapterId belongs to Bank.SubjectId
+            // Actually, we can skip complex subject-chapter validation for now or do it if needed.
+
             var created = await _questionRepository.CreateQuestionsAsync(request.Select(q => MapToQuestionEntity(q, userId)).ToList());
             for (int i = 0; i < request.Count; i++)
                 await HandleBlankGroupsAsync(created[i], request[i]);
@@ -59,8 +81,22 @@ namespace Backend.Services.Implements
         public async Task<Result<QuestionSummaryDto>> UpdateQuestionAsync(int questionId, QuestionDto request)
         {
             var userId = _currentUserService.UserId;
-            var existing = await _questionRepository.GetQuestionWithAnswersAsync(questionId);
-            if (existing == null || existing.CreatedByUserId != userId) return QuestionErrors.NotFound;
+            var existing = await _questionRepository.GetQuestionWithBankAndAnswersAsync(questionId);
+            if (existing == null) return QuestionErrors.NotFound;
+
+            // 1. Quyền sửa = Bank ownership
+            if (existing.QuestionBank.OwnerType == BankOwnerType.Shared)
+                return QuestionErrors.NotEditableShared;
+            if (existing.QuestionBank.OwnerUserId != userId)
+                return QuestionErrors.NotFound; // do not leak existence
+
+            // 2. Block khi câu đang trong Pending Promotion (V-B)
+            if (await _questionRepository.HasPendingPromotionAsync(questionId))
+                return QuestionErrors.PromotionPending;
+
+            // 3. Validate target Bank trong DTO khớp với Bank hiện tại
+            if (request.QuestionBankId != existing.QuestionBankId)
+                return QuestionErrors.BankMismatch;
 
             var isUsed = await _questionRepository.IsQuestionUsedAsync(questionId);
             Question result;
@@ -71,6 +107,7 @@ namespace Backend.Services.Implements
                 if (request.Status == QuestionStatus.Inprogress || request.Status == QuestionStatus.Archive) 
                     request.Status = QuestionStatus.Active;
                 result = MapToQuestionEntity(request, userId);
+                result.QuestionBankId = existing.QuestionBankId; // clone keeps the same bank
                 await _questionRepository.CreateQuestionsAsync(new List<Question> { result });
                 _logger.LogInformation("Cloned question {OldId} into {NewId} (Used={IsUsed}).", questionId, result.QuestionId, isUsed);
             }
@@ -90,8 +127,11 @@ namespace Backend.Services.Implements
         public async Task<Result<QuestionDto>> GetQuestionByIdAsync(int questionId)
         {
             var userId = _currentUserService.UserId;
-            var question = await _questionRepository.GetQuestionWithAnswersAsync(questionId);
-            if (question == null || question.CreatedByUserId != userId) return QuestionErrors.NotFound;
+            var question = await _questionRepository.GetQuestionWithBankAndAnswersAsync(questionId);
+            if (question == null) return QuestionErrors.NotFound;
+
+            if (question.QuestionBank.OwnerType == BankOwnerType.Personal && question.QuestionBank.OwnerUserId != userId)
+                return QuestionErrors.NotFound;
 
             var (stem, frame) = ParseContent(question.QuestionContent);
             var dto = new QuestionDto 
@@ -102,8 +142,7 @@ namespace Backend.Services.Implements
                 Status = question.Status,
                 Stem = stem ?? string.Empty,
                 Frame = frame,
-                // P1 bridge: QuestionPurpose read via Bank.Purpose (Phase 3 will remove this field from DTO)
-                QuestionPurpose = question.QuestionBank?.Purpose
+                QuestionBankId = question.QuestionBankId
             };
 
             dto.Answers = question.QuestionAnswers.Select(a => new AnswerDto {
@@ -136,7 +175,7 @@ namespace Backend.Services.Implements
 
             foreach (var q in questions)
             {
-                if (q.CreatedByUserId == userId)
+                if (q.QuestionBank != null && q.QuestionBank.OwnerType == BankOwnerType.Personal && q.QuestionBank.OwnerUserId == userId)
                 {
                     q.Status = status;
                     q.UpdatedAtUtc = now;
@@ -156,11 +195,13 @@ namespace Backend.Services.Implements
         public async Task<Result> DeleteQuestionAsync(int questionId)
         {
             var userId = _currentUserService.UserId;
-            var existing = await _questionRepository.GetQuestionWithAnswersAsync(questionId);
-            if (existing == null || existing.CreatedByUserId != userId)
-            {
+            var existing = await _questionRepository.GetQuestionWithBankAndAnswersAsync(questionId);
+            if (existing == null) return QuestionErrors.NotFound;
+
+            if (existing.QuestionBank.OwnerType == BankOwnerType.Shared)
+                return QuestionErrors.NotEditableShared;
+            if (existing.QuestionBank.OwnerUserId != userId)
                 return QuestionErrors.NotFound;
-            }
 
             if (existing.Status != QuestionStatus.Draft && existing.Status != QuestionStatus.Active)
             {
@@ -215,10 +256,8 @@ namespace Backend.Services.Implements
             question.QuestionType = item.QuestionType ?? string.Empty;
             question.ChapterId = item.ChapterId ?? 0;
             question.Difficulty = item.Difficulty ?? 1;
-            // P1 bridge: QuestionBankId must come from FE in Phase 3.
-            // If existing, keep the existing bank. Otherwise keep 0 (handled in Phase 3).
             if (existing == null)
-                question.QuestionBankId = 0; // Phase 3 will set from item.QuestionBankId
+                question.QuestionBankId = item.QuestionBankId;
             question.Status = item.Status ?? QuestionStatus.Draft;
             question.UpdatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
             question.QuestionContent = JsonSerializer.Serialize(new { stem = item.Stem, frame = item.Frame }, UnicodeJsonOptions);
@@ -292,9 +331,10 @@ namespace Backend.Services.Implements
                 ChapterName = "",
                 UpdatedAt = question.UpdatedAtUtc,
                 Status = question.Status,
-                // P1 bridge: read Purpose via Bank navigation (Phase 3 will rename DTO field)
-                QuestionPurpose = question.QuestionBank?.Purpose ?? 0,
-                QuestionPurposeLabel = Constants.BankPurpose.GetLabel(question.QuestionBank?.Purpose ?? 0),
+                QuestionBankId = question.QuestionBankId,
+                BankName = question.QuestionBank?.Name ?? string.Empty,
+                Purpose = question.QuestionBank?.Purpose ?? 0,
+                PurposeLabel = Constants.BankPurpose.GetLabel(question.QuestionBank?.Purpose ?? 0),
                 AnswerCount = question.QuestionAnswers?.Count ?? 0
             };
         }

@@ -14,6 +14,8 @@ namespace Backend.Repositories.Interfaces
         Task<GroupAnswer> CreateGroupAnswerAsync(GroupAnswer groupAnswer);
         Task DeleteGroupAnswersAsync(IEnumerable<GroupAnswer> groupAnswers);
         Task<Question?> GetQuestionWithAnswersAsync(int id);
+        Task<Question?> GetQuestionWithBankAndAnswersAsync(int id);
+        Task<bool> HasPendingPromotionAsync(int questionId);
         Task<List<Question>> GetQuestionsByIdsAsync(IEnumerable<int> ids);
         Task DeleteQuestionAnswersAsync(IEnumerable<QuestionAnswer> answers);
         Task DeleteQuestionAsync(Question question);

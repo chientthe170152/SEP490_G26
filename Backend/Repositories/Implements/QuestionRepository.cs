@@ -23,8 +23,10 @@ namespace Backend.Repositories.Implements
                 .Include(x => x.Chapter)
                     .ThenInclude(c => c.Subject)
                 .Include(x => x.QuestionAnswers)
-                .Include(x => x.QuestionBank)   // P1 bridge: needed to read Bank.Purpose
-                .Where(x => x.CreatedByUserId == userId)
+                .Include(x => x.QuestionBank)
+                .Where(x =>
+                    (x.QuestionBank.OwnerType == BankOwnerType.Personal && x.QuestionBank.OwnerUserId == userId)
+                    || x.QuestionBank.OwnerType == BankOwnerType.Shared)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(queryDto.Keyword))
@@ -58,10 +60,14 @@ namespace Backend.Repositories.Implements
                 query = query.Where(x => x.Status == queryDto.Status);
             }
 
-            if (queryDto.QuestionPurpose.HasValue)
+            if (queryDto.QuestionBankId.HasValue)
             {
-                // P1 bridge: filter via Bank.Purpose instead of Question.QuestionPurpose
-                query = query.Where(x => x.QuestionBank.Purpose == queryDto.QuestionPurpose.Value);
+                query = query.Where(x => x.QuestionBankId == queryDto.QuestionBankId.Value);
+            }
+
+            if (queryDto.Purpose.HasValue)
+            {
+                query = query.Where(x => x.QuestionBank.Purpose == queryDto.Purpose.Value);
             }
 
             var totalCount = await query.CountAsync();
@@ -84,8 +90,9 @@ namespace Backend.Repositories.Implements
                     ChapterName = x.Chapter.Name,
                     UpdatedAt = x.UpdatedAtUtc,
                     Status = x.Status,
-                    // P1 bridge: read via Bank.Purpose
-                    QuestionPurpose = x.QuestionBank.Purpose,
+                    QuestionBankId = x.QuestionBankId,
+                    BankName = x.QuestionBank.Name,
+                    Purpose = x.QuestionBank.Purpose,
                     AnswerCount = x.QuestionAnswers.Count
                 })
                 .ToListAsync();
@@ -93,7 +100,7 @@ namespace Backend.Repositories.Implements
             // Compute labels after materialization (can't use custom methods in LINQ-to-SQL)
             foreach (var item in items)
             {
-                item.QuestionPurposeLabel = BankPurpose.GetLabel(item.QuestionPurpose);
+                item.PurposeLabel = BankPurpose.GetLabel(item.Purpose);
             }
 
             return (items, totalCount);
@@ -151,6 +158,25 @@ namespace Backend.Repositories.Implements
                 .FirstOrDefaultAsync(q => q.QuestionId == id);
         }
 
+        public async Task<Question?> GetQuestionWithBankAndAnswersAsync(int id)
+        {
+            return await _dbContext.Questions
+                .Include(q => q.QuestionBank)
+                .Include(q => q.QuestionAnswers)
+                    .ThenInclude(qa => qa.BlankInputs)
+                .Include(q => q.QuestionAnswers)
+                    .ThenInclude(qa => qa.GroupAnswer)
+                .FirstOrDefaultAsync(q => q.QuestionId == id);
+        }
+
+        public async Task<bool> HasPendingPromotionAsync(int questionId)
+        {
+            return await _dbContext.QuestionPromotionRequestItems
+                .AnyAsync(i => i.QuestionId == questionId &&
+                               i.Request != null &&
+                               i.Request.Status == PromotionRequestStatus.Pending);
+        }
+
         public Task DeleteGroupAnswersAsync(IEnumerable<GroupAnswer> groupAnswers)
         {
             _dbContext.GroupAnswers.RemoveRange(groupAnswers);
@@ -166,6 +192,7 @@ namespace Backend.Repositories.Implements
         public async Task<List<Question>> GetQuestionsByIdsAsync(IEnumerable<int> ids)
         {
             return await _dbContext.Questions
+                .Include(q => q.QuestionBank)
                 .Where(q => ids.Contains(q.QuestionId))
                 .ToListAsync();
         }

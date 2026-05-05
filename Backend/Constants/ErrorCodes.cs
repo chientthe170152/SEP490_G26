@@ -76,6 +76,10 @@ public static class ErrorCodes
     public const string QuestionInUse = "QUESTION_IN_USE";
     public const string QuestionInvalidDeleteStatus = "QUESTION_INVALID_DELETE_STATUS";
     public const string QuestionEmptyList = "QUESTION_EMPTY_LIST";
+    public const string QuestionBankRequired = "QUESTION_BANK_REQUIRED";
+    public const string QuestionBankMismatch = "QUESTION_BANK_MISMATCH";
+    public const string QuestionNotEditableShared = "QUESTION_NOT_EDITABLE_SHARED";
+    public const string QuestionPromotionPending = "QUESTION_PROMOTION_PENDING";
 
     // ExamBlueprint
     public const string ExamBlueprintInvalidSubject = "EXAM_BLUEPRINT_INVALID_SUBJECT";
