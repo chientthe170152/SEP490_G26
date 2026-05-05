@@ -28,12 +28,6 @@ public class QuestionDtoValidator : AbstractValidator<QuestionDto>
             .NotEmpty()
             .Must(s => QuestionStatus.IsValid(s ?? string.Empty));
 
-        // P1 bridge: QuestionPurpose field dropped from Question model.
-        // Phase 3 will replace with: RuleFor(x => x.QuestionBankId).GreaterThan(0).MustAsync(bankOwnershipCheck)
-        // RuleFor(x => x.QuestionPurpose)
-        //     .NotNull()
-        //     .Must(p => Constants.QuestionPurpose.IsValid(p ?? 0));
-
         RuleFor(x => x.ChapterId)
             .NotNull()
             .MustAsync(async (id, cancellation) => id.HasValue && await questionRepository.ChapterExistsAsync(id.Value));

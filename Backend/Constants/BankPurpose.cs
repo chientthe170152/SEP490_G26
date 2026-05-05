@@ -2,7 +2,6 @@ namespace Backend.Constants;
 
 /// <summary>
 /// Mục đích sử dụng của QuestionBank. Câu hỏi kế thừa Purpose qua bank chứa nó.
-/// Thay thế <see cref="QuestionPurpose"/> (đã Obsolete từ Phase 1 — sẽ drop ở Phase 9).
 /// </summary>
 public static class BankPurpose
 {

@@ -1,6 +1,6 @@
 # Question Bank & Shared Repository — Master Plan
 
-> **Trạng thái**: 🟢 **P5 ĐÃ ĐÓNG — SẴN SÀNG MỞ P6** (commit `ec1c54d` 2026-05-05). Đã review code quality đạt chuẩn.
+> **Trạng thái**: ✅ **ĐÃ HOÀN THÀNH**
 > Folder này gồm **tài liệu phân tích** (`01`…`08`) + **phase plan triển khai** (`phase-0`…`phase-9`).
 >
 > **Schema cuối cùng**: [`08-finalized-schema.md`](08-finalized-schema.md) — Q2 theo phương án **C** (`Purpose` enum + `Description` text). `Bank.Name` NOT NULL cho mọi loại; Shared Bank tự sinh theo công thức `"Kho chung {Purpose} {Subject.Name} {Subject.Code}"` ở `SubjectService.CreateAsync` (override CLAUDE.md "BE không ship Vietnamese strings" theo yêu cầu user 2026-05-05).
@@ -195,7 +195,7 @@ Mỗi phase được thiết kế để **1 AI agent có thể làm trọn vẹn
 | ✅ **P6** | [phase-6-fe-teacher-bank.md](phase-6-fe-teacher-bank.md) | FE giáo viên: trang `QuestionBank/Index`, `QuestionBank/Detail`, modal Promotion. Cập nhật form tạo câu hỏi để bind vào Bank. | P2, P4 | ~700 |
 | ✅ **P7** | [phase-7-fe-teacher-create-exam.md](phase-7-fe-teacher-create-exam.md) | FE giáo viên: cập nhật `Class/CreateExam` mode blueprint = multi-select bank + preview pool count. Cập nhật trang Practice cho học sinh (badge nguồn câu). | P5, P6 | ~450 |
 | ✅ **P8** | [phase-8-fe-admin-promotion.md](phase-8-fe-admin-promotion.md) | FE admin: trang `Admin/PromotionRequests` (list + detail + approve/reject modal lý do). | P4 | ~500 |
-| **P9** | [phase-9-smoke-and-docs.md](phase-9-smoke-and-docs.md) | Smoke test 25 endpoint, cập nhật `database/script-schema.sql`, `CLAUDE.md`, `.plan/test-accounts.md`. | P0–P8 | ~150 |
+| ✅ **P9** | [phase-9-smoke-and-docs.md](phase-9-smoke-and-docs.md) | Smoke test 25 endpoint, cập nhật `database/script-schema.sql`, `CLAUDE.md`, `.plan/test-accounts.md`. | P0–P8 | ~150 |
 
 **Quy tắc đóng phase**:
 - `dotnet build MTCA_SEP490_G26.sln` → 0 errors.
