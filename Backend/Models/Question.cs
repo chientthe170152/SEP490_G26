@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Backend.Models;
@@ -23,7 +23,13 @@ public partial class Question
 
     public byte[] ConcurrencyStamp { get; set; } = null!;
 
-    public byte QuestionPurpose { get; set; }
+    /// <summary>
+    /// FK tới QuestionBank chứa câu hỏi này.
+    /// Purpose của câu hỏi = QuestionBank.Purpose (không còn trường riêng).
+    /// </summary>
+    public int QuestionBankId { get; set; }
+
+    public virtual QuestionBank QuestionBank { get; set; } = null!;
 
     public virtual Chapter Chapter { get; set; } = null!;
 
