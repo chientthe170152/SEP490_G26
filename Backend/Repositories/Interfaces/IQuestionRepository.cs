@@ -6,6 +6,7 @@ namespace Backend.Repositories.Interfaces
     public interface IQuestionRepository
     {
         Task<(List<QuestionSummaryDto> Items, int TotalCount)> GetQuestionsAsync(QuestionListQueryDto query, int userId);
+        Task<List<Question>> GetByIdsAsync(List<int> questionIds);
         Task<List<Question>> CreateQuestionsAsync(List<Question> questions);
         Task<List<InputType>> GetInputTypesAsync();
         Task<List<Subject>> GetSubjectsWithChaptersAsync();

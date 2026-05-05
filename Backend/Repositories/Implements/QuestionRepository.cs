@@ -148,6 +148,16 @@ namespace Backend.Repositories.Implements
             return groupAnswer;
         }
 
+        public async Task<List<Question>> GetByIdsAsync(List<int> questionIds)
+        {
+            return await _dbContext.Questions
+                .Include(q => q.Chapter)
+                .Include(q => q.QuestionBank)
+                .Include(q => q.QuestionAnswers)
+                .Where(q => questionIds.Contains(q.QuestionId))
+                .ToListAsync();
+        }
+
         public async Task<Question?> GetQuestionWithAnswersAsync(int id)
         {
             return await _dbContext.Questions

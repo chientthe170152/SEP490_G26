@@ -177,4 +177,23 @@ public static class ErrorCodes
     public const string BankCannotEditShared = "BANK_CANNOT_EDIT_SHARED";
     public const string BankAlreadyArchived  = "BANK_ALREADY_ARCHIVED";
     public const string BankConcurrentUpdate = "BANK_CONCURRENT_UPDATE";
+
+    // Promotion
+    public const string PromotionEmptyQuestions          = "QPR_EMPTY_QUESTIONS";
+    public const string PromotionTooManyQuestions        = "QPR_TOO_MANY_QUESTIONS";
+    public const string PromotionMultipleSubjects        = "QPR_MULTIPLE_SUBJECTS";
+    public const string PromotionSubjectMismatch         = "QPR_SUBJECT_MISMATCH";
+    public const string PromotionSourceNotOwned          = "QPR_SOURCE_NOT_OWNED";
+    public const string PromotionTargetNotShared         = "QPR_TARGET_NOT_SHARED";
+    public const string PromotionQuestionNotInSource     = "QPR_QUESTION_NOT_IN_SOURCE";
+    public const string PromotionRequestNotFound         = "QPR_REQUEST_NOT_FOUND";
+    public const string PromotionRejectionReasonRequired = "QPR_REJECTION_REASON_REQUIRED";
+    public const string PromotionConcurrentUpdate        = "QPR_CONCURRENT_UPDATE";
+    public const string PromotionAlreadyWithdrawn        = "QPR_ALREADY_WITHDRAWN";
+    public const string PromotionAlreadyResolved         = "QPR_ALREADY_RESOLVED";
+    public const string PromotionQuestionAlreadyPending  = "QPR_QUESTION_ALREADY_PENDING";
+    public const string PromotionFinalizeIncomplete      = "QPR_FINALIZE_INCOMPLETE";
+    public const string PromotionFinalizeUnknownItem     = "QPR_FINALIZE_UNKNOWN_ITEM";
+    public const string PromotionFinalizeDuplicateItem   = "QPR_FINALIZE_DUPLICATE_ITEM";
+    public const string PromotionFinalizeInvalidDecision = "QPR_FINALIZE_INVALID_DECISION";
 }
