@@ -45,18 +45,12 @@
 
                 <div class="row g-3">
                     <div class="col-12 col-md-6">
-                        <label class="form-label">Môn học *</label>
-                        <select class="form-select" id="sharedSubjectSelect">
-                            <option value="">Chọn môn học</option>
+                        <label class="form-label">Ngân hàng câu hỏi *</label>
+                        <select class="form-select" id="sharedBankSelect">
+                            <option value="">Chọn ngân hàng</option>
                         </select>
-                        <div class="invalid-feedback">Vui lòng chọn môn học.</div>
-                    </div>
-                    <div class="col-12 col-md-6">
-                        <label class="form-label">Mục đích câu hỏi</label>
-                        <select class="form-select" id="sharedPurposeSelect">
-                            <option value="1" selected>Kiểm tra</option>
-                            <option value="2">Luyện tập</option>
-                        </select>
+                        <div class="invalid-feedback">Vui lòng chọn ngân hàng câu hỏi.</div>
+                        <div class="form-text">Câu hỏi sẽ được lưu vào ngân hàng này.</div>
                     </div>
                 </div>
 
@@ -67,14 +61,8 @@
                     <div class="row g-3">
                         <div class="col-12 col-md-6">
                             <div class="summary-card py-3 px-3">
-                                <p class="summary-label mb-1">Môn học</p>
-                                <p class="mb-0 fw-semibold" id="summarySubject">-</p>
-                            </div>
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <div class="summary-card py-3 px-3">
-                                <p class="summary-label mb-1">Mục đích</p>
-                                <p class="mb-0 fw-semibold" id="summaryPurpose">Kiểm tra</p>
+                                <p class="summary-label mb-1">Ngân hàng</p>
+                                <p class="mb-0 fw-semibold" id="summaryBank">-</p>
                             </div>
                         </div>
                     </div>
@@ -92,8 +80,7 @@
                     <div>
                         <h2 class="section-title mb-1">Nội dung câu hỏi</h2>
                         <p class="form-note mb-0">
-                            Môn: <strong id="step2SubjectBadge">-</strong> ·
-                            Mục đích: <strong id="step2PurposeBadge">Kiểm tra</strong>
+                            Ngân hàng: <strong id="step2BankBadge">-</strong>
                         </p>
                     </div>
                     <div class="d-flex align-items-center gap-2">

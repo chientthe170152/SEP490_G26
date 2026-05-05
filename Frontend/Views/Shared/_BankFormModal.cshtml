@@ -1,0 +1,49 @@
+<!-- Modal: tạo bank -->
+<div class="modal fade" id="createBankModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header border-0 pb-0">
+        <div>
+          <h5 class="modal-title" style="font-family:'Lora',serif;font-weight:600;" id="bankModalTitle">Tạo ngân hàng mới</h5>
+          <p class="text-muted small mb-0 mt-1">Mỗi bank gắn với 1 môn học và 1 loại (kiểm tra hoặc luyện tập).</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="createBankForm">
+          <input type="hidden" id="bankIdInput" value="0" />
+          <div class="mb-3">
+            <label class="form-label fw-medium">Tên ngân hàng <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="bankNameInput" placeholder="VD: Đề thi cuối kỳ MAS291 K18" maxlength="200" required>
+            <div class="form-text">Tên này chỉ bạn thấy. Giáo viên khác chỉ thấy bank chung của môn.</div>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Môn học <span class="text-danger">*</span></label>
+              <select class="form-select" id="bankSubjectSelect" required>
+                <option value="">Chọn môn...</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Loại <span class="text-danger">*</span></label>
+              <div class="d-flex gap-2 mt-1">
+                <input type="radio" class="btn-check" name="kind" id="kindExam" value="1" autocomplete="off" checked>
+                <label class="btn btn-outline-secondary flex-fill" for="kindExam">Kiểm tra</label>
+                <input type="radio" class="btn-check" name="kind" id="kindPractice" value="2" autocomplete="off">
+                <label class="btn btn-outline-secondary flex-fill" for="kindPractice">Luyện tập</label>
+              </div>
+            </div>
+          </div>
+          <div class="mt-3">
+            <label class="form-label fw-medium">Mô tả <span class="text-muted small">(tùy chọn, tối đa 500 ký tự)</span></label>
+            <textarea class="form-control" id="bankDescInput" rows="2" maxlength="500" placeholder="Mô tả ngắn về mục đích sử dụng của bank này..."></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Hủy</button>
+        <button type="submit" form="createBankForm" class="btn btn-primary px-4" id="btnSubmitBank">Tạo ngân hàng</button>
+      </div>
+    </div>
+  </div>
+</div>

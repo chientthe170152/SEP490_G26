@@ -17,8 +17,8 @@
     const countText = document.getElementById('questionCountText');
 
     // Shared fields
-    const sharedSubject = document.getElementById('sharedSubjectSelect');
-    const sharedPurpose = document.getElementById('sharedPurposeSelect');
+    const sharedBank = document.getElementById('sharedBankSelect');
+
 
     // Navigation buttons
     const btnNext1 = document.getElementById('btnNext1');
@@ -34,6 +34,7 @@
 
     let inputTypesData = [];
     let subjectsData = [];
+    let personalBanks = [];
     let currentStep = 1;
 
     // ═══════════════════════════════════
@@ -76,31 +77,25 @@
     };
 
     const validateStep1 = () => {
-        if (!sharedSubject?.value) {
-            sharedSubject?.parentElement?.classList.add('is-invalid');
-            showToast('Vui lòng chọn môn học trước khi tiếp tục.', 'error');
+        if (!sharedBank?.value) {
+            sharedBank?.parentElement?.classList.add('is-invalid');
+            showToast('Vui lòng chọn ngân hàng câu hỏi trước khi tiếp tục.', 'error');
             return false;
         }
-        sharedSubject?.parentElement?.classList.remove('is-invalid');
+        sharedBank?.parentElement?.classList.remove('is-invalid');
         return true;
     };
 
     const updateStep1Summary = () => {
-        const subLabel = sharedSubject?.selectedOptions?.[0]?.text || '-';
-        const purposeLabel = sharedPurpose?.selectedOptions?.[0]?.text || 'Kiểm tra';
-
-        document.getElementById('summarySubject').textContent = subLabel;
-        document.getElementById('summaryPurpose').textContent = purposeLabel;
+        const bankLabel = sharedBank?.selectedOptions?.[0]?.text || '-';
+        document.getElementById('summaryBank').textContent = bankLabel;
         step1Summary?.classList.remove('d-none');
     };
 
     const updateStep2Badges = () => {
-        const subLabel = sharedSubject?.selectedOptions?.[0]?.text || '-';
-        const purposeLabel = sharedPurpose?.selectedOptions?.[0]?.text || 'Kiểm tra';
-        const el1 = document.getElementById('step2SubjectBadge');
-        const el2 = document.getElementById('step2PurposeBadge');
-        if (el1) el1.textContent = subLabel;
-        if (el2) el2.textContent = purposeLabel;
+        const bankLabel = sharedBank?.selectedOptions?.[0]?.text || '-';
+        const el1 = document.getElementById('step2BankBadge');
+        if (el1) el1.textContent = bankLabel;
     };
 
     // Step 1 → 2
@@ -131,15 +126,14 @@
     });
 
     // Show summary when fields change
-    sharedSubject?.addEventListener('change', () => {
-        if (sharedSubject.value) {
+    sharedBank?.addEventListener('change', () => {
+        if (sharedBank.value) {
             updateStep1Summary();
             // Also update chapters for all items
             const items = questionList.querySelectorAll('[data-question-item]');
             toArray(items).forEach(item => syncChapterForItem(item));
         }
     });
-    sharedPurpose?.addEventListener('change', updateStep1Summary);
 
     // ═══════════════════════════════════
     //  ACCORDION HELPERS
@@ -206,8 +200,11 @@
         if (!chapSel) return;
         const currentVal = chapSel.value;
         while (chapSel.options.length > 1) chapSel.remove(1);
-        const subId = parseInt(sharedSubject?.value);
-        if (!subId) return;
+        const bankId = parseInt(sharedBank?.value);
+        if (!bankId) return;
+        const bank = personalBanks.find(b => b.questionBankId === bankId);
+        if (!bank) return;
+        const subId = bank.subjectId;
         const sub = subjectsData.find(s => (s.subjectId || s.SubjectId) === subId);
         const chapters = sub?.chapters || sub?.Chapters;
         if (chapters) {
@@ -218,14 +215,28 @@
         if (currentVal) chapSel.value = currentVal;
     };
 
-    const populateSharedSubjects = () => {
-        if (!sharedSubject || !subjectsData?.length) return;
-        const current = sharedSubject.value;
-        while (sharedSubject.options.length > 1) sharedSubject.remove(1);
-        subjectsData.forEach(s => {
-            sharedSubject.add(new Option(s.code || s.Code || s.name || s.Name, s.subjectId || s.SubjectId));
+    const populateBanks = () => {
+        if (!sharedBank || !personalBanks?.length) return;
+        const current = sharedBank.value;
+        while (sharedBank.options.length > 1) sharedBank.remove(1);
+        personalBanks.forEach(b => {
+            const purposeText = b.questionPurpose === 1 ? 'Kiểm tra' : 'Luyện tập';
+            sharedBank.add(new Option(`[${b.subjectCode} - ${purposeText}] ${b.name}`, b.questionBankId));
         });
-        if (current) sharedSubject.value = current;
+        if (current) sharedBank.value = current;
+        
+        // Auto-select if bankId is in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlBankId = urlParams.get('bankId');
+        if (urlBankId) {
+            sharedBank.value = urlBankId;
+            // auto navigate to step 2 if valid
+            if (sharedBank.value === urlBankId) {
+                updateStep1Summary();
+                goToStep(2);
+                syncBatch();
+            }
+        }
     };
 
     // ═══════════════════════════════════
@@ -323,12 +334,12 @@
             showToast('Vui lòng hoàn thành bước 1 trước.', 'error');
             return;
         }
-        if (!sharedSubject?.value) {
-            showToast('Vui lòng chọn Môn học trước khi lưu.', 'error');
+        if (!sharedBank?.value) {
+            showToast('Vui lòng chọn Ngân hàng trước khi lưu.', 'error');
             return;
         }
 
-        const purposeVal = parseInt(sharedPurpose?.value) || 1;
+        const bankIdVal = parseInt(sharedBank?.value);
 
         try {
             const items = questionList.querySelectorAll('[data-question-item]');
@@ -337,7 +348,7 @@
                     const p = QE.collectPayload(item);
                     if (!p) throw new Error("Không thể thu thập dữ liệu câu hỏi.");
                     p.status = status;
-                    p.questionPurpose = purposeVal;
+                    p.questionBankId = bankIdVal;
                     if (!p.chapterId) throw new Error("Vui lòng chọn Chương.");
                     return p;
                 } catch (e) {
@@ -375,11 +386,16 @@
             const root = (res && res.data) ? res.data : res;
             inputTypesData = root.inputTypes || root.InputTypes || [];
             subjectsData = root.subjects || root.Subjects || [];
-            populateSharedSubjects();
+            
+            // Fetch banks
+            const resBanks = await apiClient.get('/api/question-banks?ownerType=1&pageSize=1000');
+            personalBanks = resBanks.items || resBanks.data?.items || [];
+            
+            populateBanks();
             syncBatch();
 
-            if (subjectsData.length === 0 && inputTypesData.length === 0) {
-                showToast('Dữ liệu hệ thống vẫn đang trống (Môn học/Giới hạn).', 'error');
+            if (personalBanks.length === 0) {
+                showToast('Bạn chưa có ngân hàng cá nhân nào. Hãy tạo ngân hàng trước.', 'error');
             }
         } catch (e) {
             console.error('Failed to load metadata:', e);

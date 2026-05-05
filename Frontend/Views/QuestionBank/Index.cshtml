@@ -1,0 +1,147 @@
+@{
+    ViewData["Title"] = "Ngân hàng câu hỏi";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lora:wght@500;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/QuestionBank/QuestionBank.css" />
+}
+
+<main class="container-main">
+
+  <nav class="breadcrumb-row">
+    <a href="/">Trang chủ</a><span class="sep">›</span>
+    <span class="current">Ngân hàng câu hỏi</span>
+  </nav>
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Ngân hàng câu hỏi</h1>
+      <p class="page-subtitle">Quản lý các bank câu hỏi cá nhân và xem kho chung của môn bạn dạy.</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createBankModal">
+      + Tạo ngân hàng mới
+    </button>
+  </div>
+
+  <div class="bank-tabs">
+    <button class="bank-tab active" data-tab="personal" id="tabPersonal">
+      Cá nhân <span class="badge-count" id="countPersonal">0</span>
+    </button>
+    <button class="bank-tab" data-tab="shared" id="tabShared">
+      Kho chung của môn <span class="badge-count" id="countShared">0</span>
+    </button>
+  </div>
+
+  <div class="panel-card">
+
+    <div class="filter-bar">
+      <div>
+        <label class="form-label">Tìm kiếm</label>
+        <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Tên bank hoặc mô tả...">
+      </div>
+      <div>
+        <label class="form-label">Môn học</label>
+        <select class="form-select form-select-sm" id="filterSubject">
+          <option value="">Tất cả</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Loại</label>
+        <select class="form-select form-select-sm" id="filterKind">
+          <option value="">Tất cả</option>
+          <option value="1">Kiểm tra</option>
+          <option value="2">Luyện tập</option>
+        </select>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary" id="btnResetFilter">Xóa lọc</button>
+      <button class="btn btn-sm btn-primary" id="btnApplyFilter">Áp dụng</button>
+    </div>
+
+    <!-- TAB: PERSONAL -->
+    <div class="table-responsive" id="tablePersonal">
+      <table class="bank-table table table-hover">
+        <thead>
+          <tr>
+            <th style="width:40%;">Tên ngân hàng</th>
+            <th style="width:14%;">Môn học</th>
+            <th style="width:11%;">Loại</th>
+            <th style="width:9%;text-align:right;">Câu hỏi</th>
+            <th style="width:14%;">Cập nhật</th>
+            <th style="width:10%;">Trạng thái</th>
+            <th style="width:8%;">Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="personalBankTbody">
+            <!-- Rendered via JS -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: SHARED -->
+    <div class="table-responsive d-none" id="tableShared">
+      <table class="bank-table table table-hover">
+        <thead>
+          <tr>
+            <th style="width:36%;">Tên ngân hàng</th>
+            <th style="width:14%;">Môn học</th>
+            <th style="width:11%;">Loại</th>
+            <th style="width:9%;text-align:right;">Câu hỏi</th>
+            <th style="width:18%;">Đóng góp</th>
+            <th style="width:10%;">Trạng thái</th>
+            <th style="width:6%;">Xem</th>
+          </tr>
+        </thead>
+        <tbody id="sharedBankTbody">
+            <!-- Rendered via JS -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="empty-tab d-none" id="emptyState">
+      <div>Không tìm thấy bank phù hợp.</div>
+      <div style="font-size:.85rem;margin-top:.25rem;">Thử <a href="#" id="linkResetFilter">xóa bộ lọc</a>.</div>
+    </div>
+
+    <div class="pager-wrap d-none" id="pagerWrap">
+      <div class="pager-info">Hiển thị <span id="pagerCount">0</span> / <span id="pagerTotal">0</span> bank</div>
+      <div class="pager-ctrls" id="pagerCtrls">
+      </div>
+    </div>
+  </div>
+
+</main>
+
+@await Html.PartialAsync("_BankFormModal")
+
+<!-- Modal: archive -->
+<div class="modal fade" id="archiveModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">Lưu trữ ngân hàng</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <p class="mb-2">Bạn sắp lưu trữ bank: <strong id="archiveBankName">—</strong></p>
+        <div class="alert alert-warning mb-0 small">
+          <ul class="mb-0 ps-3">
+            <li>Bank chuyển sang trạng thái <strong>Archived</strong>, ẩn khỏi danh sách mặc định.</li>
+            <li>Câu hỏi bên trong vẫn còn — đã dùng trong đề thi cũ KHÔNG bị ảnh hưởng.</li>
+            <li>Có thể khôi phục sau qua filter Trạng thái = Archived.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Hủy</button>
+        <button type="button" class="btn btn-primary px-4 fw-medium" id="btnConfirmArchive">Lưu trữ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/QuestionBank/index.js" asp-append-version="true"></script>
+    <script src="~/js/QuestionBank/bank-form-modal.js" asp-append-version="true"></script>
+}

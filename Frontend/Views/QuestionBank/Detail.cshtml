@@ -1,0 +1,262 @@
+@{
+    ViewData["Title"] = "Chi tiết ngân hàng";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lora:wght@500;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/QuestionBank/QuestionBank.css" />
+    <style>
+        .bank-header {
+            background: #fff; border: 1px solid var(--line, #e2e8f0); border-radius: 14px;
+            padding: 1.5rem 1.75rem; margin-bottom: 1.25rem;
+        }
+        .bank-header-top {
+            display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .bank-title-block { flex: 1; min-width: 250px; }
+        .bank-title {
+            font-family: 'Lora', serif; font-weight: 700; font-size: 1.6rem;
+            margin: 0 0 .35rem; letter-spacing: -.01em;
+        }
+        .bank-meta-row {
+            display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center;
+            font-size: .9rem; color: var(--ink-700, #334155);
+        }
+        .bank-meta-row strong { color: var(--ink-900, #0f172a); font-weight: 600; }
+        .bank-meta-row .sep { color: var(--ink-300, #cbd5e1); }
+        .bank-desc-text {
+            color: var(--ink-700, #334155); font-size: .92rem; line-height: 1.6;
+            margin: .85rem 0 0; max-width: 820px;
+        }
+        
+        .toolbar-row {
+            display: flex; justify-content: space-between; align-items: center;
+            gap: .75rem; margin-bottom: .85rem; flex-wrap: wrap;
+        }
+        .selection-bar {
+            background: #fff; border: 1px solid var(--line, #e2e8f0); border-radius: 12px;
+            padding: .85rem 1rem; margin-bottom: 1rem;
+            display: flex; flex-wrap: wrap; gap: .65rem; align-items: center;
+            transition: border-color .15s ease;
+        }
+        .selection-bar.has-selection { border-color: var(--ink-700, #334155); }
+        .selection-count {
+            font-weight: 600; color: var(--ink-900, #0f172a); margin-right: auto;
+            display: flex; align-items: center; gap: .5rem;
+        }
+        .selection-count .badge-num {
+            background: var(--primary, #0d6efd); color: #fff; font-size: .82rem;
+            padding: .15rem .5rem; border-radius: 999px;
+        }
+        
+        .filter-row {
+            background: #fff; border: 1px solid var(--line, #e2e8f0); border-radius: 12px;
+            padding: 1rem 1.25rem; margin-bottom: 1rem;
+            display: grid; grid-template-columns: 1fr 180px 160px auto; gap: .75rem; align-items: end;
+        }
+        
+        .q-table tbody tr.q-row { transition: background .15s ease; cursor: default; }
+        .q-table tbody tr.q-row:hover { background: #fafbfc; }
+        .q-table tbody tr.q-row.selected { background: #f1f5f9; }
+        .q-table tbody tr.q-row.expanded { background: #f8fafc; }
+        .q-table tbody tr:last-child td { border-bottom: none; }
+        
+        .q-detail-row td {
+            padding: 0 0 1.25rem !important; border-bottom: 1px solid var(--line, #e2e8f0);
+            background: #f8fafc;
+        }
+        .q-detail-content { padding: 0 1.25rem; }
+        .q-detail-pending-banner {
+            margin: 0 1.25rem 1rem; padding: .65rem 1rem;
+            background: var(--warn-bg, #ffedd5); color: var(--warn, #ea580c); border: 1px solid #fdba74;
+            border-radius: 8px; font-size: .88rem; font-weight: 500;
+            display: flex; align-items: center; gap: .55rem;
+        }
+        .q-detail-section { margin-bottom: .9rem; display: flex; gap: .75rem; }
+        .q-detail-label { font-weight: 600; color: var(--ink-900, #0f172a); min-width: 86px; white-space: nowrap; }
+        .q-detail-stem { color: var(--ink-900, #0f172a); line-height: 1.6; flex: 1; }
+        .q-detail-answers { display: flex; flex-direction: column; gap: 6px; max-width: 540px; flex: 1; }
+        .q-answer-box {
+            padding: .55rem .75rem; border: 1px solid var(--line, #e2e8f0); border-radius: 6px;
+            background: #fff; display: flex; align-items: center; gap: .65rem; font-size: .88rem;
+        }
+        .q-answer-box .ans-label {
+            width: 22px; height: 22px; border-radius: 50%; background: #f3f4f6;
+            display: grid; place-items: center; font-weight: 700; font-size: 11px;
+            color: var(--ink-700, #334155); flex-shrink: 0; font-family: 'JetBrains Mono', monospace;
+        }
+        .q-answer-box.correct { background: var(--success-bg, #dcfce7); border-color: var(--success, #16a34a); }
+        .q-answer-box.correct .ans-label { background: var(--success, #16a34a); color: #fff; }
+        .q-answer-box .check { margin-left: auto; color: var(--success, #16a34a); font-weight: 600; }
+        .q-detail-explanation { color: var(--ink-700, #334155); font-style: italic; line-height: 1.55; flex: 1; }
+        
+        .q-detail-actions {
+            display: flex; gap: 1.25rem; justify-content: flex-end;
+            padding-top: .85rem; margin-top: .35rem; border-top: 1px solid var(--line, #e2e8f0);
+        }
+        .q-detail-actions .btn-action-text {
+            background: none; border: none; color: var(--ink-700, #334155); padding: 0;
+            font-weight: 500; font-size: .88rem; cursor: pointer;
+            display: inline-flex; align-items: center; gap: .35rem;
+        }
+        .q-detail-actions .btn-action-text:hover { color: var(--primary, #0d6efd); }
+        .q-detail-actions .btn-action-text.danger:hover { color: #dc2626; }
+        
+        .q-content { color: var(--ink-900, #0f172a); font-weight: 500; line-height: 1.55; max-width: 540px; }
+        .pill-status.draft { background: #f1f5f9; color: var(--ink-700, #334155); }
+        .pill-status.inprogress { background: #cffafe; color: #0891b2; }
+        .pending-tag {
+            display: inline-flex; align-items: center; gap: .3rem;
+            padding: .15rem .5rem; border-radius: 999px;
+            background: var(--warn-bg, #ffedd5); color: var(--warn, #ea580c);
+            font-size: .72rem; font-weight: 500; margin-left: .35rem;
+        }
+        
+        .pending-row td { background: #fffbeb !important; }
+        .pending-row .q-content { opacity: .85; }
+        .row-checkbox { width: 36px; }
+        .row-num { width: 70px; color: var(--ink-500, #64748b); font-family: 'JetBrains Mono', monospace; font-size: .85rem; }
+    </style>
+}
+
+<input type="hidden" id="currentBankId" value="@ViewBag.BankId" />
+
+<main class="container-main">
+
+  <nav class="breadcrumb-row">
+    <a href="/">Trang chủ</a><span class="sep">›</span>
+    <a href="/QuestionBank">Ngân hàng câu hỏi</a><span class="sep">›</span>
+    <span class="current" id="bcBankName">...</span>
+  </nav>
+
+  <!-- Bank header -->
+  <div class="bank-header">
+    <div class="bank-header-top">
+      <div class="bank-title-block">
+        <h1 class="bank-title">
+            <span id="headerBankName">...</span>
+            <span class="pill-status inprogress d-none ms-2" id="headerSharedBadge" style="font-size:.8rem; vertical-align:middle;">Kho chung — quản lý bởi Admin</span>
+        </h1>
+        <div class="bank-meta-row">
+          <span><span class="subject-code" id="headerSubjectCode">...</span> <span id="headerSubjectName">...</span></span>
+          <span class="sep">·</span>
+          <span>Loại: <strong id="headerKind">...</strong></span>
+          <span class="sep">·</span>
+          <span><strong id="headerQCount">0</strong> câu hỏi</span>
+          <span class="sep" id="headerAuthorSep" style="display:none;">·</span>
+          <span id="headerAuthor" style="display:none;">Tác giả: <strong id="headerAuthorName">...</strong></span>
+        </div>
+        <p class="bank-desc-text" id="headerDesc">...</p>
+      </div>
+      <div class="d-flex gap-2 flex-shrink-0" id="headerActions" style="display:none;">
+        <button class="btn btn-outline-secondary" id="btnEditBankInfo">Sửa thông tin</button>
+        <button class="btn btn-outline-secondary" id="btnArchiveBank">Lưu trữ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar-row" id="toolbarRow" style="display:none;">
+    <a href="#" class="btn btn-primary" id="btnAddQuestion">+ Thêm câu hỏi</a>
+    <div class="text-muted small">Tổng <strong style="color:var(--ink-900, #0f172a);" id="toolbarQCount">0</strong> câu hỏi</div>
+  </div>
+
+  <!-- Selection bar -->
+  <div class="selection-bar d-none" id="selectionBar">
+    <span class="selection-count">
+      Đã chọn <span class="badge-num" id="selCount">0</span> câu
+    </span>
+    <button class="btn btn-outline-secondary" id="btnPromote" disabled>
+      Đề xuất đẩy lên kho chung
+    </button>
+  </div>
+
+  <!-- Filter row -->
+  <div class="filter-row">
+    <div>
+      <label class="form-label">Tìm trong câu hỏi</label>
+      <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Từ khóa hoặc mã câu...">
+    </div>
+    <div>
+      <label class="form-label">Chương</label>
+      <select class="form-select form-select-sm" id="filterChapter">
+        <option value="">Tất cả chương</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Mức độ</label>
+      <select class="form-select form-select-sm" id="filterDiff">
+        <option value="">Tất cả</option>
+        <option value="1">Nhận biết</option>
+        <option value="2">Thông hiểu</option>
+        <option value="3">Vận dụng</option>
+        <option value="4">Vận dụng cao</option>
+      </select>
+    </div>
+    <button class="btn btn-sm btn-outline-secondary" id="btnResetFilter">Xóa lọc</button>
+  </div>
+
+  <!-- Question list -->
+  <div class="panel-card">
+    <table class="q-table table table-hover">
+      <thead>
+        <tr>
+          <th class="row-checkbox" id="thCheckbox"><input type="checkbox" class="form-check-input" id="masterCheck"></th>
+          <th class="row-num">Mã</th>
+          <th>Nội dung câu hỏi</th>
+          <th style="width:80px;">Loại</th>
+          <th style="width:130px;">Chương</th>
+          <th style="width:100px;">Mức độ</th>
+          <th style="width:120px;" id="thAuthorStatus">Trạng thái</th>
+          <th style="width:80px;">Hành động</th>
+        </tr>
+      </thead>
+      <tbody id="qBody">
+        <tr><td colspan="8" class="text-center py-4 text-muted">Đang tải...</td></tr>
+      </tbody>
+    </table>
+
+    <div class="pager-wrap d-none" id="pagerWrap">
+      <div class="pager-info">Hiển thị <span id="pagerCount">0</span> / <span id="pagerTotal">0</span> câu hỏi</div>
+      <div class="pager-ctrls" id="pagerCtrls"></div>
+    </div>
+  </div>
+
+</main>
+
+@await Html.PartialAsync("_BankFormModal")
+@await Html.PartialAsync("_PromotionModal")
+
+<!-- Modal: archive -->
+<div class="modal fade" id="archiveModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">Lưu trữ ngân hàng</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <p class="mb-2">Bạn sắp lưu trữ bank: <strong id="archiveBankName">—</strong></p>
+        <div class="alert alert-warning mb-0 small">
+          <ul class="mb-0 ps-3">
+            <li>Bank chuyển sang trạng thái <strong>Archived</strong>, ẩn khỏi danh sách mặc định.</li>
+            <li>Câu hỏi bên trong vẫn còn — đã dùng trong đề thi cũ KHÔNG bị ảnh hưởng.</li>
+            <li>Có thể khôi phục sau qua filter Trạng thái = Archived ở trang danh sách.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Hủy</button>
+        <button type="button" class="btn btn-primary px-4 fw-medium" id="btnConfirmArchive">Lưu trữ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/QuestionBank/bank-form-modal.js" asp-append-version="true"></script>
+    <script src="~/js/QuestionBank/promotion-modal.js" asp-append-version="true"></script>
+    <script src="~/js/QuestionBank/detail.js" asp-append-version="true"></script>
+}
