@@ -271,7 +271,6 @@ public partial class MtcaSep490G26Context : DbContext
             entity.Property(e => e.ConcurrencyStamp)
                 .IsRowVersion()
                 .IsConcurrencyToken();
-            entity.Property(e => e.QuestionPurpose).HasDefaultValue((byte)1);
             entity.Property(e => e.QuestionType).HasMaxLength(50);
             entity.Property(e => e.Status)
                 .HasMaxLength(20)

@@ -29,4 +29,6 @@ public partial class Subject
     public virtual ICollection<ExamBlueprint> ExamBlueprints { get; set; } = new List<ExamBlueprint>();
 
     public virtual ICollection<Exam> Exams { get; set; } = new List<Exam>();
+
+    public virtual ICollection<QuestionBank> QuestionBanks { get; set; } = new List<QuestionBank>();
 }

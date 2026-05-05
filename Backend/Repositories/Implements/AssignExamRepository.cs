@@ -204,7 +204,8 @@ public class AssignExamRepository : IAssignExamRepository
     {
         return await _db.Questions
             .Where(q => activeStatus.Contains(q.Status) && q.ChapterId == chapterId && q.Difficulty == difficulty
-                     && q.QuestionPurpose == QuestionPurpose.Exam)
+                     // P1 bridge: Purpose now lives on bank
+                     && q.QuestionBank.Purpose == BankPurpose.Exam)
             .OrderBy(q => Guid.NewGuid())
             .Take(count)
             .Select(q => q.QuestionId)
@@ -215,7 +216,8 @@ public class AssignExamRepository : IAssignExamRepository
     {
         return await _db.Questions
             .Where(q => activeStatus.Contains(q.Status) && q.ChapterId == chapterId && q.Difficulty == difficulty
-                     && q.QuestionPurpose == QuestionPurpose.Exam)
+                     // P1 bridge: Purpose now lives on bank
+                     && q.QuestionBank.Purpose == BankPurpose.Exam)
             .Select(q => q.QuestionId)
             .ToListAsync(ct);
     }
@@ -473,7 +475,8 @@ public class AssignExamRepository : IAssignExamRepository
                join c in _db.Chapters on q.ChapterId equals c.ChapterId
                join s in _db.Subjects on c.SubjectId equals s.SubjectId
                where activeStatus.Contains(q.Status)
-                  && q.QuestionPurpose == QuestionPurpose.Exam
+                  // P1 bridge: Purpose now lives on bank (Phase 5 will fully refactor pool)
+                  && q.QuestionBank.Purpose == BankPurpose.Exam
                select new QuestionQueryRow { q = q, c = c, s = s };
     }
 }

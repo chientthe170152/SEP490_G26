@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Backend.Models;
@@ -40,4 +40,13 @@ public partial class User
     public virtual Role Role { get; set; } = null!;
 
     public virtual ICollection<Submission> Submissions { get; set; } = new List<Submission>();
+
+    // QuestionBank navigations
+    public virtual ICollection<QuestionBank> OwnedBanks          { get; set; } = new List<QuestionBank>();
+    public virtual ICollection<QuestionBank> CreatedBanks         { get; set; } = new List<QuestionBank>();
+    public virtual ICollection<QuestionBank> UpdatedBanks         { get; set; } = new List<QuestionBank>();
+
+    // Promotion navigations
+    public virtual ICollection<QuestionPromotionRequest> SentPromotionRequests     { get; set; } = new List<QuestionPromotionRequest>();
+    public virtual ICollection<QuestionPromotionRequest> ResolvedPromotionRequests { get; set; } = new List<QuestionPromotionRequest>();
 }
