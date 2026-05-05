@@ -79,3 +79,27 @@ window.AdminUI = (function () {
 
     return { showNotice, translateError, showError };
 })();
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const badge = document.getElementById('pending-promotion-count');
+    const headerBadge = document.getElementById('header-pending-badge');
+    if (badge || headerBadge) {
+        try {
+            // Check pending requests
+            const res = await apiClient.get('/api/admin/promotion-requests?status=1&pageSize=1');
+            const count = res.totalCount || 0;
+            if (count > 0) {
+                if (badge) {
+                    badge.textContent = count;
+                    badge.style.display = 'inline-block';
+                }
+                if (headerBadge) {
+                    headerBadge.textContent = `${count} chờ duyệt`;
+                    headerBadge.style.display = 'inline-block';
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load pending promotion count', e);
+        }
+    }
+});

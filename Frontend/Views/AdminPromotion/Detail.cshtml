@@ -1,0 +1,95 @@
+@{
+    ViewData["Title"] = "Chi tiết duyệt câu hỏi";
+    Layout = "_LayoutAdmin";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/AdminPromotion/AdminPromotion.css" asp-append-version="true" />
+}
+
+<script>
+    window.REQUEST_ID = @ViewBag.RequestId;
+</script>
+
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h1 class="page-title mb-1">Yêu cầu #@ViewBag.RequestId</h1>
+        <div class="text-muted small" id="requestHeaderInfo">Đang tải thông tin...</div>
+    </div>
+    <div id="requestStatusBadge"></div>
+</div>
+
+<div id="requestNoteBox" class="alert alert-info d-none">
+    <strong>Ghi chú của giáo viên:</strong> <span id="requestNoteContent"></span>
+</div>
+
+<div id="questionsContainer" class="d-flex flex-column gap-3 mb-5 pb-5">
+    <!-- Question cards will be rendered here -->
+</div>
+
+<!-- Sticky Bottom Bar -->
+<div id="commitBar" class="commit-bar d-none">
+    <div class="container-fluid max-w-1200 d-flex justify-content-between align-items-center h-100">
+        <div>
+            <div class="fw-bold mb-1">
+                Đã quyết <span id="decidedNum">0</span> / <span id="totalNum">0</span> câu
+            </div>
+            <div class="small">
+                <span class="text-success"><i class="bi bi-check-circle-fill"></i> <span id="approvedNum">0</span> duyệt</span> &middot; 
+                <span class="text-danger"><i class="bi bi-x-circle-fill"></i> <span id="rejectedNum">0</span> từ chối</span> &middot; 
+                <span class="text-muted"><span id="pendingNum">0</span> chưa quyết</span>
+            </div>
+            <div id="commitWarning" class="text-warning small fw-medium mt-1">
+                <i class="bi bi-exclamation-triangle-fill"></i> Phải rà soát tất cả câu hỏi trước khi hoàn tất
+            </div>
+        </div>
+        <div>
+            <button class="btn btn-outline-secondary me-2" onclick="window.location.href='/Admin/PromotionRequests'">Quay lại</button>
+            <button id="commitBtn" class="btn btn-primary" disabled onclick="openFinalizeModal()">
+                <i class="bi bi-check2-all"></i> Xác nhận hoàn tất yêu cầu
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4 mb-5">
+    <button class="btn btn-outline-secondary" onclick="window.location.href='/Admin/PromotionRequests'"><i class="bi bi-arrow-left"></i> Quay lại danh sách</button>
+</div>
+
+<!-- Templates -->
+<template id="questionCardTemplate">
+    <div class="promotion-card soft-card" data-qid="">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="meta-badges">
+                <span class="meta-badge bg-light text-dark border" data-field-chapter></span>
+                <span class="meta-badge bg-light text-dark border" data-field-difficulty></span>
+                <span class="meta-badge bg-info bg-opacity-10 text-info" data-field-type></span>
+            </div>
+            <div id="cardStatusLabel"></div>
+        </div>
+        
+        <div class="question-content bg-light p-3 rounded mb-3" style="font-size: 0.95rem;">
+            <div data-field-content></div>
+        </div>
+        
+        <div id="rejectionReasonBox" class="alert alert-danger small d-none mb-3">
+            <strong>Lý do từ chối:</strong> <span data-field-reason></span>
+        </div>
+        
+        <div class="promotion-item-actions d-flex justify-content-between align-items-center pt-3 border-top">
+            <div class="small text-muted" id="cardActionHint">Đang chờ rà soát...</div>
+            <div id="cardActionButtons">
+                <!-- Action buttons injected via JS -->
+            </div>
+        </div>
+    </div>
+</template>
+
+@await Html.PartialAsync("_RejectReasonModal")
+@await Html.PartialAsync("_FinalizeConfirmModal")
+
+@section Scripts {
+    <script src="~/js/AdminPromotion/detail.js" asp-append-version="true"></script>
+    <script src="~/js/AdminPromotion/reject-modal.js" asp-append-version="true"></script>
+    <script src="~/js/AdminPromotion/finalize-modal.js" asp-append-version="true"></script>
+}

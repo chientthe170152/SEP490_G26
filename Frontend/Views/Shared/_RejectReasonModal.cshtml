@@ -1,0 +1,25 @@
+<div class="modal fade" id="rejectReasonModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Từ chối câu hỏi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-3">Vui lòng cho biết lý do từ chối. Lý do sẽ được gửi tới giáo viên để họ điều chỉnh.</p>
+                <div class="form-group">
+                    <label class="form-label">Lý do từ chối <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="rejectReasonInput" rows="4" placeholder="Vd: Đáp án sai, nội dung không rõ ràng..." maxlength="500"></textarea>
+                    <div class="d-flex justify-content-between mt-1">
+                        <small class="text-danger d-none" id="rejectReasonError">Vui lòng nhập lý do (tối thiểu 10 ký tự).</small>
+                        <small class="text-muted ms-auto" id="rejectReasonCounter">0/500</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmReject">Xác nhận từ chối</button>
+            </div>
+        </div>
+    </div>
+</div>

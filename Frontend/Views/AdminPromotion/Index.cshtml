@@ -1,0 +1,94 @@
+@{
+    ViewData["Title"] = "Duyệt câu hỏi";
+    Layout = "_LayoutAdmin";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/AdminPromotion/AdminPromotion.css" asp-append-version="true" />
+}
+
+<div class="page-header d-flex justify-content-between align-items-end">
+    <div>
+        <h1 class="page-title">Duyệt câu hỏi <span class="badge bg-warning text-dark ms-2 fs-6" id="header-pending-badge" style="display: none;"></span></h1>
+        <p class="page-subtitle">Rà soát và phê duyệt các câu hỏi được giáo viên gửi lên kho chung.</p>
+    </div>
+</div>
+
+<div class="filter-panel mb-4 p-3 bg-white border rounded">
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">Trạng thái</label>
+            <select class="form-select form-select-sm" id="filterStatus">
+                <option value="">Tất cả trạng thái</option>
+                <option value="1" selected>Chờ duyệt</option>
+                <option value="3">Đã hoàn tất</option>
+                <option value="4">Đã rút</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">Môn học</label>
+            <select class="form-select form-select-sm" id="filterSubject">
+                <option value="">Tất cả môn học</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">Giáo viên gửi</label>
+            <select class="form-select form-select-sm" id="filterTeacher">
+                <option value="">Tất cả giáo viên</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button class="btn btn-primary btn-sm w-100" id="btnFilter">Áp dụng lọc</button>
+        </div>
+    </div>
+</div>
+
+<div class="panel-card p-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 table-soft">
+            <thead class="bg-light">
+                <tr>
+                    <th style="width: 8%">Mã YC</th>
+                    <th style="width: 20%">Giáo viên gửi</th>
+                    <th style="width: 15%">Môn học</th>
+                    <th style="width: 20%">Kho đích</th>
+                    <th style="width: 10%" class="text-center">Số câu</th>
+                    <th style="width: 15%">Ngày tạo</th>
+                    <th style="width: 12%">Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody id="requestTableBody">
+                <tr><td colspan="7" class="text-center text-muted py-4">Đang tải dữ liệu...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <div class="text-muted small" id="pagerInfo"></div>
+    <ul class="pagination pagination-sm m-0" id="pagerControls"></ul>
+</div>
+
+<template id="requestRowTemplate">
+    <tr class="interactive-row">
+        <td><span class="fw-medium text-primary" data-field-id></span></td>
+        <td>
+            <div class="d-flex align-items-center">
+                <div class="avatar-circle bg-light text-secondary me-2"><i class="bi bi-person-fill"></i></div>
+                <div>
+                    <div class="fw-medium" data-field-teacher></div>
+                    <div class="small text-muted" data-field-email></div>
+                </div>
+            </div>
+        </td>
+        <td><span class="badge bg-secondary" data-field-subject></span></td>
+        <td><div class="text-truncate" style="max-width: 200px;" data-field-targetbank title=""></div></td>
+        <td class="text-center fw-bold" data-field-count></td>
+        <td data-field-date class="small"></td>
+        <td><span data-field-status></span></td>
+    </tr>
+</template>
+
+@section Scripts {
+    <script src="~/js/AdminPromotion/index.js" asp-append-version="true"></script>
+}

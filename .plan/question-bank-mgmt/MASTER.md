@@ -194,7 +194,7 @@ Mỗi phase được thiết kế để **1 AI agent có thể làm trọn vẹn
 | ✅ **P5** | [phase-5-be-pool-refactor.md](phase-5-be-pool-refactor.md) | Refactor pool query: `AssignExamRepository` + `PracticeExamRepository` đổi sang join Bank. Endpoint `preview-pool` + `usable-banks`. Mode `manual` giữ chọn tay (theo Q6). Update test pool. | P3 | ~450 |
 | ✅ **P6** | [phase-6-fe-teacher-bank.md](phase-6-fe-teacher-bank.md) | FE giáo viên: trang `QuestionBank/Index`, `QuestionBank/Detail`, modal Promotion. Cập nhật form tạo câu hỏi để bind vào Bank. | P2, P4 | ~700 |
 | ✅ **P7** | [phase-7-fe-teacher-create-exam.md](phase-7-fe-teacher-create-exam.md) | FE giáo viên: cập nhật `Class/CreateExam` mode blueprint = multi-select bank + preview pool count. Cập nhật trang Practice cho học sinh (badge nguồn câu). | P5, P6 | ~450 |
-| **P8** | [phase-8-fe-admin-promotion.md](phase-8-fe-admin-promotion.md) | FE admin: trang `Admin/PromotionRequests` (list + detail + approve/reject modal lý do). | P4 | ~500 |
+| ✅ **P8** | [phase-8-fe-admin-promotion.md](phase-8-fe-admin-promotion.md) | FE admin: trang `Admin/PromotionRequests` (list + detail + approve/reject modal lý do). | P4 | ~500 |
 | **P9** | [phase-9-smoke-and-docs.md](phase-9-smoke-and-docs.md) | Smoke test 25 endpoint, cập nhật `database/script-schema.sql`, `CLAUDE.md`, `.plan/test-accounts.md`. | P0–P8 | ~150 |
 
 **Quy tắc đóng phase**:

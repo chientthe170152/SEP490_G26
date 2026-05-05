@@ -15,6 +15,15 @@
         Người dùng
     </a>
 
+    <div class="nav-group" style="margin-top: 1rem;">Duyệt câu hỏi</div>
+    <a href="/Admin/PromotionRequests" class="nav-link @(ViewContext.HttpContext.Request.Path.StartsWithSegments("/Admin/PromotionRequests") ? "active" : "")">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Yêu cầu chờ xử lý
+        <span class="badge bg-danger rounded-pill ms-auto" id="pending-promotion-count" style="display: none; font-size: 0.75rem;">0</span>
+    </a>
+
     <div class="nav-group" style="margin-top: 1rem;">Khung chương trình</div>
     <a href="/Admin/Semesters" class="nav-link @(ViewContext.HttpContext.Request.Path.StartsWithSegments("/Admin/Semesters") ? "active" : "")">
         <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">

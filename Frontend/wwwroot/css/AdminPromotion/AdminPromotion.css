@@ -1,0 +1,72 @@
+/* AdminPromotion.css */
+
+.pill-warn {
+    background-color: var(--warning, #f59e0b);
+    color: #fff;
+    padding: 0.25em 0.6em;
+    border-radius: 1rem;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.pill-success {
+    background-color: var(--success, #10b981);
+    color: #fff;
+    padding: 0.25em 0.6em;
+    border-radius: 1rem;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.pill-soft {
+    background-color: #f1f5f9;
+    color: #64748b;
+    padding: 0.25em 0.6em;
+    border-radius: 1rem;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.promotion-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+}
+
+.promotion-card.staged-approve {
+    border-left-color: var(--success, #10b981);
+    background-color: #f0fdf4;
+}
+
+.promotion-card.staged-reject {
+    border-left-color: var(--danger, #ef4444);
+    background-color: #fef2f2;
+}
+
+.promotion-item-actions {
+    min-height: 40px;
+}
+
+.commit-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 72px;
+    background-color: #fff;
+    border-top: 1px solid var(--line, #e2e8f0);
+    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
+    z-index: 1030;
+    transition: transform 0.3s ease;
+}
+
+.max-w-1200 {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+@media (min-width: 992px) {
+    .commit-bar {
+        /* Sidebar offset if not collapsed */
+        padding-left: 260px;
+    }
+}
