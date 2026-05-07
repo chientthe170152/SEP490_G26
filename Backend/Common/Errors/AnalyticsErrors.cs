@@ -16,4 +16,8 @@ public static class AnalyticsErrors
     public static readonly Error InvalidToken = new(
         ErrorCodes.AnalyticsInvalidToken,
         ErrorType.Unauthorized);
+
+    public static readonly Error ExamNotOwned = new(
+        ErrorCodes.AnalyticsExamNotOwned,
+        ErrorType.Forbidden);
 }

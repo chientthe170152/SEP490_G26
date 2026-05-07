@@ -134,7 +134,6 @@ public static class ErrorCodes
     // Submission
     public const string SubmissionNotFound = "SUBMISSION_NOT_FOUND";
     public const string SubmissionAlreadySubmitted = "SUBMISSION_ALREADY_SUBMITTED";
-    public const string SubmissionLate = "SUBMISSION_LATE";
     public const string SubmissionInvalidAnswer = "SUBMISSION_INVALID_ANSWER";
 
     // PracticeExam
@@ -154,6 +153,7 @@ public static class ErrorCodes
     public const string AnalyticsExamNotFound = "ANALYTICS_EXAM_NOT_FOUND";
     public const string AnalyticsSubmissionNotFound = "ANALYTICS_SUBMISSION_NOT_FOUND";
     public const string AnalyticsInvalidToken = "ANALYTICS_INVALID_TOKEN";
+    public const string AnalyticsExamNotOwned = "ANALYTICS_EXAM_NOT_OWNED";
 
     // Grading
     public const string GradingSubmissionNotFound    = "GRADING_SUBMISSION_NOT_FOUND";

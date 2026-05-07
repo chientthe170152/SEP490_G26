@@ -96,13 +96,14 @@ namespace Backend.Services.Implements
             var (stem, frame) = ParseContent(question.QuestionContent);
             var dto = new QuestionDto 
             { 
-                QuestionType = question.QuestionType, 
-                ChapterId = question.ChapterId, 
-                Difficulty = question.Difficulty, 
-                Status = question.Status, 
-                Stem = stem ?? string.Empty, 
-                Frame = frame, 
-                QuestionPurpose = question.QuestionPurpose 
+                QuestionType = question.QuestionType,
+                ChapterId = question.ChapterId,
+                Difficulty = question.Difficulty,
+                Status = question.Status,
+                Stem = stem ?? string.Empty,
+                Frame = frame,
+                // P1 bridge: QuestionPurpose read via Bank.Purpose (Phase 3 will remove this field from DTO)
+                QuestionPurpose = question.QuestionBank?.Purpose
             };
 
             dto.Answers = question.QuestionAnswers.Select(a => new AnswerDto {
@@ -214,7 +215,10 @@ namespace Backend.Services.Implements
             question.QuestionType = item.QuestionType ?? string.Empty;
             question.ChapterId = item.ChapterId ?? 0;
             question.Difficulty = item.Difficulty ?? 1;
-            question.QuestionPurpose = item.QuestionPurpose ?? 1;
+            // P1 bridge: QuestionBankId must come from FE in Phase 3.
+            // If existing, keep the existing bank. Otherwise keep 0 (handled in Phase 3).
+            if (existing == null)
+                question.QuestionBankId = 0; // Phase 3 will set from item.QuestionBankId
             question.Status = item.Status ?? QuestionStatus.Draft;
             question.UpdatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
             question.QuestionContent = JsonSerializer.Serialize(new { stem = item.Stem, frame = item.Frame }, UnicodeJsonOptions);
@@ -288,8 +292,9 @@ namespace Backend.Services.Implements
                 ChapterName = "",
                 UpdatedAt = question.UpdatedAtUtc,
                 Status = question.Status,
-                QuestionPurpose = question.QuestionPurpose,
-                QuestionPurposeLabel = Constants.QuestionPurpose.GetLabel(question.QuestionPurpose),
+                // P1 bridge: read Purpose via Bank navigation (Phase 3 will rename DTO field)
+                QuestionPurpose = question.QuestionBank?.Purpose ?? 0,
+                QuestionPurposeLabel = Constants.BankPurpose.GetLabel(question.QuestionBank?.Purpose ?? 0),
                 AnswerCount = question.QuestionAnswers?.Count ?? 0
             };
         }

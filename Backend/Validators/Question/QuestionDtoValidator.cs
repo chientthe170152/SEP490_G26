@@ -28,9 +28,11 @@ public class QuestionDtoValidator : AbstractValidator<QuestionDto>
             .NotEmpty()
             .Must(s => QuestionStatus.IsValid(s ?? string.Empty));
 
-        RuleFor(x => x.QuestionPurpose)
-            .NotNull()
-            .Must(p => Constants.QuestionPurpose.IsValid(p ?? 0));
+        // P1 bridge: QuestionPurpose field dropped from Question model.
+        // Phase 3 will replace with: RuleFor(x => x.QuestionBankId).GreaterThan(0).MustAsync(bankOwnershipCheck)
+        // RuleFor(x => x.QuestionPurpose)
+        //     .NotNull()
+        //     .Must(p => Constants.QuestionPurpose.IsValid(p ?? 0));
 
         RuleFor(x => x.ChapterId)
             .NotNull()

@@ -98,6 +98,43 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="analytics-card">
+                    <div class="card-header">
+                        <i class="bi bi-person-lines-fill text-primary"></i> Bảng Kết quả Chi tiết
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="analytics-table" id="studentTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50px;">#</th>
+                                        <th>Học sinh</th>
+                                        <th class="text-center">Điểm số</th>
+                                        <th>Ngày hoàn thành</th>
+                                        <th class="text-center" style="width: 100px;">Chi tiết</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN -->
+            <div class="col-12 col-xl-4">
+                <div class="analytics-card" style="position: sticky; top: 1.5rem;">
+                    <div class="card-header">
+                        <i class="bi bi-magic text-warning"></i> Gợi ý
+                    </div>
+                    <div class="card-body" id="recommendationsBox">
+                        <div class="text-center py-4">
+                            <div class="spinner-border spinner-border-sm text-muted"></div>
+                            <span class="ms-2 text-muted">Đang tổng hợp dữ liệu...</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -187,9 +224,11 @@
 <!-- Template: Hàng bảng sinh viên -->
 <template id="tpl-student-row">
     <tr>
-        <td class="fw-bold text-dark" data-col="name"></td>
+        <td data-col="index"></td>
+        <td data-col="name"></td>
         <td class="text-center"><span class="score-badge" data-col="score"></span></td>
-        <td class="text-end text-muted small" data-col="date"></td>
+        <td data-col="date"></td>
+        <td class="text-center"><a class="btn btn-sm btn-outline-primary" data-col="view" href="#"><i class="bi bi-eye"></i></a></td>
     </tr>
 </template>
 

@@ -24,7 +24,8 @@ public class AnalyticsController(IAnalyticsService analyticsService, ICurrentUse
     [Authorize(Roles = RoleIds.Teacher)]
     public async Task<IActionResult> GetExamAnalyticsDetail(int examId)
     {
-        var result = await _analyticsService.GetExamAnalyticsDetailAsync(examId);
+        int teacherId = _currentUserService.UserId;
+        var result = await _analyticsService.GetExamAnalyticsDetailAsync(examId, teacherId);
         return result.ToActionResult(this);
     }
 

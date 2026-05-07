@@ -1,27 +1,18 @@
 @{
     ViewData["Title"] = "Làm bài thi";
+    ViewBag.HideHeader = true;
+    ViewBag.HideSidebar = true;
+    ViewBag.IsFullWidth = true;
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/Exam/exam_taking.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <link rel="stylesheet" href="~/css/fib_katex.css" asp-append-version="true">
     <style>
-        math-field::part(virtual-keyboard-toggle) {
-            display: none;
-        }
-
-        math-field::part(menu-toggle) {
-            display: none;
-        }
-
-        #question-block-mcq {
-            list-style-type: upper-alpha;
-        }
-
-        math-field {
-            max-width: 100%;
-            overflow-x: auto;
-            display: block;
-        }
+        math-field::part(virtual-keyboard-toggle) { display: none; }
+        math-field::part(menu-toggle) { display: none; }
+        math-field { max-width: 100%; overflow-x: auto; display: block; }
     </style>
 }
 
@@ -46,13 +37,21 @@
             @await Html.PartialAsync("_QuestionArea")
 
             @* ── Sidebar ── *@
-            <div class="col-12 col-xl-4">
+            <div class="col-12 col-xl-4 exam-sidebar">
                 <aside class="panel-card mb-3">
                     <h2 class="panel-title">Điều hướng câu hỏi</h2>
                     <div class="question-nav mb-2" id="questionNav">
                         <!-- Navigation buttons will go here -->
                     </div>
-                    <p class="form-note mb-0 text-success">Hệ thống sẽ tự động lưu bài</p>
+                    <div class="nav-legend small text-muted mt-2 mb-3">
+                        <span class="legend-item"><span class="legend-dot dot-current"></span>Đang xem</span>
+                        <span class="legend-item"><span class="legend-dot dot-answered"></span>Đã làm</span>
+                        <span class="legend-item"><span class="legend-dot dot-unanswered"></span>Chưa làm</span>
+                        <span class="legend-item"><span class="legend-dot dot-error"></span>Lỗi định dạng</span>
+                    </div>
+                    <p class="form-note mb-0 text-success small">
+                        <i class="bi bi-cloud-check me-1"></i>Hệ thống sẽ tự động lưu bài
+                    </p>
                 </aside>
 
                 <div class="toolbar d-flex gap-2 mt-3 mb-3">
@@ -70,7 +69,12 @@
 
 @section Scripts {
     <script defer src="https://unpkg.com/mathlive"></script>
-    <script src="~/js/exam_engine.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script defer src="~/js/Shared/fib_katex_renderer.js" asp-append-version="true"></script>
+    <script defer src="~/js/Shared/fib_input_panel.js" asp-append-version="true"></script>
+    <script defer src="~/js/Shared/fullscreen_on_first_gesture.js" asp-append-version="true"></script>
+    <script defer src="~/js/exam_engine.js" asp-append-version="true"></script>
     <script>
         var examEngine;
         var exam;
@@ -80,6 +84,11 @@
         var remainingSeconds = 0;
 
         document.addEventListener('DOMContentLoaded', async () => {
+            // Đợi auth-guard pass rồi vào fullscreen ngay. Nếu browser block (no gesture),
+            // helper tự arm fallback ở gesture đầu tiên của học sinh.
+            if (window.userReady) await window.userReady;
+            window.enterFullscreenForExam?.();
+
             //Lấy giá trị examId
             const examId = new URLSearchParams(window.location.search).get('examId');
 
@@ -109,7 +118,7 @@
                             document.querySelectorAll('#questionNav button').forEach((btn, idx) => {
                                 const questionNum = idx + 1;
                                 btn.classList.remove('btn-outline-primary', 'btn-primary', 'btn-danger');
-                                
+
                                 if (questionNum === qNum) {
                                     btn.classList.add('btn-primary');
                                 } else if (invalidQNums.includes(questionNum)) {
@@ -120,6 +129,14 @@
                                     btn.removeAttribute('title');
                                 }
                             });
+
+                            // Update prev/next button disabled state
+                            const total = exam?.questions?.length || 0;
+                            const btnPrev = document.getElementById('btnPrev');
+                            const btnNext = document.getElementById('btnNext');
+                            if (btnPrev) btnPrev.disabled = qNum <= 1;
+                            if (btnNext) btnNext.disabled = qNum >= total;
+
                             // Tự động lưu bài lưu nháp khi chuyển câu
                             if (typeof submitExam === 'function') {
                                 submitExam(false);
@@ -128,6 +145,19 @@
                     });
                     
                     examEngine.init();
+
+                    // Bind nav footer prev/next
+                    document.getElementById('btnPrev')?.addEventListener('click', () => {
+                        if (examEngine && examEngine.questionNumber > 1) {
+                            examEngine.goToQuestion(examEngine.questionNumber - 1);
+                        }
+                    });
+                    document.getElementById('btnNext')?.addEventListener('click', () => {
+                        const total = exam?.questions?.length || 0;
+                        if (examEngine && examEngine.questionNumber < total) {
+                            examEngine.goToQuestion(examEngine.questionNumber + 1);
+                        }
+                    });
 
                     // ── Khởi tạo bộ đếm thời gian ──
                     let createdAtStr = exam.createdAtUtc;
@@ -230,8 +260,23 @@
 
         /**
          * Xác nhận trước khi nộp bài (cho nút Nộp bài).
+         * Validate chỉ để cảnh báo UX — KHÔNG chặn nộp. Học sinh vẫn submit dù có lỗi định dạng.
          */
         function confirmSubmit() {
+            if (!examEngine) {
+                showToast('Bài thi chưa sẵn sàng. Vui lòng đợi tải xong.', 'error');
+                return;
+            }
+
+            examEngine.saveCurrentAnswers();
+            const validation = examEngine.validateAllAnswers();
+            if (!validation.isValid) {
+                const stripHtml = s => s.replace(/<[^>]*>/g, '');
+                const first = stripHtml(validation.errors[0]);
+                const more = validation.errors.length > 1 ? ` (và ${validation.errors.length - 1} lỗi khác)` : '';
+                showToast(`Có ô đáp án không đúng định dạng. ${first}${more}`, 'warning', 6000);
+            }
+
             showConfirm('Bạn có chắc chắn muốn nộp bài?', 'Xác nhận nộp bài', () => submitExam(true));
         }
 
@@ -280,9 +325,16 @@
                             showToast(`Nộp bài thành công! Thời điểm ghi nhận: ${formattedTime}`, "success", 5000);
                         }
 
-                        // Chuyển hướng hoặc vô hiệu hóa giao diện sau khi nộp
+                        // Khóa workspace tránh thao tác thêm trước khi redirect
                         document.getElementById('examWorkspace').style.pointerEvents = 'none';
                         document.getElementById('examWorkspace').style.opacity = '0.6';
+
+                        // Quay về trang lịch sử làm bài của lớp sau khi user thấy toast
+                        const classId = parseInt(new URLSearchParams(window.location.search).get('classId'));
+                        const historyUrl = classId > 0
+                            ? `/PracticeExam/History?classId=${classId}`
+                            : '/Class/ClassList';
+                        setTimeout(() => { window.location.href = historyUrl; }, 1500);
                     } else {
                         // Cập nhật lựa chọn thành công (không cần thông báo)
                         if (btnSubmit) btnSubmit.disabled = false;

@@ -29,6 +29,7 @@
         { prefix: '/admin',                        allow: ['3'] },
         { prefix: '/question',                     allow: ['1'] },
         { prefix: '/examblueprint',                allow: ['1'] },
+        { prefix: '/analytics/studentresult',      allow: ['2'] },
         { prefix: '/analytics',                    allow: ['1'] },
         { prefix: '/exam/',                        allow: ['1'] },
         { prefix: '/practiceexam/classanalytics',  allow: ['1'] },

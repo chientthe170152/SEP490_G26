@@ -6,9 +6,9 @@ $(function () {
 
     $roleId.on('change', function () {
         if ($(this).val() === RoleIds.Student) {
-            $studentIdRow.show();
+            $studentIdRow.removeClass('is-hidden');
         } else {
-            $studentIdRow.hide();
+            $studentIdRow.addClass('is-hidden');
             $('#studentId').val('');
             $('#studentIdError').text('');
         }

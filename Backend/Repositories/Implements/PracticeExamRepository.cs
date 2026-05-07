@@ -135,7 +135,8 @@ namespace Backend.Repositories.Implements
         {
             var query = _context.Questions
                 .Where(q => chapterIds.Contains(q.ChapterId)
-                         && q.QuestionPurpose == QuestionPurpose.Practice
+                         // P1 bridge: Purpose now lives on bank
+                         && q.QuestionBank.Purpose == BankPurpose.Practice
                          && q.CreatedByUserId == teacherId
                          && q.Status == QuestionStatus.Active);
 
@@ -149,7 +150,8 @@ namespace Backend.Repositories.Implements
         {
             var query = _context.Questions
                 .Where(q => q.ChapterId == chapterId
-                              && q.QuestionPurpose == QuestionPurpose.Practice
+                              // P1 bridge: Purpose now lives on bank
+                              && q.QuestionBank.Purpose == BankPurpose.Practice
                               && q.CreatedByUserId == teacherId
                               && q.Status == QuestionStatus.Active);
 
@@ -163,7 +165,8 @@ namespace Backend.Repositories.Implements
         {
             return await _context.Questions
                 .Where(q => chapterIds.Contains(q.ChapterId)
-                         && q.QuestionPurpose == QuestionPurpose.Practice
+                         // P1 bridge: Purpose now lives on bank
+                         && q.QuestionBank.Purpose == BankPurpose.Practice
                          && q.CreatedByUserId == teacherId
                          && q.Status == QuestionStatus.Active)
                 .GroupBy(q => new { q.ChapterId, q.Difficulty })

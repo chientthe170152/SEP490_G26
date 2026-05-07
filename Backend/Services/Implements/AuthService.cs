@@ -167,7 +167,8 @@ public class AuthService(
             user.Email,
             user.RoleId.ToString(),
             authProvider,
-            user.MustChangePassword
+            user.MustChangePassword,
+            user.FullName
         );
 
         var ip = GetClientIp(ctx);

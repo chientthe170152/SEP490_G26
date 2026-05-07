@@ -22,4 +22,7 @@ public sealed class CurrentUserService(IHttpContextAccessor accessor) : ICurrent
     public string Role =>
         Principal.FindFirstValue(ClaimTypes.Role)
             ?? throw new InvalidOperationException("Role claim missing.");
+
+    public string? FullName =>
+        Principal.FindFirstValue(ClaimTypes.Name);
 }

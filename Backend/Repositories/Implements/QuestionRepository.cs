@@ -23,6 +23,7 @@ namespace Backend.Repositories.Implements
                 .Include(x => x.Chapter)
                     .ThenInclude(c => c.Subject)
                 .Include(x => x.QuestionAnswers)
+                .Include(x => x.QuestionBank)   // P1 bridge: needed to read Bank.Purpose
                 .Where(x => x.CreatedByUserId == userId)
                 .AsQueryable();
 
@@ -59,7 +60,8 @@ namespace Backend.Repositories.Implements
 
             if (queryDto.QuestionPurpose.HasValue)
             {
-                query = query.Where(x => x.QuestionPurpose == queryDto.QuestionPurpose.Value);
+                // P1 bridge: filter via Bank.Purpose instead of Question.QuestionPurpose
+                query = query.Where(x => x.QuestionBank.Purpose == queryDto.QuestionPurpose.Value);
             }
 
             var totalCount = await query.CountAsync();
@@ -82,7 +84,8 @@ namespace Backend.Repositories.Implements
                     ChapterName = x.Chapter.Name,
                     UpdatedAt = x.UpdatedAtUtc,
                     Status = x.Status,
-                    QuestionPurpose = x.QuestionPurpose,
+                    // P1 bridge: read via Bank.Purpose
+                    QuestionPurpose = x.QuestionBank.Purpose,
                     AnswerCount = x.QuestionAnswers.Count
                 })
                 .ToListAsync();
@@ -90,7 +93,7 @@ namespace Backend.Repositories.Implements
             // Compute labels after materialization (can't use custom methods in LINQ-to-SQL)
             foreach (var item in items)
             {
-                item.QuestionPurposeLabel = QuestionPurpose.GetLabel(item.QuestionPurpose);
+                item.QuestionPurposeLabel = BankPurpose.GetLabel(item.QuestionPurpose);
             }
 
             return (items, totalCount);

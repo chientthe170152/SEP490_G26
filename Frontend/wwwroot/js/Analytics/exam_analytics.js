@@ -13,30 +13,12 @@ document.addEventListener("DOMContentLoaded", async function () {
         errorMsg:   document.getElementById("errorMessage"),
         content:    document.getElementById("analyticsContent"),
         title:      document.getElementById("examTitle"),
-        
-        // Zone 1
-        avgScore:   document.getElementById("avgScore"),
-        passRate:   document.getElementById("passRate"),
-        failRate:   document.getElementById("failRate"),
-        
-        // Zone 2
-        weakList:   document.getElementById("weakestChaptersList"),
-        hardTable:  document.getElementById("hardestTable").querySelector("tbody"),
-        hardCount:  document.getElementById("hardQuestionCount"),
-        
-        // Zone 3
-        atRiskTable: document.getElementById("atRiskTable").querySelector("tbody"),
-        atRiskCount: document.getElementById("atRiskCount"),
-        excTable:    document.getElementById("excellentTable").querySelector("tbody"),
-        excCount:    document.getElementById("excellentCount"),
-
-        // Templates
-        tplHardest:  document.getElementById("tpl-hardest-row"),
-        tplStudent:  document.getElementById("tpl-student-row"),
-        // Alerts
-        systemAlert: document.getElementById("systemAlert"),
-        dashboard:   document.getElementById("analyticsDashboard"),
-        tplWeak:     document.getElementById("tpl-weak-chapter")
+        submissions:document.getElementById("totalSubmissions"),
+        recBox:     document.getElementById("recommendationsBox"),
+        tplHardest: document.getElementById("tpl-hardest-row"),
+        tplStudent: document.getElementById("tpl-student-row"),
+        tplRec:     document.getElementById("tpl-rec-item"),
+        examId:     document.getElementById("analyticsRoot")?.dataset.examId
     };
 
     await window.userReady;
@@ -94,11 +76,28 @@ function renderAnalytics(rawData) {
 
     DOM.title.textContent = "Phân tích: " + data.examTitle;
 
-    if (data.recommendations && data.recommendations.length > 0) {
-        DOM.systemAlert.hidden = false;
-        DOM.systemAlert.innerHTML = "<strong>Thông báo hệ thống:</strong> " + data.recommendations.join("<br>");
-    } else {
-        DOM.systemAlert.hidden = true;
+    if (data.totalSubmissions === 0) {
+        // Cập nhật avgScoreQuick về 0 cho đồng nhất
+        var avgEl = document.getElementById("avgScoreQuick");
+        if (avgEl) avgEl.textContent = "—";
+
+        var alertDiv = document.createElement("div");
+        alertDiv.className = "alert alert-info mb-0";
+        alertDiv.innerHTML = '<i class="bi bi-info-circle me-2"></i>Chưa có học sinh nào nộp bài hợp lệ để phân tích.';
+        DOM.recBox.innerHTML = "";
+        DOM.recBox.appendChild(alertDiv);
+
+        // Hiển thị thông báo "chưa có dữ liệu" trong mỗi chart canvas
+        ["scoreDistChart", "chapterChart", "difficultyChart"].forEach(function (id) {
+            var cv = document.getElementById(id);
+            if (!cv) return;
+            var ctx = cv.getContext("2d");
+            ctx.font = "14px 'Be Vietnam Pro', sans-serif";
+            ctx.fillStyle = "#94a3b8";
+            ctx.textAlign = "center";
+            ctx.fillText("Chưa có dữ liệu", cv.width / 2, cv.height / 2);
+        });
+        return;
     }
 
     if (data.totalSubmissions === 0) {
@@ -274,12 +273,139 @@ function renderScoreDistChart(distribution) {
     });
 }
 
+function renderAccuracyChart(canvasId, stats, labelKey, valueKey) {
+    var canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    var ctx = canvas.getContext("2d");
+
+    if (!stats || stats.length === 0) {
+        ctx.font = "14px 'Be Vietnam Pro', sans-serif";
+        ctx.fillStyle = "#94a3b8";
+        ctx.textAlign = "center";
+        ctx.fillText("Chưa có dữ liệu phân tích", canvas.width / 2, canvas.height / 2);
+        return;
+    }
+    
+    // Thử lấy key (hỗ trợ cả PascalCase trong mảng)
+    var labels = stats.map(function (s) { return s[labelKey] || s[labelKey.charAt(0).toUpperCase() + labelKey.slice(1)]; });
+    var values = stats.map(function (s) {
+        var v = s[valueKey];
+        if (v == null) v = s[valueKey.charAt(0).toUpperCase() + valueKey.slice(1)];
+        return v != null ? Number(v) : 0;
+    });
+    
+    var colors = values.map(function (v) {
+        return v < 40 ? getCSSColor("--clr-danger", 0.7) : (v < 70 ? getCSSColor("--clr-warning", 0.7) : getCSSColor("--clr-success", 0.7));
+    });
+    new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: labels,
+            datasets: [{ 
+                label: "Tỉ lệ đúng (%)", 
+                data: values, 
+                backgroundColor: colors, 
+                borderRadius: 6,
+                barThickness: 15
+            }]
+        },
+        options: { 
+            responsive: true, 
+            indexAxis: 'y',
+            plugins: { legend: { display: false } }, 
+            scales: { 
+                x: { beginAtZero: true, max: 100, grid: { color: "#f1f5f9" }, ticks: { font: { weight: '600' } } },
+                y: { grid: { display: false }, ticks: { font: { weight: '600' } } }
+            } 
+        }
+    });
+}
+
+// ═══════════════════════════════════════════
+//  Bảng — clone template + fill callback
+// ═══════════════════════════════════════════
+function renderTable(tbodySelector, template, items, fillFn) {
+    if (!items || items.length === 0) return;
+    var tbody = document.querySelector(tbodySelector);
+    tbody.innerHTML = "";
+    items.forEach(function (item, i) {
+        var row = template.content.cloneNode(true);
+        fillFn(row, item, i);
+        tbody.appendChild(row);
+    });
+}
+
+function fillHardestRow(row, q, i) {
+    row.querySelector("[data-col='index']").textContent = i + 1;
+    var contentEl = row.querySelector("[data-col='content']");
+    var content = q.questionContent || q.QuestionContent || "";
+    contentEl.textContent = truncateText(content, 80);
+    if (typeof contentEl.render === "function") contentEl.render();
+    row.querySelector("[data-col='chapter']").textContent = q.chapterName || q.ChapterName;
+    row.querySelector("[data-col='difficulty']").textContent = q.difficultyName || q.DifficultyName;
+    var badge = row.querySelector("[data-col='accuracy']");
+    var acc = q.accuracyRate || q.AccuracyRate || 0;
+    badge.textContent = acc + "%";
+    badge.classList.add(getScoreClass(acc, 'percent'));
+}
+
+function fillStudentRow(row, s, i) {
+    row.querySelector("[data-col='index']").textContent = i + 1;
+    row.querySelector("[data-col='name']").textContent = s.studentName || s.StudentName;
+    var badge = row.querySelector("[data-col='score']");
+    var pts = s.totalPoints != null ? s.totalPoints : (s.TotalPoints != null ? s.TotalPoints : null);
+    badge.textContent = pts != null ? pts : "—";
+    badge.classList.add(getScoreClass(pts));
+    row.querySelector("[data-col='date']").textContent = formatDateVN(s.submittedAt || s.SubmittedAt);
+
+    var submissionId = s.submissionId || s.SubmissionId;
+    var viewBtn = row.querySelector("[data-col='view']");
+    if (viewBtn && submissionId) {
+        viewBtn.href = "/Analytics/ViewSubmission?submissionId=" + submissionId + (DOM.examId ? "&examId=" + DOM.examId : "");
+    } else if (viewBtn) {
+        viewBtn.remove();
+    }
+}
+
+// ═══════════════════════════════════════════
+//  Đề xuất — clone template
+// ═══════════════════════════════════════════
+function renderRecList(recs, box, template) {
+    box.innerHTML = "";
+    if (!recs || recs.length === 0) {
+        var emptyDiv = document.createElement("div");
+        emptyDiv.className = "text-center py-4 text-muted small";
+        emptyDiv.textContent = "Cần thêm dữ liệu để hệ thống đưa ra lời khuyên.";
+        box.appendChild(emptyDiv);
+        return;
+    }
+    recs.forEach(function (rec) {
+        var item = template.content.cloneNode(true);
+        var div = item.querySelector(".rec-item");
+
+        var iconStr = (rec.includes("🚨") || rec.includes("CẢNH BÁO")) ? "bi-patch-exclamation-fill" :
+                      ((rec.includes("⚠️") || rec.includes("cần")) ? "bi-exclamation-triangle-fill" : "bi-stars");
+
+        var icon = document.createElement("i");
+        icon.className = "bi " + iconStr;
+        var span = document.createElement("span");
+        span.textContent = rec;
+
+        div.innerHTML = ""; // Clear existing
+        div.appendChild(icon);
+        div.appendChild(span);
+        div.classList.add(getRecClass(rec));
+        box.appendChild(item);
+    });
+}
+
 // ═══════════════════════════════════════════
 //  Utility
 // ═══════════════════════════════════════════
-function getScoreClass(v) {
+function getScoreClass(v, mode) {
     if (v == null) return "score-bad";
-    return v >= 70 || v >= 8 ? "score-good" : (v >= 40 || v >= 5 ? "score-medium" : "score-bad");
+    if (mode === 'percent') return v >= 70 ? "score-good" : (v >= 40 ? "score-medium" : "score-bad");
+    return v >= 8 ? "score-good" : (v >= 5 ? "score-medium" : "score-bad");
 }
 
 function truncateText(str, maxLen) {
